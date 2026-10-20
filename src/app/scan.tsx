@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { setPendingDraft } from '@/lib/draft';
 import { buildDraft } from '@/lib/extract';
+import { goBack } from '@/lib/nav';
 import { decodePaymentCode, type DecodedCode } from '@/lib/payment-codes';
 import { Button, Icon, IconButton, T } from '@/ui/kit';
 import { C, F, GUTTER } from '@/ui/theme';
@@ -81,7 +82,7 @@ export default function Scan() {
   if (!permission.granted) {
     return (
       <View style={[st.root, { padding: GUTTER, paddingTop: insets.top + 12, justifyContent: 'space-between', paddingBottom: insets.bottom + 16 }]}>
-        <IconButton label="Close" onPress={() => router.back()}>
+        <IconButton label="Close" onPress={() => goBack()}>
           <Icon name="close" />
         </IconButton>
         <View style={{ gap: 12 }}>
@@ -108,7 +109,7 @@ export default function Scan() {
       />
 
       <View style={[st.top, { top: insets.top + 12 }]}>
-        <IconButton label="Close" onPress={() => router.back()} style={st.glass}>
+        <IconButton label="Close" onPress={() => goBack()} style={st.glass}>
           <Icon name="close" />
         </IconButton>
         <T style={st.title}>SCAN BILL</T>

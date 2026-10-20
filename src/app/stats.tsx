@@ -1,9 +1,9 @@
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatAmount } from '@/lib/money';
+import { goBack } from '@/lib/nav';
 import { computeStats, type Period } from '@/lib/stats';
 import { useBills } from '@/lib/store';
 import { CATEGORY_LABEL } from '@/lib/types';
@@ -40,7 +40,7 @@ export default function StatsScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + 40 }}>
       <View style={st.header}>
-        <IconButton label="Back to bills" onPress={() => router.back()}>
+        <IconButton label="Back to bills" onPress={() => goBack()}>
           <Icon name="back" />
         </IconButton>
         <T style={{ fontFamily: F.semibold, fontSize: 15 }}>Stats</T>

@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -9,6 +9,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { daysBetween, longDate, shortDay, todayIso } from '@/lib/dates';
 import { formatAmount } from '@/lib/money';
+import { goBack } from '@/lib/nav';
 import { buildEpc } from '@/lib/payment-codes';
 import { markOpen, markPaid, snooze } from '@/lib/reminders';
 import { deleteBill, useBill } from '@/lib/store';
@@ -50,7 +51,7 @@ export default function BillScreen() {
 
   function more() {
     Alert.alert(bill!.payee, undefined, [
-      { text: 'Delete bill', style: 'destructive', onPress: () => { deleteBill(bill!.id); router.back(); } },
+      { text: 'Delete bill', style: 'destructive', onPress: () => { deleteBill(bill!.id); goBack(); } },
       { text: 'Cancel', style: 'cancel' },
     ]);
   }
@@ -66,7 +67,7 @@ export default function BillScreen() {
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: 130 }}>
         <View style={st.header}>
-          <IconButton label="Back to bills" onPress={() => router.back()}>
+          <IconButton label="Back to bills" onPress={() => goBack()}>
             <Icon name="back" />
           </IconButton>
           <T style={st.headerTitle} numberOfLines={1}>{bill.payee}</T>
@@ -152,7 +153,7 @@ export default function BillScreen() {
               onPress={async () => {
                 await markPaid(bill);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                router.back();
+                goBack();
               }}
             />
           </>
