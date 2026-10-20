@@ -31,6 +31,8 @@ type ModelBill = {
   creditor_building_number: string | null;
   creditor_postcode: string | null;
   creditor_town: string | null;
+  discount_percent: number | null;
+  discount_until: string | null;
 };
 
 const str = { type: 'STRING', nullable: true };
@@ -55,6 +57,8 @@ const SCHEMA = {
     creditor_building_number: str,
     creditor_postcode: str,
     creditor_town: str,
+    discount_percent: { type: 'NUMBER', nullable: true, description: 'Early-payment discount (Skonto / escompte / sconto) in percent, e.g. 2 for "2% if paid within 10 days".' },
+    discount_until: { ...str, description: 'Last day the discount applies, YYYY-MM-DD; compute it from the bill date if only a number of days is given.' },
   },
 };
 
@@ -129,6 +133,11 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; file: Bill
     currency: pick('currency', decoded?.currency, ai?.currency?.toUpperCase()) ?? 'CHF',
     dueDate: pick('dueDate', decoded?.dueDate, isoDate(ai?.due_date)),
     issueDate: decoded?.issueDate ?? isoDate(ai?.issue_date),
+    discount:
+      decoded?.discount ??
+      (ai?.discount_percent && ai.discount_percent > 0 && ai.discount_percent < 50 && isoDate(ai.discount_until)
+        ? { percent: ai.discount_percent, until: isoDate(ai.discount_until)! }
+        : null),
     category: ai?.category && CATEGORIES.includes(ai.category) ? ai.category : 'other',
     country: decoded?.country ?? ai?.country ?? null,
     payMethod: decoded ? 'qr_transfer' : ai?.pay_method && METHODS.includes(ai.pay_method) ? ai.pay_method : 'bank_transfer',

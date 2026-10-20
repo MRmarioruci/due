@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { daysBetween, fromIso, relativeDays, shortDay, todayIso } from '@/lib/dates';
+import { activeDiscount } from '@/lib/discount';
 import { formatAmount } from '@/lib/money';
 import { seedSampleBills } from '@/lib/seed';
 import { useBills } from '@/lib/store';
@@ -30,7 +31,7 @@ export default function Bills() {
   const paid = useMemo(() => bills.filter((b) => b.status === 'paid').sort((a, b) => (b.paidAt ?? '').localeCompare(a.paidAt ?? '')), [bills]);
   const ccy = mainCurrency(open);
   const window = open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= HORIZON);
-  const total = window.filter((b) => b.currency === ccy).reduce((sum, b) => sum + (b.amountMinor ?? 0), 0);
+  const total = window.filter((b) => b.currency === ccy).reduce((sum, b) => sum + (activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0), 0);
   const otherCcy = window.some((b) => b.currency !== ccy);
   const next = open.find((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0);
 
@@ -112,7 +113,10 @@ export default function Bills() {
 function BillRow({ bill, today }: { bill: Bill; today: string }) {
   const days = bill.dueDate ? daysBetween(today, bill.dueDate) : null;
   const urgent = bill.status === 'open' && days != null && days <= 3;
-  const sub = [bill.description ?? CATEGORY_LABEL[bill.category], bill.dueDate && shortDay(bill.dueDate)].filter(Boolean).join(' · ');
+  const discount = activeDiscount(bill, today);
+  const sub = discount
+    ? `${discount.percent}% off until ${shortDay(discount.until)}`
+    : [bill.description ?? CATEGORY_LABEL[bill.category], bill.dueDate && shortDay(bill.dueDate)].filter(Boolean).join(' · ');
   return (
     <Link href={{ pathname: '/bill/[id]', params: { id: bill.id } }} asChild>
       <Pressable style={({ pressed }) => [st.row, pressed && { opacity: 0.6 }]}>
@@ -121,12 +125,12 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
           <T style={st.rowTitle} numberOfLines={1}>{bill.payee}</T>
-          <T style={st.rowSub} numberOfLines={1}>{sub}</T>
+          <T style={[st.rowSub, discount && { color: C.accent }]} numberOfLines={1}>{sub}</T>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 5 }}>
           <T style={st.rowAmount}>
             {bill.currency !== 'CHF' ? `${bill.currency} ` : ''}
-            {formatAmount(bill.amountMinor, bill.currency)}
+            {formatAmount(discount?.payMinor ?? (bill.status === 'paid' ? bill.paidAmountMinor : null) ?? bill.amountMinor, bill.currency)}
           </T>
           <T style={[st.rowDays, { color: urgent ? C.accent : C.dim }]}>
             {bill.status === 'paid' ? 'PAID' : bill.dueDate ? relativeDays(bill.dueDate, today) : '—'}

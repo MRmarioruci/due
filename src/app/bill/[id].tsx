@@ -8,7 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { daysBetween, longDate, shortDay, todayIso } from '@/lib/dates';
-import { formatAmount } from '@/lib/money';
+import { activeDiscount, withSwissAmount } from '@/lib/discount';
+import { formatAmount, formatMoney } from '@/lib/money';
 import { goBack } from '@/lib/nav';
 import { buildEpc, buildSwissQr } from '@/lib/payment-codes';
 import { markOpen, markPaid, snooze } from '@/lib/reminders';
@@ -19,7 +20,10 @@ import { C, F, GUTTER } from '@/ui/theme';
 
 /** The code a banking app can scan: the original QR-bill / GiroCode, or one built from the printed details. */
 function payableCode(b: Bill): { value: string; swiss: boolean } | null {
-  if (b.payment.raw) return { value: b.payment.raw, swiss: b.payment.standard === 'swiss_qr' };
+  const discount = activeDiscount(b);
+  if (b.payment.raw && b.payment.standard === 'swiss_qr') return { value: discount ? withSwissAmount(b.payment.raw, discount.payMinor) : b.payment.raw, swiss: true };
+  if (b.payment.raw) return { value: b.payment.raw, swiss: false };
+  if (discount) b = { ...b, amountMinor: discount.payMinor };
   if (b.payment.iban && /^(CH|LI)/i.test(b.payment.iban)) {
     const qr = buildSwissQr({ iban: b.payment.iban, name: b.payment.creditorName ?? b.payee, address: b.payment.creditorAddress, amountMinor: b.amountMinor, currency: b.currency, reference: b.payment.reference, message: b.payment.message });
     if (qr) return { value: qr, swiss: true };
@@ -44,6 +48,7 @@ export default function BillScreen() {
   const today = todayIso();
   const days = bill.dueDate ? daysBetween(today, bill.dueDate) : null;
   const code = payableCode(bill);
+  const discount = activeDiscount(bill, today);
   const paid = bill.status === 'paid';
 
   async function copy(label: string, value: string) {
@@ -81,7 +86,7 @@ export default function BillScreen() {
         </View>
 
         <View style={{ marginTop: 22 }}>
-          <Amount currency={bill.currency} value={formatAmount(bill.amountMinor, bill.currency)} size={48} />
+          <Amount currency={bill.currency} value={formatAmount(discount?.payMinor ?? bill.paidAmountMinor ?? bill.amountMinor, bill.currency)} size={48} />
           <T style={st.sub}>
             {paid
               ? `Paid ${new Date(bill.paidAt!).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
@@ -90,6 +95,19 @@ export default function BillScreen() {
                 : 'No due date'}
           </T>
         </View>
+
+        {discount && (
+          <View style={st.discount}>
+            <T style={st.discountBadge}>−{discount.percent}%</T>
+            <T style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: C.muted }}>
+              <T style={{ fontSize: 13.5, color: C.fg }}>Pay by {shortDay(discount.until)} and save {formatMoney(discount.savingMinor, bill.currency)}.</T>{' '}
+              Full amount {formatAmount(bill.amountMinor, bill.currency)} after that.{code ? ' The QR code already has the discount.' : ''}
+            </T>
+          </View>
+        )}
+        {paid && bill.paidAmountMinor != null && bill.amountMinor != null && bill.paidAmountMinor < bill.amountMinor && (
+          <T style={{ marginTop: 10, fontSize: 13.5, color: C.muted }}>Saved {formatMoney(bill.amountMinor - bill.paidAmountMinor, bill.currency)} with the early-payment discount.</T>
+        )}
 
         {!paid && bill.dueDate && <Timeline bill={bill} today={today} />}
 
@@ -201,6 +219,8 @@ const st = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48, gap: 12 },
   headerTitle: { flex: 1, textAlign: 'center', fontFamily: F.semibold, fontSize: 15 },
   sub: { marginTop: 10, fontSize: 14, color: C.muted },
+  discount: { marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderWidth: 1, borderColor: C.accent },
+  discountBadge: { fontFamily: F.monoMedium, fontSize: 13, color: C.accent },
   line: { position: 'absolute', top: 10, height: 1 },
   tl: { fontFamily: F.mono, fontSize: 10, color: C.dim, letterSpacing: 0.4 },
   qrWrap: { marginTop: 24, alignItems: 'center', gap: 12 },

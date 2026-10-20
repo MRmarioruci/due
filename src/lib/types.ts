@@ -40,6 +40,9 @@ export type Payment = {
   payUrl: string | null;
 };
 
+/** Early-payment discount (Skonto): `percent` off when paid by `until` (YYYY-MM-DD). */
+export type Discount = { percent: number; until: string };
+
 export type Address = { street: string | null; buildingNumber: string | null; postcode: string | null; town: string | null; country: string | null };
 
 export type Bill = {
@@ -52,6 +55,8 @@ export type Bill = {
   currency: string;
   dueDate: string | null; // YYYY-MM-DD
   issueDate: string | null; // YYYY-MM-DD
+  /** Optional in stored data: bills saved before discounts existed don't have it. */
+  discount?: Discount | null;
   category: Category;
   country: string | null; // ISO 3166-1 alpha-2
   payMethod: PayMethod;
@@ -59,6 +64,8 @@ export type Bill = {
   sources: Partial<Record<SourcedField, Source>>;
   status: 'open' | 'paid';
   paidAt: string | null; // ISO timestamp
+  /** What was actually paid, when it differs from `amountMinor` (a discount was taken). */
+  paidAmountMinor?: number | null;
   createdAt: string; // ISO timestamp
   /** Days before the due date to remind; 0 = on the due date. */
   remindDaysBefore: number;
@@ -70,7 +77,7 @@ export type Bill = {
 export type SourcedField = 'payee' | 'amount' | 'currency' | 'dueDate' | 'iban' | 'reference';
 
 /** What a scan produces before the user confirms it. */
-export type BillDraft = Omit<Bill, 'id' | 'status' | 'paidAt' | 'createdAt' | 'remindAt' | 'reminderId'>;
+export type BillDraft = Omit<Bill, 'id' | 'status' | 'paidAt' | 'paidAmountMinor' | 'createdAt' | 'remindAt' | 'reminderId'>;
 
 export const emptyPayment = (): Payment => ({
   standard: null,

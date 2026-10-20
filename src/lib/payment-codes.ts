@@ -1,4 +1,4 @@
-import { emptyPayment, type Address, type Payment } from './types';
+import { emptyPayment, type Address, type Discount, type Payment } from './types';
 
 /** What we can read exactly from a payment code, before any model looks at the photo. */
 export type DecodedCode = {
@@ -8,6 +8,7 @@ export type DecodedCode = {
   currency: string | null;
   dueDate: string | null;
   issueDate: string | null;
+  discount: Discount | null;
   country: string | null;
 };
 
@@ -44,6 +45,7 @@ export function parseSwissQr(data: string): DecodedCode | null {
     currency: orNull(f[19]),
     dueDate: swico?.dueDate ?? null,
     issueDate: swico?.issueDate ?? null,
+    discount: swico?.discount ?? null,
     country: orNull(f[10]),
     payment: {
       ...emptyPayment(),
@@ -63,7 +65,7 @@ export function parseSwissQr(data: string): DecodedCode | null {
  * Swico "S1" structured bill information, e.g. //S1/10/10201409/11/200701/40/2:10;0:30
  * /11/ is the invoice date (YYMMDD); /40/ lists "discount%:days" pairs, and the 0% entry is the net due period.
  */
-export function parseSwico(info: string): { issueDate: string | null; dueDate: string | null } | null {
+export function parseSwico(info: string): { issueDate: string | null; dueDate: string | null; discount: Discount | null } | null {
   if (!info.startsWith('//S1/')) return null;
   const parts = info.slice(5).split('/');
   const tags: Record<string, string> = {};
@@ -72,14 +74,19 @@ export function parseSwico(info: string): { issueDate: string | null; dueDate: s
   const d = tags['11']?.match(/^(\d{2})(\d{2})(\d{2})/);
   const issueDate = d ? `20${d[1]}-${d[2]}-${d[3]}` : null;
   let dueDate: string | null = null;
+  let discount: Discount | null = null;
   if (issueDate && tags['40']) {
-    const net = tags['40']
+    const terms = tags['40']
       .split(';')
       .map((p) => p.split(':').map(Number))
-      .find(([pct]) => pct === 0);
-    if (net && Number.isFinite(net[1])) dueDate = addDays(issueDate, net[1]);
+      .filter(([pct, days]) => Number.isFinite(pct) && Number.isFinite(days));
+    const net = terms.find(([pct]) => pct === 0);
+    if (net) dueDate = addDays(issueDate, net[1]);
+    // The best discount; the reminder and the QR amount follow it while it's still on offer.
+    const best = terms.filter(([pct]) => pct > 0).sort((a, b) => b[0] - a[0])[0];
+    if (best) discount = { percent: best[0], until: addDays(issueDate, best[1]) };
   }
-  return { issueDate, dueDate };
+  return { issueDate, dueDate, discount };
 }
 
 /** EPC QR / GiroCode ("BCD" payload, EPC069-12) used across the SEPA area. */
@@ -96,6 +103,7 @@ export function parseEpc(data: string): DecodedCode | null {
     currency: amt ? amt[1] : 'EUR',
     dueDate: null,
     issueDate: null,
+    discount: null,
     country: iban.slice(0, 2),
     payment: {
       ...emptyPayment(),

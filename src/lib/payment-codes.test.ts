@@ -56,10 +56,10 @@ describe('Swiss QR-bill', () => {
 
 describe('Swico bill information', () => {
   it('uses the 0% entry as the net period', () => {
-    expect(parseSwico('//S1/11/261002/40/2:10;0:30')).toEqual({ issueDate: '2026-10-02', dueDate: '2026-11-01' });
+    expect(parseSwico('//S1/11/261002/40/2:10;0:30')).toEqual({ issueDate: '2026-10-02', dueDate: '2026-11-01', discount: { percent: 2, until: '2026-10-12' } });
   });
   it('has no due date without conditions', () => {
-    expect(parseSwico('//S1/11/261002')).toEqual({ issueDate: '2026-10-02', dueDate: null });
+    expect(parseSwico('//S1/11/261002')).toEqual({ issueDate: '2026-10-02', dueDate: null, discount: null });
   });
 });
 

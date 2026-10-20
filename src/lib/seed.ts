@@ -5,7 +5,7 @@ import { emptyPayment, type Bill, type Category } from './types';
 /** Dev-only sample data so the list, bill and stats screens can be tried without scanning anything. */
 export function seedSampleBills() {
   const today = todayIso();
-  const mk = (payee: string, description: string, category: Category, minor: number, dueIn: number, paidDaysAgo?: number): Bill => ({
+  const mk = (payee: string, description: string, category: Category, minor: number, dueIn: number, paidDaysAgo?: number, discountPct?: number): Bill => ({
     id: `seed-${payee}-${dueIn}`,
     payee,
     description,
@@ -13,6 +13,8 @@ export function seedSampleBills() {
     currency: 'CHF',
     dueDate: addDaysIso(today, dueIn),
     issueDate: addDaysIso(today, dueIn - 30),
+    discount: discountPct ? { percent: discountPct, until: addDaysIso(today, paidDaysAgo != null ? dueIn - 20 : 5) } : null,
+    paidAmountMinor: discountPct && paidDaysAgo != null ? minor - Math.round((minor * discountPct) / 100) : null,
     category,
     country: 'CH',
     payMethod: 'qr_transfer',
@@ -48,6 +50,8 @@ export function seedSampleBills() {
     mk('Helsana', 'Health insurance', 'insurance', 38720, -18, 20),
     mk('Swisscom', 'Mobile', 'telecom', 6490, -27, 29),
     mk('Steueramt', 'Tax instalment', 'taxes', 85000, -40, 42),
+    mk('Elektro Meier', 'Repair invoice', 'housing', 42800, 25, undefined, 2),
+    mk('Elektro Meier', 'Repair invoice', 'housing', 31600, -8, 25, 2),
     mk('EWZ', 'Electricity', 'utilities', 13910, -52, 55),
     mk('Helsana', 'Health insurance', 'insurance', 38720, -48, 49),
     mk('Sunrise', 'Internet', 'telecom', 4980, -75, 77),

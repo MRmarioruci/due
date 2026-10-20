@@ -99,6 +99,12 @@ export default function StatsScreen() {
         </View>
       </View>
 
+      {s.savedMinor > 0 && (
+        <T style={{ marginTop: 14, fontSize: 13.5, color: C.muted }}>
+          <T style={{ fontSize: 13.5, color: C.accent }}>{s.currency} {formatAmount(s.savedMinor, s.currency)}</T> saved with early-payment discounts
+        </T>
+      )}
+
       {s.categories.length > 0 && (
         <View style={{ marginTop: 28 }}>
           <Eyebrow style={{ marginBottom: 8 }}>By category</Eyebrow>

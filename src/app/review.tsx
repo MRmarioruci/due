@@ -6,7 +6,9 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fromIso, longDate, toIso, todayIso, daysBetween } from '@/lib/dates';
+import { activeDiscount, targetDate } from '@/lib/discount';
 import { takePendingDraft } from '@/lib/draft';
+import { formatMoney } from '@/lib/money';
 import { toMinor } from '@/lib/payment-codes';
 import { describeReminder, scheduleReminder } from '@/lib/reminders';
 import { newId, saveBill } from '@/lib/store';
@@ -62,7 +64,8 @@ export default function Review() {
     }
   }
 
-  const reminder = describeReminder(d.dueDate, d.remindDaysBefore);
+  const discount = activeDiscount({ ...d, amountMinor: toMinor(amountText), status: 'open' });
+  const reminder = describeReminder(targetDate({ ...d, amountMinor: toMinor(amountText), status: 'open' }), d.remindDaysBefore, !!discount);
   const valid = d.payee.trim().length > 0;
 
   async function save() {
@@ -133,6 +136,18 @@ export default function Review() {
           </View>
         </View>
 
+        {discount && (
+          <View style={st.discount}>
+            <T style={{ fontFamily: F.monoMedium, fontSize: 13, color: C.accent }}>−{discount.percent}%</T>
+            <T style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: C.muted }}>
+              Early-payment discount: pay <T style={{ fontSize: 13.5, color: C.fg }}>{formatMoney(discount.payMinor, d.currency)}</T> by {longDate(discount.until)} and save {formatMoney(discount.savingMinor, d.currency)}. The reminder aims for this date.
+            </T>
+            <Pressable accessibilityRole="button" accessibilityLabel="Ignore the discount" hitSlop={10} onPress={() => edit('discount', null)}>
+              <Icon name="close" color={C.dim} size={14} />
+            </Pressable>
+          </View>
+        )}
+
         <Pressable onPress={pickDate} style={st.field} accessibilityRole="button" accessibilityLabel="Change due date">
           <T style={st.label}>Due</T>
           <View style={st.fieldRight}>
@@ -194,6 +209,7 @@ const st = StyleSheet.create({
   hero: { marginTop: 22, flexDirection: 'row', gap: 14, alignItems: 'center' },
   thumb: { width: 46, height: 62, transform: [{ rotate: '-3deg' }] },
   payee: { flexShrink: 1, color: C.fg, fontFamily: F.semibold, fontSize: 16, padding: 0 },
+  discount: { marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderWidth: 1, borderColor: C.accent },
   amountBlock: { marginTop: 26, paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: C.line },
   ccy: { fontFamily: F.medium, fontSize: 16, color: C.dim, padding: 0, minWidth: 34 },
   amount: { flex: 1, fontFamily: F.semibold, fontSize: 48, letterSpacing: -2, color: C.fg, padding: 0, fontVariant: ['tabular-nums'] },

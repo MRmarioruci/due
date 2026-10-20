@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
 import { addDaysIso, reminderMoment, shortDay, todayIso, daysBetween } from './dates';
+import { activeDiscount, targetDate } from './discount';
 import { formatMoney } from './money';
 import { Notifications } from './notifications-module';
 import { getBill, saveBill } from './store';
@@ -45,11 +46,21 @@ export async function setupNotifications(): Promise<boolean> {
 export async function scheduleReminder(bill: Bill, at?: Date): Promise<Bill> {
   if (!Notifications) return { ...bill, reminderId: null, remindAt: null };
   if (bill.reminderId) await Notifications.cancelScheduledNotificationAsync(bill.reminderId).catch(() => {});
-  const when = at ?? (bill.status === 'open' && bill.dueDate ? reminderMoment(bill.dueDate, bill.remindDaysBefore) : null);
+  const target = targetDate(bill);
+  const when = at ?? (bill.status === 'open' && target ? reminderMoment(target, bill.remindDaysBefore) : null);
   if (!when) return { ...bill, reminderId: null, remindAt: null };
 
+  const discount = activeDiscount(bill, todayIso(when));
   const days = bill.dueDate ? daysBetween(todayIso(when), bill.dueDate) : null;
-  const dueText = bill.dueDate == null ? '' : days === 0 ? 'Due today.' : days === 1 ? 'Due tomorrow.' : `Due ${shortDay(bill.dueDate)}.`;
+  const dueText = discount
+    ? `${discount.percent}% off until ${shortDay(discount.until)}: pay ${formatMoney(discount.payMinor, bill.currency)}.`
+    : bill.dueDate == null
+      ? ''
+      : days === 0
+        ? 'Due today.'
+        : days === 1
+          ? 'Due tomorrow.'
+          : `Due ${shortDay(bill.dueDate)}.`;
   const id = await Notifications.scheduleNotificationAsync({
     content: {
       title: `${bill.payee} · ${formatMoney(bill.amountMinor, bill.currency)}`,
@@ -64,11 +75,12 @@ export async function scheduleReminder(bill: Bill, at?: Date): Promise<Bill> {
 
 export async function markPaid(bill: Bill) {
   if (bill.reminderId) await Notifications?.cancelScheduledNotificationAsync(bill.reminderId).catch(() => {});
-  saveBill({ ...bill, status: 'paid', paidAt: new Date().toISOString(), reminderId: null, remindAt: null });
+  const discount = activeDiscount(bill);
+  saveBill({ ...bill, status: 'paid', paidAt: new Date().toISOString(), paidAmountMinor: discount?.payMinor ?? null, reminderId: null, remindAt: null });
 }
 
 export async function markOpen(bill: Bill) {
-  saveBill(await scheduleReminder({ ...bill, status: 'open', paidAt: null }));
+  saveBill(await scheduleReminder({ ...bill, status: 'open', paidAt: null, paidAmountMinor: null }));
 }
 
 /** Re-reminds tomorrow at 09:00. */
@@ -102,7 +114,7 @@ export function listenForResponses(): () => void {
 }
 
 /** Human description of when the reminder fires, for the review screen. */
-export function describeReminder(dueDate: string | null, daysBefore: number): { when: string | null; why: string } {
+export function describeReminder(dueDate: string | null, daysBefore: number, forDiscount = false): { when: string | null; why: string } {
   if (!remindersAvailable) return { when: null, why: 'Reminders don’t run in Expo Go on Android. They work in a development build.' };
   if (!dueDate) return { when: null, why: 'Add a due date to get a reminder.' };
   const m = reminderMoment(dueDate, daysBefore);
@@ -111,6 +123,6 @@ export function describeReminder(dueDate: string | null, daysBefore: number): { 
   const moved = todayIso(m) !== nominal;
   return {
     when: shortDay(m),
-    why: moved ? 'Weekend reminders move to the Friday before.' : daysBefore >= 2 ? 'Enough time for a bank transfer to arrive.' : 'Instant transfers make this fine.',
+    why: forDiscount ? 'Before the discount runs out.' : moved ? 'Weekend reminders move to the Friday before.' : daysBefore >= 2 ? 'Enough time for a bank transfer to arrive.' : 'Instant transfers make this fine.',
   };
 }
