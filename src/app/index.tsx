@@ -6,7 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { daysBetween, fromIso, relativeDays, shortDay, todayIso } from '@/lib/dates';
 import { activeDiscount } from '@/lib/discount';
 import { formatAmount } from '@/lib/money';
+import { planAroundPayday } from '@/lib/plan';
 import { seedSampleBills } from '@/lib/seed';
+import { useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
 import { CATEGORY_LABEL, type Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
@@ -26,6 +28,7 @@ export default function Bills() {
   const bills = useBills();
   const [tab, setTab] = useState<'open' | 'paid'>('open');
   const today = todayIso();
+  const settings = useSettings();
 
   const open = useMemo(() => bills.filter((b) => b.status === 'open'), [bills]);
   const paid = useMemo(() => bills.filter((b) => b.status === 'paid').sort((a, b) => (b.paidAt ?? '').localeCompare(a.paidAt ?? '')), [bills]);
@@ -34,6 +37,7 @@ export default function Bills() {
   const total = window.filter((b) => b.currency === ccy).reduce((sum, b) => sum + (activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0), 0);
   const otherCcy = window.some((b) => b.currency !== ccy);
   const next = open.find((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0);
+  const plan = settings.payday && open.length ? planAroundPayday(open, settings.payday, ccy, today) : null;
 
   const groups: { title: string; items: Bill[] }[] =
     tab === 'paid'
@@ -58,6 +62,9 @@ export default function Bills() {
             <IconButton label="Stats" onPress={() => router.push('/stats')}>
               <Icon name="stats" color={C.muted} />
             </IconButton>
+            <IconButton label="Settings" onPress={() => router.push('/settings')}>
+              <Icon name="settings" color={C.muted} />
+            </IconButton>
           </View>
         </View>
 
@@ -73,7 +80,29 @@ export default function Bills() {
           </T>
         </View>
 
-        <Runway bills={window} today={today} ccy={ccy} />
+        {plan ? (
+          <View style={st.plan}>
+            <View style={st.planCol}>
+              <Eyebrow>Before payday</Eyebrow>
+              <T style={st.planAmount}>{formatAmount(plan.beforeMinor, ccy)}</T>
+              <T style={st.planSub}>{plan.before.length ? `${plan.before.length} ${plan.before.length === 1 ? 'bill' : 'bills'} from what’s in the account` : 'Nothing until payday'}</T>
+            </View>
+            <View style={[st.planCol, st.planRight]}>
+              <Eyebrow>After · {shortDay(plan.payday).toUpperCase()}</Eyebrow>
+              <T style={st.planAmount}>{formatAmount(plan.afterMinor, ccy)}</T>
+              <T style={st.planSub}>{plan.after.length} {plan.after.length === 1 ? 'bill waits' : 'bills wait'} for your salary</T>
+            </View>
+          </View>
+        ) : (
+          open.length > 0 &&
+          !settings.payday && (
+            <Pressable accessibilityRole="link" onPress={() => router.push('/settings')} style={{ marginTop: 14, alignSelf: 'flex-start', paddingVertical: 6 }}>
+              <T style={{ fontSize: 13.5, color: C.muted }}>Set your payday to plan around it →</T>
+            </Pressable>
+          )
+        )}
+
+        <Runway bills={window} today={today} ccy={ccy} payday={plan?.payday ?? null} />
 
         <View style={st.tabs}>
           {(['open', 'paid'] as const).map((k) => {
@@ -142,7 +171,8 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
 }
 
 /** A 30-day strip: one bar per bill at its due date, height by amount. Shows at a glance how bills are spread out. */
-function Runway({ bills, today, ccy }: { bills: Bill[]; today: string; ccy: string }) {
+function Runway({ bills, today, ccy, payday }: { bills: Bill[]; today: string; ccy: string; payday: string | null }) {
+  const paydayAt = payday ? daysBetween(today, payday) : null;
   const max = Math.max(1, ...bills.map((b) => b.amountMinor ?? 0));
   const end = fromIso(today);
   end.setDate(end.getDate() + HORIZON);
@@ -157,6 +187,11 @@ function Runway({ bills, today, ccy }: { bills: Bill[]; today: string; ccy: stri
           ))}
         </View>
         <View style={[st.bar, { left: 0, width: 6, height: 6, marginLeft: 0, backgroundColor: C.accent }]} />
+        {paydayAt != null && paydayAt <= HORIZON && (
+          <View style={[st.payday, { left: `${(paydayAt / HORIZON) * 100}%` }]} accessibilityLabel="Payday">
+            <T style={st.paydayLabel}>PAY</T>
+          </View>
+        )}
         {bills.map((b) => {
           const d = Math.max(0, daysBetween(today, b.dueDate!));
           const h = b.currency === ccy && b.amountMinor ? Math.max(8, (b.amountMinor / max) * 48) : 8;
@@ -180,6 +215,13 @@ const st = StyleSheet.create({
   sub: { marginTop: 10, fontSize: 14, color: C.muted },
   runway: { marginTop: 26, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, paddingTop: 16, paddingBottom: 10 },
   ticks: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  plan: { marginTop: 22, flexDirection: 'row', borderTopWidth: 1, borderColor: C.line, paddingTop: 16 },
+  planCol: { flex: 1, gap: 6 },
+  planRight: { borderLeftWidth: 1, borderLeftColor: C.line, paddingLeft: 16 },
+  planAmount: { fontFamily: F.semibold, fontSize: 20, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  planSub: { fontSize: 12.5, lineHeight: 17, color: C.dim, paddingRight: 8 },
+  payday: { position: 'absolute', top: -6, bottom: 0, width: 1, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: C.muted },
+  paydayLabel: { position: 'absolute', top: -6, left: 4, fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, color: C.muted },
   bar: { position: 'absolute', bottom: 14, width: 7, marginLeft: -3 },
   runwayLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   runwayLabel: { fontFamily: F.mono, fontSize: 10.5, color: C.dim, letterSpacing: 0.4 },

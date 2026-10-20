@@ -6,7 +6,8 @@ import { addDaysIso, reminderMoment, shortDay, todayIso, daysBetween } from './d
 import { activeDiscount, targetDate } from './discount';
 import { formatMoney } from './money';
 import { Notifications } from './notifications-module';
-import { getBill, saveBill } from './store';
+import { getSettings } from './settings';
+import { getBill, getBills, saveBill } from './store';
 import type { Bill } from './types';
 
 const CHANNEL = 'bills';
@@ -47,7 +48,7 @@ export async function scheduleReminder(bill: Bill, at?: Date): Promise<Bill> {
   if (!Notifications) return { ...bill, reminderId: null, remindAt: null };
   if (bill.reminderId) await Notifications.cancelScheduledNotificationAsync(bill.reminderId).catch(() => {});
   const target = targetDate(bill);
-  const when = at ?? (bill.status === 'open' && target ? reminderMoment(target, bill.remindDaysBefore) : null);
+  const when = at ?? (bill.status === 'open' && target ? reminderMoment(target, bill.remindDaysBefore, getSettings().remindHour) : null);
   if (!when) return { ...bill, reminderId: null, remindAt: null };
 
   const discount = activeDiscount(bill, todayIso(when));
@@ -83,12 +84,17 @@ export async function markOpen(bill: Bill) {
   saveBill(await scheduleReminder({ ...bill, status: 'open', paidAt: null, paidAmountMinor: null }));
 }
 
-/** Re-reminds tomorrow at 09:00. */
+/** Re-reminds tomorrow at the usual reminder time. */
 export async function snooze(bill: Bill) {
   const t = new Date();
   t.setDate(t.getDate() + 1);
-  t.setHours(9, 0, 0, 0);
+  t.setHours(getSettings().remindHour, 0, 0, 0);
   saveBill(await scheduleReminder(bill, t));
+}
+
+/** Re-plans every open bill's reminder, e.g. after the reminder time changed. */
+export async function rescheduleAll() {
+  for (const b of getBills().filter((x) => x.status === 'open')) saveBill(await scheduleReminder(b));
 }
 
 /** Handles taps and the notification's action buttons. Call once from the root layout. */
@@ -117,7 +123,7 @@ export function listenForResponses(): () => void {
 export function describeReminder(dueDate: string | null, daysBefore: number, forDiscount = false): { when: string | null; why: string } {
   if (!remindersAvailable) return { when: null, why: 'Reminders don’t run in Expo Go on Android. They work in a development build.' };
   if (!dueDate) return { when: null, why: 'Add a due date to get a reminder.' };
-  const m = reminderMoment(dueDate, daysBefore);
+  const m = reminderMoment(dueDate, daysBefore, getSettings().remindHour);
   if (!m) return { when: null, why: 'That moment has already passed. Pick a shorter lead time.' };
   const nominal = addDaysIso(dueDate, -daysBefore);
   const moved = todayIso(m) !== nominal;

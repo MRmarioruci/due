@@ -5,12 +5,13 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { fromIso, longDate, toIso, todayIso, daysBetween } from '@/lib/dates';
+import { formatHour, fromIso, longDate, toIso, todayIso, daysBetween } from '@/lib/dates';
 import { activeDiscount, targetDate } from '@/lib/discount';
 import { takePendingDraft } from '@/lib/draft';
 import { formatMoney } from '@/lib/money';
 import { toMinor } from '@/lib/payment-codes';
 import { describeReminder, scheduleReminder } from '@/lib/reminders';
+import { getSettings } from '@/lib/settings';
 import { newId, saveBill } from '@/lib/store';
 import { CATEGORY_LABEL, emptyPayment, type Bill, type BillDraft, type SourcedField } from '@/lib/types';
 import { Button, Eyebrow, Icon, IconButton, SourceTag, T } from '@/ui/kit';
@@ -35,7 +36,7 @@ const blankDraft = (): BillDraft => ({
   payMethod: 'bank_transfer',
   payment: emptyPayment(),
   sources: {},
-  remindDaysBefore: 3,
+  remindDaysBefore: getSettings().remindDaysBefore,
   imageUri: null,
 });
 
@@ -189,7 +190,7 @@ export default function Review() {
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
           <Icon name="bell" color={C.accent} />
           <T style={{ flex: 1, fontSize: 13.5, lineHeight: 20, color: C.muted }}>
-            {reminder.when && <T style={{ fontSize: 13.5, color: C.fg }}>{reminder.when} at 09:00. </T>}
+            {reminder.when && <T style={{ fontSize: 13.5, color: C.fg }}>{reminder.when} at {formatHour(getSettings().remindHour)}. </T>}
             {reminder.why}
           </T>
         </View>

@@ -7,12 +7,14 @@ import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { daysBetween, longDate, shortDay, todayIso } from '@/lib/dates';
+import { daysBetween, formatHour, longDate, shortDay, todayIso } from '@/lib/dates';
 import { activeDiscount, withSwissAmount } from '@/lib/discount';
 import { formatAmount, formatMoney } from '@/lib/money';
 import { goBack } from '@/lib/nav';
 import { buildEpc, buildSwissQr } from '@/lib/payment-codes';
+import { paydayAdvice } from '@/lib/plan';
 import { markOpen, markPaid, snooze } from '@/lib/reminders';
+import { getSettings, useSettings } from '@/lib/settings';
 import { deleteBill, useBill } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
@@ -40,6 +42,7 @@ const groupIban = (iban: string) => iban.replace(/\s/g, '').replace(/(.{4})/g, '
 export default function BillScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const bill = useBill(id);
+  const settings = useSettings();
   const insets = useSafeAreaInsets();
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -49,6 +52,7 @@ export default function BillScreen() {
   const days = bill.dueDate ? daysBetween(today, bill.dueDate) : null;
   const code = payableCode(bill);
   const discount = activeDiscount(bill, today);
+  const advice = settings.payday ? paydayAdvice(bill, settings.payday, today) : null;
   const paid = bill.status === 'paid';
 
   async function copy(label: string, value: string) {
@@ -110,6 +114,7 @@ export default function BillScreen() {
         )}
 
         {!paid && bill.dueDate && <Timeline bill={bill} today={today} />}
+        {advice && <T style={{ marginTop: 16, fontSize: 13.5, lineHeight: 19, color: C.muted }}>{advice}</T>}
 
         {code ? (
           <View style={st.qrWrap}>
@@ -166,7 +171,7 @@ export default function BillScreen() {
               onPress={async () => {
                 await snooze(bill);
                 Haptics.selectionAsync();
-                Alert.alert('Snoozed', 'We’ll remind you tomorrow at 09:00.');
+                Alert.alert('Snoozed', `We’ll remind you tomorrow at ${formatHour(getSettings().remindHour)}.`);
               }}
             />
             <Button

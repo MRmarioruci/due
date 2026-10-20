@@ -1,6 +1,7 @@
 import type { DecodedCode } from './payment-codes';
 import { toMinor } from './payment-codes';
 import { todayIso } from './dates';
+import { getSettings } from './settings';
 import { emptyPayment, type BillDraft, type Category, type PayMethod, type SourcedField, type Source } from './types';
 
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
@@ -156,7 +157,7 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; file: Bill
           : null),
     },
     sources,
-    remindDaysBefore: 3,
+    remindDaysBefore: getSettings().remindDaysBefore,
     imageUri: opts.imageUri,
   };
   return { draft, warning };

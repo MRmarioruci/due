@@ -44,6 +44,10 @@ export function deleteBill(id: string) {
   changed();
 }
 
+export function getBills(): Bill[] {
+  return snapshot;
+}
+
 export function getBill(id: string): Bill | undefined {
   return snapshot.find((b) => b.id === id);
 }

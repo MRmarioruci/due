@@ -54,3 +54,8 @@ export function relativeDays(dueDate: string, today = todayIso()): string {
   if (n === 1) return 'TOMORROW';
   return `${n} DAYS`;
 }
+
+/** 9 -> "09:00". */
+export function formatHour(hour: number): string {
+  return `${String(hour).padStart(2, '0')}:00`;
+}
