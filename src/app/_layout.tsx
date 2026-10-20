@@ -13,18 +13,21 @@ SplashScreen.preventAutoHideAsync();
 const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: C.bg, card: C.bg, text: C.fg, border: C.line, primary: C.fg } };
 
 export default function RootLayout() {
-  const [loaded] = useFonts({ Archivo_400Regular, Archivo_500Medium, Archivo_600SemiBold, JetBrainsMono_400Regular, JetBrainsMono_500Medium });
+  const [loaded, fontError] = useFonts({ Archivo_400Regular, Archivo_500Medium, Archivo_600SemiBold, JetBrainsMono_400Regular, JetBrainsMono_500Medium });
 
+  // A font that fails to load must not leave the app on the splash screen; system fonts are the fallback.
+  const ready = loaded || !!fontError;
   useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
-  }, [loaded]);
+    if (fontError) console.warn('[fonts] failed to load, using system fonts', fontError);
+    if (ready) SplashScreen.hideAsync();
+  }, [ready, fontError]);
 
   useEffect(() => {
     setupNotifications();
     return listenForResponses();
   }, []);
 
-  if (!loaded) return null;
+  if (!ready) return null;
 
   return (
     <ThemeProvider value={theme}>
