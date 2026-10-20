@@ -11,7 +11,7 @@ Design: [canvas](https://claude.ai/artifact/X5vyGPve69UzXvytz2rqzR).
 
 ## Run it on your Android phone
 
-You need Node 20+ and the **Expo Go** app from the Play Store (a recent version; this project uses Expo SDK 58).
+You need Node 20+ and the **Expo Go** app from the Play Store (a recent version; this project uses Expo SDK 57).
 
 ```bash
 npm install
