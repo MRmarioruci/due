@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildEpc, decodePaymentCode, parseEpc, parseSwico, parseSwissQr, toMinor } from './payment-codes';
+import { buildEpc, buildSwissQr, decodePaymentCode, isQrIban, parseEpc, parseSwico, parseSwissQr, toMinor } from './payment-codes';
 
 const SWISS = [
   'SPC', '0200', '1', 'CH4431999123000889012',
@@ -93,5 +93,35 @@ describe('decodePaymentCode', () => {
     expect(decodePaymentCode(SWISS)?.payment.standard).toBe('swiss_qr');
     expect(decodePaymentCode(EPC)?.payment.standard).toBe('epc');
     expect(decodePaymentCode('hello')).toBeNull();
+  });
+});
+
+describe('buildSwissQr', () => {
+  const address = { street: 'Rue du Lac', buildingNumber: '1268', postcode: '2501', town: 'Biel', country: 'CH' };
+
+  it('round-trips a QR-IBAN bill with a QR reference', () => {
+    expect(isQrIban('CH4431999123000889012')).toBe(true);
+    const built = buildSwissQr({ iban: 'CH44 3199 9123 0008 8901 2', name: 'Robert Schneider AG', address, amountMinor: 194975, reference: '21 00000 00003 13947 14300 09017' })!;
+    const d = parseSwissQr(built)!;
+    expect(d.payee).toBe('Robert Schneider AG');
+    expect(d.amountMinor).toBe(194975);
+    expect(d.payment.referenceType).toBe('QRR');
+    expect(d.payment.reference).toBe('210000000003139471430009017');
+    expect(d.payment.creditorAddress?.town).toBe('Biel');
+    expect(built.split('\r\n')).toHaveLength(31);
+  });
+
+  it('uses SCOR for creditor references and NON otherwise', () => {
+    const iban = 'CH5800791123000889012'; // not a QR-IBAN
+    expect(parseSwissQr(buildSwissQr({ iban, name: 'X', address, reference: 'RF18 5390 0754 7034' })!)!.payment.referenceType).toBe('SCOR');
+    const non = parseSwissQr(buildSwissQr({ iban, name: 'X', address, reference: 'Invoice 4711' })!)!;
+    expect(non.payment.referenceType).toBe('NON');
+    expect(non.payment.message).toBe('Invoice 4711');
+  });
+
+  it('refuses incomplete details', () => {
+    expect(buildSwissQr({ iban: 'CH4431999123000889012', name: 'X', address, reference: 'nope' })).toBeNull(); // QR-IBAN needs a QR reference
+    expect(buildSwissQr({ iban: 'CH5800791123000889012', name: 'X', address: null })).toBeNull();
+    expect(buildSwissQr({ iban: 'DE33100205000001194700', name: 'X', address })).toBeNull();
   });
 });

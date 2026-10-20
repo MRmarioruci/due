@@ -1,4 +1,4 @@
-import { emptyPayment, type Payment } from './types';
+import { emptyPayment, type Address, type Payment } from './types';
 
 /** What we can read exactly from a payment code, before any model looks at the photo. */
 export type DecodedCode = {
@@ -51,6 +51,7 @@ export function parseSwissQr(data: string): DecodedCode | null {
       raw: data,
       iban,
       creditorName: orNull(f[5]),
+      creditorAddress: { street: orNull(f[6]), buildingNumber: orNull(f[7]), postcode: orNull(f[8]), town: orNull(f[9]), country: orNull(f[10]) },
       referenceType: refType === 'QRR' || refType === 'SCOR' || refType === 'NON' ? refType : null,
       reference: orNull(f[28]),
       message: orNull(f[29]),
@@ -112,6 +113,56 @@ export function parseEpc(data: string): DecodedCode | null {
 
 export function decodePaymentCode(data: string): DecodedCode | null {
   return parseSwissQr(data) ?? parseEpc(data);
+}
+
+/** QR-IBANs have an institution id of 30000–31999 and must carry a 27-digit QR reference. */
+export function isQrIban(iban: string): boolean {
+  const iid = Number(iban.replace(/\s/g, '').slice(4, 9));
+  return iid >= 30000 && iid <= 31999;
+}
+
+/**
+ * Builds a Swiss QR-bill payload (structured address, v2.x) for a bill whose code wasn't scanned,
+ * e.g. one imported as a PDF. Returns null when the details aren't enough for a valid code.
+ */
+export function buildSwissQr(p: {
+  iban: string;
+  name: string;
+  address: Address | null;
+  amountMinor?: number | null;
+  currency?: string;
+  reference?: string | null;
+  message?: string | null;
+}): string | null {
+  const iban = p.iban.replace(/\s/g, '').toUpperCase();
+  const ccy = p.currency ?? 'CHF';
+  const a = p.address;
+  if (!/^(CH|LI)\d{2}[0-9A-Z]{17}$/.test(iban) || (ccy !== 'CHF' && ccy !== 'EUR')) return null;
+  if (!a?.postcode || !a.town || !a.country) return null;
+
+  const ref = p.reference?.replace(/\s/g, '') ?? '';
+  let refType: 'QRR' | 'SCOR' | 'NON' = 'NON';
+  let reference = '';
+  let message = p.message ?? '';
+  if (isQrIban(iban)) {
+    if (!/^\d{27}$/.test(ref)) return null;
+    refType = 'QRR';
+    reference = ref;
+  } else if (/^RF\d{2}[0-9A-Z]{1,21}$/i.test(ref)) {
+    refType = 'SCOR';
+    reference = ref.toUpperCase();
+  } else if (p.reference) {
+    message = [p.reference, message].filter(Boolean).join(' ').slice(0, 140);
+  }
+
+  return [
+    'SPC', '0200', '1', iban,
+    'S', p.name.slice(0, 70), (a.street ?? '').slice(0, 70), (a.buildingNumber ?? '').slice(0, 16), a.postcode.slice(0, 16), a.town.slice(0, 35), a.country.toUpperCase().slice(0, 2),
+    '', '', '', '', '', '', '',
+    p.amountMinor != null ? (p.amountMinor / 100).toFixed(2) : '', ccy,
+    '', '', '', '', '', '', '',
+    refType, reference, message.slice(0, 140), 'EPD',
+  ].join('\r\n');
 }
 
 /** Builds an EPC QR payload so a bill with printed SEPA details can still be paid by scanning. */

@@ -27,6 +27,10 @@ type ModelBill = {
   reference: string | null;
   account_number: string | null;
   pay_url: string | null;
+  creditor_street: string | null;
+  creditor_building_number: string | null;
+  creditor_postcode: string | null;
+  creditor_town: string | null;
 };
 
 const str = { type: 'STRING', nullable: true };
@@ -47,19 +51,26 @@ const SCHEMA = {
     reference: { ...str, description: 'Payment reference / remittance number to quote with the transfer.' },
     account_number: { ...str, description: 'Customer or account number at the biller.' },
     pay_url: { ...str, description: 'URL where the bill can be paid, if printed.' },
+    creditor_street: { ...str, description: "Biller's street name (from the payment slip's 'Account / Payable to' block if there is one), without the number." },
+    creditor_building_number: str,
+    creditor_postcode: str,
+    creditor_town: str,
   },
 };
 
-const PROMPT = `You read a photo of a bill or invoice from any country and language and return its payment details as JSON.
+const PROMPT = `You read a photo or PDF of a bill or invoice from any country and language and return its payment details as JSON.
 Rules: read only what is printed; use null for anything you cannot read with confidence. Dates must be YYYY-MM-DD; read day/month order from the bill's country conventions. Today is ${todayIso()}.`;
 
-async function askModel(base64Jpeg: string, decoded: DecodedCode | null): Promise<ModelBill> {
+/** A scanned page or an imported document, as sent to the model. */
+export type BillFile = { base64: string; mimeType: 'image/jpeg' | 'application/pdf' };
+
+async function askModel(file: BillFile, decoded: DecodedCode | null): Promise<ModelBill> {
   const hint = decoded ? `\nThe bill's payment QR code was already decoded: payee "${decoded.payee}", amount ${decoded.amountMinor != null ? decoded.amountMinor / 100 : 'open'} ${decoded.currency}. Focus on the due date, description and category.` : '';
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': API_KEY! },
     body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: PROMPT + hint }, { inline_data: { mime_type: 'image/jpeg', data: base64Jpeg } }] }],
+      contents: [{ role: 'user', parts: [{ text: PROMPT + hint }, { inline_data: { mime_type: file.mimeType, data: file.base64 } }] }],
       generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
     }),
   });
@@ -83,13 +94,13 @@ function isoDate(s: string | null | undefined): string | null {
  * Turns a scan into a draft bill. Values decoded from a payment code are exact and always win;
  * the model fills in the rest (and everything, when the bill has no code).
  */
-export async function buildDraft(opts: { decoded: DecodedCode | null; base64Jpeg: string | null; imageUri: string | null }): Promise<{ draft: BillDraft; warning: string | null }> {
+export async function buildDraft(opts: { decoded: DecodedCode | null; file: BillFile | null; imageUri: string | null }): Promise<{ draft: BillDraft; warning: string | null }> {
   const { decoded } = opts;
   let ai: ModelBill | null = null;
   let warning: string | null = null;
-  if (opts.base64Jpeg && API_KEY) {
+  if (opts.file && API_KEY) {
     try {
-      ai = await askModel(opts.base64Jpeg, decoded);
+      ai = await askModel(opts.file, decoded);
     } catch (e) {
       warning = `Couldn't read the rest of the bill (${(e as Error).message}). Fill in what's missing.`;
     }
@@ -129,6 +140,11 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; base64Jpeg
       accountNumber: ai?.account_number ?? null,
       payUrl: ai?.pay_url ?? null,
       creditorName: payment.creditorName ?? ai?.payee ?? null,
+      creditorAddress:
+        payment.creditorAddress ??
+        (ai?.creditor_town
+          ? { street: ai.creditor_street, buildingNumber: ai.creditor_building_number, postcode: ai.creditor_postcode, town: ai.creditor_town, country: ai.country }
+          : null),
     },
     sources,
     remindDaysBefore: 3,

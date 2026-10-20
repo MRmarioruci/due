@@ -10,16 +10,20 @@ import Svg, { Path } from 'react-native-svg';
 import { daysBetween, longDate, shortDay, todayIso } from '@/lib/dates';
 import { formatAmount } from '@/lib/money';
 import { goBack } from '@/lib/nav';
-import { buildEpc } from '@/lib/payment-codes';
+import { buildEpc, buildSwissQr } from '@/lib/payment-codes';
 import { markOpen, markPaid, snooze } from '@/lib/reminders';
 import { deleteBill, useBill } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
 import { C, F, GUTTER } from '@/ui/theme';
 
-/** The code a banking app can scan: the original QR-bill / GiroCode, or a GiroCode built from printed SEPA details. */
+/** The code a banking app can scan: the original QR-bill / GiroCode, or one built from the printed details. */
 function payableCode(b: Bill): { value: string; swiss: boolean } | null {
   if (b.payment.raw) return { value: b.payment.raw, swiss: b.payment.standard === 'swiss_qr' };
+  if (b.payment.iban && /^(CH|LI)/i.test(b.payment.iban)) {
+    const qr = buildSwissQr({ iban: b.payment.iban, name: b.payment.creditorName ?? b.payee, address: b.payment.creditorAddress, amountMinor: b.amountMinor, currency: b.currency, reference: b.payment.reference, message: b.payment.message });
+    if (qr) return { value: qr, swiss: true };
+  }
   if (b.payment.iban && b.currency === 'EUR') {
     const epc = buildEpc({ name: b.payment.creditorName ?? b.payee, iban: b.payment.iban, bic: b.payment.bic, amountMinor: b.amountMinor, currency: b.currency, reference: b.payment.reference });
     if (epc) return { value: epc, swiss: false };

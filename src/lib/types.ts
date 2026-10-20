@@ -31,12 +31,16 @@ export type Payment = {
   iban: string | null;
   bic: string | null;
   creditorName: string | null;
+  /** Needed to build a Swiss QR-bill when the original code wasn't scanned (e.g. a PDF). */
+  creditorAddress: Address | null;
   reference: string | null;
   referenceType: 'QRR' | 'SCOR' | 'NON' | null;
   message: string | null;
   accountNumber: string | null;
   payUrl: string | null;
 };
+
+export type Address = { street: string | null; buildingNumber: string | null; postcode: string | null; town: string | null; country: string | null };
 
 export type Bill = {
   id: string;
@@ -74,6 +78,7 @@ export const emptyPayment = (): Payment => ({
   iban: null,
   bic: null,
   creditorName: null,
+  creditorAddress: null,
   reference: null,
   referenceType: null,
   message: null,
