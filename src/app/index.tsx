@@ -79,9 +79,10 @@ export default function Bills() {
             const on = tab === k;
             return (
               <Pressable key={k} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setTab(k)} style={[st.tab, on && st.tabOn]}>
-                <T style={[st.tabText, { color: on ? C.fg : C.dim }]}>
-                  {k === 'open' ? 'Upcoming' : 'Paid'} <T style={st.tabCount}>{k === 'open' ? open.length : paid.length}</T>
-                </T>
+                <View style={st.tabInner}>
+                  <T style={[st.tabText, { color: on ? C.fg : C.dim }]}>{k === 'open' ? 'Upcoming' : 'Paid'}</T>
+                  <T style={[st.tabCount, on && { color: C.muted }]}>{k === 'open' ? open.length : paid.length}</T>
+                </View>
               </Pressable>
             );
           })}
@@ -91,7 +92,7 @@ export default function Bills() {
           .filter((g) => g.items.length)
           .map((g) => (
             <View key={g.title}>
-              <Eyebrow style={{ marginTop: 18, marginBottom: 2 }}>{g.title}</Eyebrow>
+              <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>{g.title}</Eyebrow>
               {g.items.map((b) => (
                 <BillRow key={b.id} bill={b} today={today} />
               ))}
@@ -118,11 +119,11 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
         <View style={st.mono}>
           <T style={st.monoText}>{bill.payee.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}</T>
         </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
           <T style={st.rowTitle} numberOfLines={1}>{bill.payee}</T>
           <T style={st.rowSub} numberOfLines={1}>{sub}</T>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+        <View style={{ alignItems: 'flex-end', gap: 5 }}>
           <T style={st.rowAmount}>
             {bill.currency !== 'CHF' ? `${bill.currency} ` : ''}
             {formatAmount(bill.amountMinor, bill.currency)}
@@ -181,14 +182,15 @@ const st = StyleSheet.create({
   tabs: { flexDirection: 'row', gap: 22, marginTop: 20 },
   tab: { paddingBottom: 8, minHeight: 32, justifyContent: 'flex-end' },
   tabOn: { borderBottomWidth: 1.5, borderBottomColor: C.fg },
+  tabInner: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   tabText: { fontFamily: F.medium, fontSize: 14 },
   tabCount: { fontFamily: F.mono, fontSize: 11, color: C.dim },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 62, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
-  mono: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 76, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.line },
+  mono: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
   monoText: { fontFamily: F.semibold, fontSize: 12 },
-  rowTitle: { fontFamily: F.medium, fontSize: 15 },
-  rowSub: { fontSize: 12.5, color: C.dim },
-  rowAmount: { fontFamily: F.medium, fontSize: 15, fontVariant: ['tabular-nums'] },
+  rowTitle: { fontFamily: F.medium, fontSize: 15.5, lineHeight: 20 },
+  rowSub: { fontSize: 13, lineHeight: 17, color: C.dim },
+  rowAmount: { fontFamily: F.medium, fontSize: 15.5, fontVariant: ['tabular-nums'] },
   rowDays: { fontFamily: F.mono, fontSize: 11 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: 'rgba(10,10,10,0.94)' },
 });

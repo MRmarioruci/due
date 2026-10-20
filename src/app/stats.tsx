@@ -87,10 +87,10 @@ export default function StatsScreen() {
           <T style={st.tileLabel}>Paid on time</T>
         </View>
         <View style={[st.tile, st.tileBorder]}>
-          <T style={st.tileValue}>
-            {s.avgDaysEarly != null ? s.avgDaysEarly.toFixed(1) : '—'}
-            <T style={{ fontSize: 13, color: C.dim }}> d</T>
-          </T>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
+            <T style={st.tileValue}>{s.avgDaysEarly != null ? s.avgDaysEarly.toFixed(1) : '—'}</T>
+            {s.avgDaysEarly != null && <T style={st.tileUnit}>days</T>}
+          </View>
           <T style={st.tileLabel}>Paid before due</T>
         </View>
         <View style={[st.tile, st.tileBorder]}>
@@ -100,10 +100,10 @@ export default function StatsScreen() {
       </View>
 
       {s.categories.length > 0 && (
-        <View style={{ marginTop: 20 }}>
-          <Eyebrow style={{ marginBottom: 6 }}>By category</Eyebrow>
+        <View style={{ marginTop: 28 }}>
+          <Eyebrow style={{ marginBottom: 8 }}>By category</Eyebrow>
           {s.categories.map((c) => (
-            <View key={c.category} style={{ paddingVertical: 8, gap: 6 }}>
+            <View key={c.category} style={{ paddingVertical: 12, gap: 8 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <T style={{ fontSize: 13.5 }}>{CATEGORY_LABEL[c.category]}</T>
                 <T style={{ fontSize: 13.5, color: C.muted, fontVariant: ['tabular-nums'] }}>{formatAmount(c.minor, s.currency)}</T>
@@ -126,9 +126,10 @@ const st = StyleSheet.create({
   chart: { height: 150, flexDirection: 'row', alignItems: 'flex-end', gap: 6, borderBottomWidth: 1, borderBottomColor: '#333' },
   barHit: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center' },
   barLabel: { flex: 1, textAlign: 'center', fontFamily: F.mono, fontSize: 10 },
-  tiles: { marginTop: 22, flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line },
-  tile: { flex: 1, paddingVertical: 14, gap: 4 },
-  tileBorder: { borderLeftWidth: 1, borderLeftColor: C.line, paddingLeft: 14 },
+  tiles: { marginTop: 28, flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line },
+  tile: { flex: 1, paddingVertical: 18, paddingRight: 8, gap: 8 },
+  tileBorder: { borderLeftWidth: 1, borderLeftColor: C.line, paddingLeft: 16 },
   tileValue: { fontFamily: F.semibold, fontSize: 22, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
-  tileLabel: { fontSize: 12, color: C.dim },
+  tileLabel: { fontSize: 12.5, lineHeight: 17, color: C.dim },
+  tileUnit: { fontSize: 13, color: C.dim },
 });
