@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -6,6 +7,7 @@ import { authenticate, phoneHasLock } from '@/lib/lock';
 import { goBack } from '@/lib/nav';
 import { describePay } from '@/lib/plan';
 import { countryByCode } from '@/lib/regions';
+import { PAY_STYLES } from '@/lib/reminder-plan';
 import { remindersAvailable, rescheduleAll } from '@/lib/reminders';
 import { seedSampleBills } from '@/lib/seed';
 import { deviceRegion, getSettings, homeCurrency, updateSettings, useSettings } from '@/lib/settings';
@@ -37,7 +39,8 @@ export default function SettingsScreen() {
         <Row label="Currency" value={homeCurrency()} onPress={() => chooseCurrency()} />
       </Section>
 
-      <Section title="Pay" note="Splits your bills into what's due before payday and what can wait for it.">
+      <Section title="Pay" note="Pay bills sets when reminders come. Payday splits your bills into what's due before it and what can wait.">
+        <Row label="Pay bills" value={PAY_STYLES.find((p) => p.key === s.payStyle)?.label} onPress={choosePayStyle} />
         <Row label="Payday" value={s.pay ? describePay(s.pay) : 'Not set'} onPress={() => choosePay()} />
       </Section>
 
@@ -59,6 +62,16 @@ export default function SettingsScreen() {
         <ToggleRow label="Lock with phone unlock" value={s.appLock} onChange={toggleLock} />
       </Section>
 
+      <Section title="General">
+        <Row
+          label="Run setup again"
+          onPress={() => {
+            updateSettings({ onboarded: false });
+            router.replace('/onboarding');
+          }}
+        />
+      </Section>
+
       {__DEV__ && (
         <Section title="Development">
           <Row
@@ -76,6 +89,28 @@ export default function SettingsScreen() {
 }
 
 /* ---------- choosers: each opens one sheet ---------- */
+
+function choosePayStyle() {
+  sheet.show({
+    title: 'When do you like to pay?',
+    message: 'The default for bills. You can change it per bill.',
+    content: (
+      <Options
+        selected={getSettings().payStyle}
+        options={PAY_STYLES.map((p) => ({
+          key: p.key,
+          label: p.label,
+          onPress: () => {
+            updateSettings({ payStyle: p.key });
+            rescheduleAll();
+            sheet.hide();
+            toast(`Paying bills: ${p.label.toLowerCase()}`);
+          },
+        }))}
+      />
+    ),
+  });
+}
 
 function chooseLead() {
   sheet.show({

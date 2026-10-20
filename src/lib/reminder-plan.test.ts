@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { planDigest, planReminders } from './reminder-plan';
+import { mainReminder, planDigest, planReminders } from './reminder-plan';
 import { emptyPayment, type Bill } from './types';
 
 const bill = (over: Partial<Bill> = {}): Bill => ({
@@ -62,5 +62,29 @@ describe('planDigest', () => {
 
   it('is empty for a quiet week', () => {
     expect(planDigest([bill({ dueDate: '2026-12-01' })], 9, now)).toBeNull();
+  });
+});
+
+describe('pay styles', () => {
+  // Arrived Thu 15 Oct, due Wed 4 Nov; today is Tue 20 Oct, noon.
+  const b = bill({ issueDate: '2026-10-15' });
+  const prefs = { remindHour: 9, extraNudges: false };
+
+  it('just in time: a few days before the due date', () => {
+    expect(day(mainReminder({ ...b, payStyle: 'last' }, prefs, now)!)).toBe('10/30 9h');
+  });
+  it('right away: the next reminder slot', () => {
+    expect(day(mainReminder({ ...b, payStyle: 'early' }, prefs, now)!)).toBe('10/21 9h');
+  });
+  it('halfway: between arrival and due date, weekends to Friday', () => {
+    // 15 Oct + 10 days = Sun 25 Oct -> Fri 23 Oct
+    expect(day(mainReminder({ ...b, payStyle: 'midway' }, prefs, now)!)).toBe('10/23 9h');
+  });
+  it('falls back to just in time when the style would be later', () => {
+    const soon = bill({ issueDate: '2026-10-19', dueDate: '2026-10-22', payStyle: 'midway', remindDaysBefore: 1 });
+    expect(day(mainReminder(soon, prefs, now)!)).toBe('10/21 9h');
+  });
+  it('uses the default style when the bill has none', () => {
+    expect(day(mainReminder(b, { ...prefs, payStyle: 'early' }, now)!)).toBe('10/21 9h');
   });
 });

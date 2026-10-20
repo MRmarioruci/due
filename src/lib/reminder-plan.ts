@@ -1,11 +1,55 @@
-import { addDaysIso, daysBetween, fromIso, reminderMoment, shortDay, todayIso } from './dates';
+import { addDaysIso, daysBetween, fromIso, reminderMoment, shortDay, toIso, todayIso } from './dates';
 import { activeDiscount, targetDate } from './discount';
 import { formatMoney } from './money';
 import type { Bill } from './types';
 
 export type PlannedReminder = { kind: 'main' | 'tomorrow' | 'overdue'; at: Date; title: string; body: string };
 
-type Prefs = { remindHour: number; extraNudges: boolean };
+/** How early the user likes to pay: as soon as a bill arrives, halfway to the due date, or just before it. */
+export type PayStyle = 'early' | 'midway' | 'last';
+
+export const PAY_STYLES: { key: PayStyle; label: string; detail: string }[] = [
+  { key: 'early', label: 'Right away', detail: 'Remind me as soon as a bill arrives, so nothing hangs around.' },
+  { key: 'midway', label: 'Halfway', detail: 'Remind me halfway between a bill arriving and its due date.' },
+  { key: 'last', label: 'Just in time', detail: 'Remind me a few days before it’s due. The money stays with you longest.' },
+];
+
+type Prefs = { remindHour: number; extraNudges: boolean; payStyle?: PayStyle };
+
+/** The next reminder slot from now: today at `hour` if that's still ahead, else tomorrow. */
+function nextSlot(hour: number, now: Date): Date {
+  const d = new Date(now);
+  d.setHours(hour, 0, 0, 0);
+  if (d <= now) d.setDate(d.getDate() + 1);
+  return d;
+}
+
+/**
+ * When the main reminder goes off for a bill, following its pay style (or the default one).
+ * Never after the deadline (discount or due date); null when that's already passed.
+ */
+export function mainReminder(bill: Bill, prefs: Prefs, now = new Date()): Date | null {
+  const target = targetDate(bill, todayIso(now));
+  if (!target) return null;
+  const style = bill.payStyle ?? prefs.payStyle ?? 'last';
+  const deadline = fromIso(target);
+  deadline.setHours(23, 59, 0, 0);
+  const latest = reminderMoment(target, bill.remindDaysBefore, prefs.remindHour, now);
+
+  if (style === 'last') return latest;
+
+  const arrived = bill.issueDate ?? toIso(new Date(bill.createdAt));
+  let when: Date;
+  if (style === 'early') {
+    when = nextSlot(prefs.remindHour, now);
+  } else {
+    const mid = addDaysIso(arrived, Math.floor(Math.max(0, daysBetween(arrived, target)) / 2));
+    when = reminderMoment(mid, 0, prefs.remindHour, now) ?? nextSlot(prefs.remindHour, now);
+  }
+  // A style that would remind later than "just in time" falls back to it.
+  if (latest && when > latest) return latest;
+  return when <= deadline ? when : latest;
+}
 
 const at = (iso: string, hour: number) => {
   const d = fromIso(iso);
@@ -23,7 +67,7 @@ export function planReminders(bill: Bill, prefs: Prefs, now = new Date(), snooze
   const title = `${bill.payee} · ${formatMoney(bill.amountMinor, bill.currency)}`;
   const out: PlannedReminder[] = [];
 
-  const main = snoozedTo ?? (target ? reminderMoment(target, bill.remindDaysBefore, prefs.remindHour, now) : null);
+  const main = snoozedTo ?? mainReminder(bill, prefs, now);
   if (main && main > now) out.push({ kind: 'main', at: main, title, body: describeDue(bill, main) });
 
   if (prefs.extraNudges && target) {

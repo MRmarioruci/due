@@ -3,6 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import { useSyncExternalStore } from 'react';
 
 import type { PaySchedule } from './plan';
+import type { PayStyle } from './reminder-plan';
 
 export type Settings = {
   /** Finished the first-run setup. */
@@ -12,6 +13,8 @@ export type Settings = {
   currency: string | null;
   /** When pay arrives, or null when not set. */
   pay: PaySchedule | null;
+  /** How early bills get paid by default: right away, halfway, or just in time. */
+  payStyle: PayStyle;
   /** Hour of the day reminders go off. */
   remindHour: number;
   /** Default lead time for new bills, in days before the due date. */
@@ -26,7 +29,7 @@ export type Settings = {
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { onboarded: false, country: null, currency: null, pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
+const DEFAULTS: Settings = { onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');

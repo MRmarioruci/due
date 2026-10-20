@@ -67,7 +67,9 @@ export type Bill = {
   /** What was actually paid, when it differs from `amountMinor` (a discount was taken). */
   paidAmountMinor?: number | null;
   createdAt: string; // ISO timestamp
-  /** Days before the due date to remind; 0 = on the due date. */
+  /** Overrides the default pay style for this bill (see Settings → Pay bills). */
+  payStyle?: import('./reminder-plan').PayStyle | null;
+  /** Days before the due date to remind ("just in time" style); 0 = on the due date. */
   remindDaysBefore: number;
   remindAt: string | null; // ISO timestamp of the scheduled reminder
   reminderId: string | null;

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { describePay } from '@/lib/plan';
 import { countryByCode, currencyFor } from '@/lib/regions';
+import { PAY_STYLES } from '@/lib/reminder-plan';
 import { remindersAvailable, setupNotifications } from '@/lib/reminders';
 import { deviceRegion, getSettings, updateSettings, useSettings } from '@/lib/settings';
 import { chooseCountry, chooseCurrency, choosePay, countryFromLocation, setCountry } from '@/ui/choosers';
@@ -13,8 +14,8 @@ import { Animated, enterFade, enterRow } from '@/ui/motion';
 import { toast } from '@/ui/overlay';
 import { C, F, GUTTER } from '@/ui/theme';
 
-type Step = 'welcome' | 'region' | 'pay' | 'reminders';
-const STEPS: Step[] = ['welcome', 'region', 'pay', 'reminders'];
+type Step = 'welcome' | 'region' | 'style' | 'pay' | 'reminders';
+const STEPS: Step[] = ['welcome', 'region', 'style', 'pay', 'reminders'];
 
 /** First launch: what due does, where you live (currency), when you're paid, and reminders. */
 export default function Onboarding() {
@@ -65,7 +66,7 @@ export default function Onboarding() {
               <T style={st.logoText}>due</T>
               <View style={st.logoDot} />
             </View>
-            <T style={st.title}>Bills, scanned and remembered.</T>
+            <T style={st.title}>Every bill, paid at the right time.</T>
             {[
               ['Scan', 'Take a photo or import a PDF. The payment code and due date are read for you.'],
               ['Remind', 'A nudge a few days before each bill is due, never on a weekend.'],
@@ -81,7 +82,7 @@ export default function Onboarding() {
 
         {step === 'region' && (
           <View style={st.body}>
-            <Eyebrow>Step 1 of 3</Eyebrow>
+            <Eyebrow>Step 1 of 4</Eyebrow>
             <T style={st.title}>Where do you live?</T>
             <T style={st.text}>It sets your currency and helps read dates on your bills. Bills from anywhere still work.</T>
             <View style={st.card}>
@@ -98,9 +99,33 @@ export default function Onboarding() {
           </View>
         )}
 
+        {step === 'style' && (
+          <View style={st.body}>
+            <Eyebrow>Step 2 of 4</Eyebrow>
+            <T style={st.title}>When do you like to pay?</T>
+            <T style={st.text}>Sets when reminders come. You can change it per bill, too.</T>
+            <View style={{ gap: 8, marginTop: 8 }}>
+              {PAY_STYLES.map((p, i) => {
+                const on = s.payStyle === p.key;
+                return (
+                  <Animated.View key={p.key} entering={enterRow(i)}>
+                    <Pressable accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => updateSettings({ payStyle: p.key })} style={[st.option, on && st.optionOn]}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <T style={{ fontFamily: F.semibold, fontSize: 16 }}>{p.label}</T>
+                        {p.key === 'last' && <T style={st.badge}>RECOMMENDED</T>}
+                      </View>
+                      <T style={{ fontSize: 13.5, lineHeight: 19, color: C.muted }}>{p.detail}</T>
+                    </Pressable>
+                  </Animated.View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         {step === 'pay' && (
           <View style={st.body}>
-            <Eyebrow>Step 2 of 3</Eyebrow>
+            <Eyebrow>Step 3 of 4</Eyebrow>
             <T style={st.title}>When do you get paid?</T>
             <T style={st.text}>due then shows which bills fall before payday and which can wait for it. You can skip this.</T>
             <View style={st.card}>
@@ -114,7 +139,7 @@ export default function Onboarding() {
 
         {step === 'reminders' && (
           <View style={st.body}>
-            <Eyebrow>Step 3 of 3</Eyebrow>
+            <Eyebrow>Step 4 of 4</Eyebrow>
             <T style={st.title}>Get a nudge before bills are due.</T>
             <T style={st.text}>
               {remindersAvailable
@@ -127,7 +152,8 @@ export default function Onboarding() {
 
       <View style={{ gap: 10 }}>
         {step === 'welcome' && <Button title="Get started" onPress={next} />}
-        {step === 'region' && <Button title="Continue" onPress={() => { setCountry(country ?? 'CH'); updateSettings({ currency }); next(); }} />}
+        {step === 'region' && <Button title="Continue" onPress={() => { if (country) setCountry(country); updateSettings({ currency }); next(); }} />}
+        {step === 'style' && <Button title="Continue" onPress={next} />}
         {step === 'pay' && (
           <>
             <Button title="Continue" onPress={next} />
@@ -168,4 +194,7 @@ const st = StyleSheet.create({
   cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   cardLabel: { fontSize: 15, color: C.muted },
   cardValue: { fontFamily: F.medium, fontSize: 15 },
+  option: { borderWidth: 1, borderColor: C.line, padding: 16, gap: 6 },
+  optionOn: { borderColor: C.fg, backgroundColor: C.surface },
+  badge: { fontFamily: F.mono, fontSize: 10, letterSpacing: 0.8, color: C.accent },
 });

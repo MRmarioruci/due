@@ -2,10 +2,10 @@ import type { NotificationResponse } from 'expo-notifications';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
-import { addDaysIso, reminderMoment, shortDay, todayIso } from './dates';
+import { shortDay } from './dates';
 import { activeDiscount } from './discount';
 import { Notifications } from './notifications-module';
-import { planDigest, planReminders } from './reminder-plan';
+import { mainReminder, PAY_STYLES, planDigest, planReminders } from './reminder-plan';
 import { getSettings, updateSettings } from './settings';
 import { getBill, getBills, saveBill } from './store';
 import type { Bill } from './types';
@@ -56,8 +56,8 @@ export async function scheduleReminder(bill: Bill, snoozedTo?: Date): Promise<Bi
   const cleared = { ...bill, reminderId: null, remindAt: null, extraReminderIds: [] };
   if (!Notifications) return cleared;
   await cancelFor(bill);
-  const { remindHour, extraNudges } = getSettings();
-  const plan = planReminders(bill, { remindHour, extraNudges }, new Date(), snoozedTo);
+  const { remindHour, extraNudges, payStyle } = getSettings();
+  const plan = planReminders(bill, { remindHour, extraNudges, payStyle }, new Date(), snoozedTo);
   const ids: { kind: string; id: string; at: Date }[] = [];
   for (const r of plan) {
     const id = await Notifications.scheduleNotificationAsync({
@@ -135,16 +135,21 @@ export function listenForResponses(): () => void {
   return () => sub.remove();
 }
 
-/** Human description of when the reminder fires, for the review screen. */
-export function describeReminder(dueDate: string | null, daysBefore: number, forDiscount = false): { when: string | null; why: string } {
-  if (!remindersAvailable) return { when: null, why: 'Reminders don’t run in Expo Go on Android. They work in a development build.' };
-  if (!dueDate) return { when: null, why: 'Add a due date to get a reminder.' };
-  const m = reminderMoment(dueDate, daysBefore, getSettings().remindHour);
-  if (!m) return { when: null, why: 'That moment has already passed. Pick a shorter lead time.' };
-  const nominal = addDaysIso(dueDate, -daysBefore);
-  const moved = todayIso(m) !== nominal;
-  return {
-    when: shortDay(m),
-    why: forDiscount ? 'Before the discount runs out.' : moved ? 'Weekend reminders move to the Friday before.' : daysBefore >= 2 ? 'Enough time for a bank transfer to arrive.' : 'Instant transfers make this fine.',
-  };
+/** When the bill's reminder goes off and why, for the review screen. */
+export function describeReminder(bill: Bill): { when: string | null; why: string } {
+  if (!remindersAvailable) return { when: null, why: 'Reminders don’t run in Expo Go on Android. They work in the installed app.' };
+  if (!bill.dueDate) return { when: null, why: 'Add a due date to get a reminder.' };
+  const s = getSettings();
+  const m = mainReminder(bill, { remindHour: s.remindHour, extraNudges: s.extraNudges, payStyle: s.payStyle });
+  if (!m) return { when: null, why: 'The due date has passed. Pay it as soon as you can.' };
+  const style = bill.payStyle ?? s.payStyle;
+  const why =
+    activeDiscount(bill) ? 'Before the early-payment discount runs out.'
+    : style === 'early' ? 'You pay bills right away.'
+    : style === 'midway' ? 'Halfway to the due date.'
+    : m.getDay() === 5 && bill.remindDaysBefore < 3 ? 'Weekend reminders move to the Friday before.'
+    : 'Enough time for a bank transfer to arrive.';
+  return { when: shortDay(m), why };
 }
+
+export const payStyleLabel = (style: Bill['payStyle']) => PAY_STYLES.find((p) => p.key === style)?.label ?? '';

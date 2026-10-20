@@ -5,11 +5,12 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatHour, longDate, todayIso, daysBetween } from '@/lib/dates';
-import { activeDiscount, targetDate } from '@/lib/discount';
+import { activeDiscount } from '@/lib/discount';
 import { takePendingDraft } from '@/lib/draft';
 import { formatMoney } from '@/lib/money';
 import { goBack, openScan } from '@/lib/nav';
 import { toMinor } from '@/lib/payment-codes';
+import { PAY_STYLES } from '@/lib/reminder-plan';
 import { describeReminder, scheduleReminder } from '@/lib/reminders';
 import { getSettings, homeCurrency } from '@/lib/settings';
 import { getBill, newId, saveBill } from '@/lib/store';
@@ -95,7 +96,17 @@ export default function Review() {
   }
 
   const discount = activeDiscount({ ...d, amountMinor: toMinor(amountText), status: 'open' });
-  const reminder = describeReminder(targetDate({ ...d, amountMinor: toMinor(amountText), status: 'open' }), d.remindDaysBefore, !!discount);
+  const style = d.payStyle ?? getSettings().payStyle;
+  const reminder = describeReminder({
+    ...d,
+    amountMinor: toMinor(amountText),
+    id: 'draft',
+    status: 'open',
+    paidAt: null,
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+    remindAt: null,
+    reminderId: null,
+  });
   const valid = d.payee.trim().length > 0;
 
   async function save() {
@@ -219,17 +230,30 @@ export default function Review() {
           </View>
         </View>
 
-        <Eyebrow style={{ marginTop: 26, marginBottom: 12 }}>Remind me</Eyebrow>
-        <View style={st.chips}>
-          {REMIND_OPTIONS.map((o) => {
-            const on = o.days === d.remindDaysBefore;
+        <Eyebrow style={{ marginTop: 26, marginBottom: 12 }}>When to pay</Eyebrow>
+        <View style={st.segment}>
+          {PAY_STYLES.map((p) => {
+            const on = p.key === style;
             return (
-              <Pressable key={o.days} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => edit('remindDaysBefore', o.days)} style={[st.chip, on && st.chipOn]}>
-                <T style={{ fontFamily: F.medium, fontSize: 14, color: on ? C.bg : C.fg }}>{o.label}</T>
+              <Pressable key={p.key} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => edit('payStyle', p.key)} style={[st.segItem, on && st.chipOn]}>
+                <T style={{ fontFamily: F.medium, fontSize: 13.5, color: on ? C.bg : C.fg }}>{p.label}</T>
               </Pressable>
             );
           })}
         </View>
+
+        {style === 'last' && (
+          <View style={[st.chips, { marginTop: 10 }]}>
+            {REMIND_OPTIONS.map((o) => {
+              const on = o.days === d.remindDaysBefore;
+              return (
+                <Pressable key={o.days} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => edit('remindDaysBefore', o.days)} style={[st.chip, on && st.chipOn]}>
+                  <T style={{ fontFamily: F.medium, fontSize: 14, color: on ? C.bg : C.fg }}>{o.label}</T>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
           <Icon name="bell" color={C.accent} />
           <T style={{ flex: 1, fontSize: 13.5, lineHeight: 20, color: C.muted }}>
@@ -265,5 +289,7 @@ const st = StyleSheet.create({
   chip: { width: '48.8%', height: 46, borderWidth: 1, borderColor: C.border, justifyContent: 'center', paddingHorizontal: 14 },
   chipOn: { backgroundColor: C.fg, borderColor: C.fg },
   description: { color: C.dim, fontSize: 13, padding: 0 },
+  segment: { flexDirection: 'row', borderWidth: 1, borderColor: C.line, padding: 3 },
+  segItem: { flex: 1, height: 42, alignItems: 'center', justifyContent: 'center' },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: 'rgba(10,10,10,0.94)' },
 });
