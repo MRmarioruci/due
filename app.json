@@ -56,7 +56,30 @@
           "color": "#FF5A36"
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "react-native-android-widget",
+        {
+          "fonts": [
+            "./assets/fonts/Archivo-Regular.ttf",
+            "./assets/fonts/Archivo-SemiBold.ttf",
+            "./assets/fonts/JetBrainsMono-Regular.ttf"
+          ],
+          "widgets": [
+            {
+              "name": "Due",
+              "label": "due.",
+              "description": "Your next bill and the 30-day total",
+              "previewImage": "./assets/widget-preview/due.png",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

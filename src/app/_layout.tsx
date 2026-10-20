@@ -9,6 +9,7 @@ import { usePayCheck } from '@/lib/pay-check';
 import { listenForResponses, scheduleDigest, setupNotifications } from '@/lib/reminders';
 import { useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
+import { updateWidget } from '@/widget';
 import { C } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -31,7 +32,10 @@ export default function RootLayout() {
   const bills = useBills();
   const { weeklyDigest, remindHour } = useSettings();
   useEffect(() => {
-    const t = setTimeout(() => scheduleDigest(bills), 1500);
+    const t = setTimeout(() => {
+      scheduleDigest(bills);
+      updateWidget(bills);
+    }, 1500);
     return () => clearTimeout(t);
   }, [bills, weeklyDigest, remindHour]);
 
