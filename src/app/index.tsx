@@ -156,28 +156,30 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
   const discount = activeDiscount(bill, today);
   const sub = discount
     ? `${discount.percent}% off until ${shortDay(discount.until)}`
-    : [bill.description ?? CATEGORY_LABEL[bill.category], bill.dueDate && shortDay(bill.dueDate)].filter(Boolean).join(' · ');
+    : [bill.description ?? CATEGORY_LABEL[bill.category], bill.dueDate && `due ${shortDay(bill.dueDate)}`].filter(Boolean).join(' · ');
+  // A plain Pressable, laid out like ExpectedRow: wrapping it in <Link asChild> merged styles and broke the row layout.
   return (
-    <Link href={{ pathname: '/bill/[id]', params: { id: bill.id } }} asChild>
-      <Pressable style={({ pressed }) => [st.row, pressed && { opacity: 0.6 }]}>
-        <View style={st.mono}>
-          <T style={st.monoText}>{bill.payee.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}</T>
-        </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
-          <T style={st.rowTitle} numberOfLines={1}>{bill.payee}</T>
-          <T style={[st.rowSub, discount && { color: C.accent }]} numberOfLines={1}>{sub}</T>
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: 5 }}>
-          <T style={st.rowAmount}>
-            {bill.currency !== 'CHF' ? `${bill.currency} ` : ''}
-            {formatAmount(discount?.payMinor ?? (bill.status === 'paid' ? bill.paidAmountMinor : null) ?? bill.amountMinor, bill.currency)}
-          </T>
-          <T style={[st.rowDays, { color: urgent ? C.accent : C.dim }]}>
-            {bill.status === 'paid' ? 'PAID' : bill.dueDate ? relativeDays(bill.dueDate, today) : '—'}
-          </T>
-        </View>
-      </Pressable>
-    </Link>
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push({ pathname: '/bill/[id]', params: { id: bill.id } })}
+      style={({ pressed }) => [st.row, pressed && { opacity: 0.6 }]}>
+      <View style={st.mono}>
+        <T style={st.monoText}>{bill.payee.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}</T>
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+        <T style={st.rowTitle} numberOfLines={1}>{bill.payee}</T>
+        <T style={[st.rowSub, discount && { color: C.accent }]} numberOfLines={1}>{sub}</T>
+      </View>
+      <View style={{ alignItems: 'flex-end', gap: 5 }}>
+        <T style={st.rowAmount}>
+          {bill.currency !== 'CHF' ? `${bill.currency} ` : ''}
+          {formatAmount(discount?.payMinor ?? (bill.status === 'paid' ? bill.paidAmountMinor : null) ?? bill.amountMinor, bill.currency)}
+        </T>
+        <T style={[st.rowDays, { color: urgent ? C.accent : C.dim }]}>
+          {bill.status === 'paid' ? 'PAID' : bill.dueDate ? relativeDays(bill.dueDate, today) : '—'}
+        </T>
+      </View>
+    </Pressable>
   );
 }
 
