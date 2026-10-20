@@ -7,6 +7,7 @@ import { daysBetween, fromIso, relativeDays, shortDay, todayIso } from '@/lib/da
 import { activeDiscount } from '@/lib/discount';
 import { formatAmount } from '@/lib/money';
 import { planAroundPayday } from '@/lib/plan';
+import { CADENCE_LABEL, expectedBills, findSeries, type Series } from '@/lib/recurring';
 import { seedSampleBills } from '@/lib/seed';
 import { useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
@@ -38,6 +39,7 @@ export default function Bills() {
   const otherCcy = window.some((b) => b.currency !== ccy);
   const next = open.find((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0);
   const plan = settings.payday && open.length ? planAroundPayday(open, settings.payday, ccy, today) : null;
+  const expected = expectedBills(findSeries(bills, today), today);
 
   const groups: { title: string; items: Bill[] }[] =
     tab === 'paid'
@@ -102,7 +104,7 @@ export default function Bills() {
           )
         )}
 
-        <Runway bills={window} today={today} ccy={ccy} payday={plan?.payday ?? null} />
+        <Runway bills={window} today={today} ccy={ccy} payday={plan?.payday ?? null} expected={expected} />
 
         <View style={st.tabs}>
           {(['open', 'paid'] as const).map((k) => {
@@ -117,6 +119,15 @@ export default function Bills() {
             );
           })}
         </View>
+
+        {tab === 'open' && expected.length > 0 && (
+          <View>
+            <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>Expected</Eyebrow>
+            {expected.map((s) => (
+              <ExpectedRow key={s.key} series={s} />
+            ))}
+          </View>
+        )}
 
         {groups
           .filter((g) => g.items.length)
@@ -170,8 +181,28 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
   );
 }
 
+/** A bill that should come soon (or should have come) from a biller who bills regularly. */
+function ExpectedRow({ series: s }: { series: Series }) {
+  const when = s.late ? `Should have arrived by ${shortDay(s.expectedArrival)}` : `${CADENCE_LABEL[s.cadence]} · due around ${shortDay(s.nextDue)}`;
+  return (
+    <View style={st.row} accessibilityLabel={`${s.payee}, expected: ${when}`}>
+      <View style={[st.mono, { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.barMuted }]}>
+        <T style={[st.monoText, { color: C.dim }]}>{s.payee.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}</T>
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+        <T style={[st.rowTitle, { color: C.muted }]} numberOfLines={1}>{s.payee}</T>
+        <T style={[st.rowSub, s.late && { color: C.accent }]} numberOfLines={1}>{when}</T>
+      </View>
+      <View style={{ alignItems: 'flex-end', gap: 5 }}>
+        <T style={[st.rowAmount, { color: C.muted }]}>≈ {formatAmount(s.amountMinor, s.currency)}</T>
+        <T style={[st.rowDays, { color: s.late ? C.accent : C.dim }]}>{s.late ? 'NOT ARRIVED' : 'EXPECTED'}</T>
+      </View>
+    </View>
+  );
+}
+
 /** A 30-day strip: one bar per bill at its due date, height by amount. Shows at a glance how bills are spread out. */
-function Runway({ bills, today, ccy, payday }: { bills: Bill[]; today: string; ccy: string; payday: string | null }) {
+function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today: string; ccy: string; payday: string | null; expected: Series[] }) {
   const paydayAt = payday ? daysBetween(today, payday) : null;
   const max = Math.max(1, ...bills.map((b) => b.amountMinor ?? 0));
   const end = fromIso(today);
@@ -192,6 +223,14 @@ function Runway({ bills, today, ccy, payday }: { bills: Bill[]; today: string; c
             <T style={st.paydayLabel}>PAY</T>
           </View>
         )}
+        {expected
+          .filter((s) => !s.late && daysBetween(today, s.nextDue) <= HORIZON)
+          .map((s) => (
+            <View
+              key={'x' + s.key}
+              style={[st.bar, { left: `${(daysBetween(today, s.nextDue) / HORIZON) * 100}%`, height: s.currency === ccy ? Math.max(8, (s.amountMinor / max) * 48) : 8, borderWidth: 1, borderColor: C.barMuted }]}
+            />
+          ))}
         {bills.map((b) => {
           const d = Math.max(0, daysBetween(today, b.dueDate!));
           const h = b.currency === ccy && b.amountMinor ? Math.max(8, (b.amountMinor / max) * 48) : 8;

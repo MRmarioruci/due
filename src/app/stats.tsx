@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { todayIso } from '@/lib/dates';
 import { formatAmount } from '@/lib/money';
 import { goBack } from '@/lib/nav';
+import { CADENCE_LABEL, findSeries, monthlyFixedCosts } from '@/lib/recurring';
 import { computeStats, type Period } from '@/lib/stats';
 import { useBills } from '@/lib/store';
 import { CATEGORY_LABEL } from '@/lib/types';
@@ -22,6 +24,7 @@ export default function StatsScreen() {
   const [period, setPeriod] = useState<Period>('month');
   const [sel, setSel] = useState<number | null>(null);
   const s = useMemo(() => computeStats(bills, period), [bills, period]);
+  const series = useMemo(() => findSeries(bills, todayIso()).filter((x) => x.currency === s.currency), [bills, s.currency]);
   const p = PERIODS.find((x) => x.key === period)!;
 
   const n = s.buckets.length;
@@ -105,6 +108,25 @@ export default function StatsScreen() {
         </T>
       )}
 
+      {series.length > 0 && (
+        <View style={{ marginTop: 28 }}>
+          <Eyebrow style={{ marginBottom: 8 }}>Fixed costs</Eyebrow>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+            <T style={{ fontFamily: F.semibold, fontSize: 22, letterSpacing: -0.6, fontVariant: ['tabular-nums'] }}>
+              {s.currency} {formatAmount(monthlyFixedCosts(series, s.currency), s.currency)}
+            </T>
+            <T style={{ fontSize: 13, color: C.dim }}>per month</T>
+          </View>
+          {series.map((x) => (
+            <View key={x.key} style={st.seriesRow}>
+              <T style={{ flex: 1, fontSize: 13.5 }} numberOfLines={1}>{x.payee}</T>
+              <T style={{ fontSize: 12.5, color: C.dim }}>{CADENCE_LABEL[x.cadence]}</T>
+              <T style={{ width: 84, textAlign: 'right', fontSize: 13.5, color: C.muted, fontVariant: ['tabular-nums'] }}>{formatAmount(x.amountMinor, x.currency)}</T>
+            </View>
+          ))}
+        </View>
+      )}
+
       {s.categories.length > 0 && (
         <View style={{ marginTop: 28 }}>
           <Eyebrow style={{ marginBottom: 8 }}>By category</Eyebrow>
@@ -137,5 +159,6 @@ const st = StyleSheet.create({
   tileBorder: { borderLeftWidth: 1, borderLeftColor: C.line, paddingLeft: 16 },
   tileValue: { fontFamily: F.semibold, fontSize: 22, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
   tileLabel: { fontSize: 12.5, lineHeight: 17, color: C.dim },
+  seriesRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   tileUnit: { fontSize: 13, color: C.dim },
 });
