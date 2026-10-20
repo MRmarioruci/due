@@ -2,9 +2,10 @@ import { CameraView, scanFromURLAsync, useCameraPermissions, type BarcodeScannin
 import * as Haptics from 'expo-haptics';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { setPendingDraft } from '@/lib/draft';
@@ -42,6 +43,8 @@ export default function Scan() {
   const [torch, setTorch] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The photo being read; shown in place of the camera until the review screen opens. */
+  const [captured, setCaptured] = useState<string | null>(null);
 
   function onBarcode(r: BarcodeScanningResult) {
     if (decoded || busy) return;
@@ -53,6 +56,7 @@ export default function Scan() {
   }
 
   async function finish(photoUri: string | null) {
+    setCaptured(photoUri);
     setBusy(true);
     setError(null);
     try {
@@ -108,6 +112,8 @@ export default function Scan() {
         onBarcodeScanned={decoded ? undefined : onBarcode}
       />
 
+      {captured && <Image source={{ uri: captured }} style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]} contentFit="contain" transition={150} />}
+
       <View style={[st.top, { top: insets.top + 12 }]}>
         <IconButton label="Close" onPress={() => goBack()} style={st.glass}>
           <Icon name="close" />
@@ -118,6 +124,26 @@ export default function Scan() {
         </IconButton>
       </View>
 
+      {captured ? (
+        <View style={[st.bottom, { paddingBottom: insets.bottom + 24 }]}>
+          {busy && <ProgressSweep />}
+          <View style={st.reading}>
+            {busy ? <ActivityIndicator color={C.fg} /> : <Icon name="close" color={C.accent} />}
+            <View style={{ flex: 1, gap: 4 }}>
+              <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{busy ? 'Reading your bill' : 'Couldn’t read the bill'}</T>
+              <T style={{ fontSize: 13, color: C.muted, lineHeight: 18 }} numberOfLines={3}>
+                {busy ? (decoded ? 'QR code read. Now finding the due date and details.' : 'Finding the amount, due date and payment details.') : error}
+              </T>
+            </View>
+          </View>
+          {!busy && (
+            <View style={{ flexDirection: 'row', gap: 8, alignSelf: 'stretch', paddingHorizontal: GUTTER }}>
+              <Button title="Retake" kind="secondary" style={{ flex: 1 }} onPress={() => { setCaptured(null); setError(null); }} />
+              <Button title="Fill in by hand" style={{ flex: 1 }} onPress={() => { setPendingDraft(null); router.replace('/review'); }} />
+            </View>
+          )}
+        </View>
+      ) : (
       <View style={[st.bottom, { paddingBottom: insets.bottom + 24 }]}>
         <View style={st.status}>
           <View style={[st.dot, { backgroundColor: decoded ? C.accent : C.dim }]} />
@@ -138,12 +164,31 @@ export default function Scan() {
           <View style={{ width: 52 }} />
         </View>
       </View>
+      )}
+    </View>
+  );
+}
+
+/** An indeterminate bar along the top of the bottom panel while the bill is being read. */
+function ProgressSweep() {
+  const [x] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    const loop = Animated.loop(Animated.timing(x, { toValue: 1, duration: 1300, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }));
+    loop.start();
+    return () => loop.stop();
+  }, [x]);
+  return (
+    <View style={st.track}>
+      <Animated.View style={[st.sweep, { transform: [{ translateX: x.interpolate({ inputRange: [0, 1], outputRange: [-140, 420] }) }] }]} />
     </View>
   );
 }
 
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
+  reading: { flexDirection: 'row', alignItems: 'center', gap: 14, alignSelf: 'stretch', marginHorizontal: GUTTER, padding: 16, backgroundColor: 'rgba(10,10,10,0.9)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  track: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.06)' },
+  sweep: { width: 140, height: 2, backgroundColor: C.accent },
   top: { position: 'absolute', left: GUTTER, right: GUTTER, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   glass: { backgroundColor: 'rgba(10,10,10,0.6)', borderColor: 'rgba(255,255,255,0.08)' },
   title: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.3, color: C.muted },
