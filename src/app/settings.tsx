@@ -2,13 +2,12 @@ import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatHour, todayIso } from '@/lib/dates';
-import { authenticate, canUseBiometrics, confirmIdentity, createPin } from '@/lib/lock';
+import { authenticate, phoneHasLock } from '@/lib/lock';
 import { goBack } from '@/lib/nav';
-import { clearPin, hasPin } from '@/lib/pin';
 import { describePay, type PaySchedule } from '@/lib/plan';
 import { remindersAvailable, rescheduleAll } from '@/lib/reminders';
 import { seedSampleBills } from '@/lib/seed';
-import { getSettings, updateSettings, useSettings, type Settings } from '@/lib/settings';
+import { getSettings, updateSettings, useSettings } from '@/lib/settings';
 import { pickDate } from '@/ui/calendar';
 import { Eyebrow, Icon, IconButton, T } from '@/ui/kit';
 import { sheet, toast } from '@/ui/overlay';
@@ -18,7 +17,6 @@ const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 const LEADS = [0, 1, 3, 7];
 const leadLabel = (d: number) => (d === 0 ? 'On the due date' : d === 7 ? '1 week before' : `${d} ${d === 1 ? 'day' : 'days'} before`);
 const HOURS = [7, 8, 9, 12, 18, 20];
-const LOCK_LABEL: Record<Settings['lockMode'], string> = { off: 'Off', pin: 'PIN', biometric: 'Fingerprint or face' };
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -52,9 +50,8 @@ export default function SettingsScreen() {
         <ToggleRow label="Monday summary" value={s.weeklyDigest} onChange={(v) => updateSettings({ weeklyDigest: v })} />
       </Section>
 
-      <Section title="Security">
-        <Row label="App lock" value={LOCK_LABEL[s.lockMode]} onPress={chooseLock} />
-        {s.lockMode !== 'off' && <Row label="Change PIN" onPress={changePin} />}
+      <Section title="Security" note="Uses your phone’s own unlock: fingerprint, face, PIN or pattern. Asked when you open due and after a minute away.">
+        <ToggleRow label="Lock with phone unlock" value={s.appLock} onChange={toggleLock} />
       </Section>
 
       {__DEV__ && (
@@ -172,48 +169,15 @@ function chooseHour() {
   });
 }
 
-function chooseLock() {
-  const cur = getSettings().lockMode;
-  const pick = async (mode: Settings['lockMode']) => {
-    sheet.hide();
-    if (mode === cur) return;
-    // Changing an existing lock needs the owner.
-    if (cur !== 'off' && !(await confirmIdentity())) return;
-    if (mode === 'off') {
-      await clearPin();
-      updateSettings({ lockMode: 'off' });
-      toast('App lock is off');
-      return;
-    }
-    if (mode === 'biometric' && !(await canUseBiometrics())) {
-      sheet.show({ title: 'No fingerprint or face set up', message: 'Add one in your phone’s security settings first, or use a PIN.', actions: [{ label: 'OK' }] });
-      return;
-    }
-    // A PIN is always there: it's the lock itself, or the backup for fingerprint/face.
-    if (!(await hasPin()) && !(await createPin(mode === 'biometric' ? 'Choose a backup PIN' : 'Choose a 4-digit PIN'))) return;
-    if (mode === 'biometric' && !(await authenticate('Turn on fingerprint or face unlock'))) return;
-    updateSettings({ lockMode: mode });
-    toast(mode === 'pin' ? 'Locked with your PIN' : 'Locked with fingerprint or face');
-  };
-  sheet.show({
-    title: 'App lock',
-    message: 'Asked when you open due, and again after a minute away.',
-    content: (
-      <Options
-        selected={cur}
-        options={[
-          { key: 'off', label: 'Off', onPress: () => pick('off') },
-          { key: 'pin', label: 'PIN', onPress: () => pick('pin') },
-          { key: 'biometric', label: 'Fingerprint or face, PIN as backup', onPress: () => pick('biometric') },
-        ]}
-      />
-    ),
-  });
-}
-
-async function changePin() {
-  if (!(await confirmIdentity())) return;
-  if (await createPin('Choose a new PIN')) toast('PIN changed');
+/** Turning the lock on or off both need the phone's unlock, so no one else can change it. */
+async function toggleLock(on: boolean) {
+  if (on && !(await phoneHasLock())) {
+    sheet.show({ title: 'Your phone has no screen lock', message: 'Set a PIN, pattern, fingerprint or face in your phone’s security settings first.', actions: [{ label: 'OK' }] });
+    return;
+  }
+  if (!(await authenticate(on ? 'Turn on the app lock' : 'Turn off the app lock'))) return;
+  updateSettings({ appLock: on });
+  toast(on ? 'App lock is on' : 'App lock is off');
 }
 
 /* ---------- building blocks ---------- */

@@ -16,11 +16,11 @@ export type Settings = {
   weeklyDigest: boolean;
   /** Id of the scheduled weekly summary, so it can be replaced. */
   digestId: string | null;
-  /** How the app is locked: not at all, with the app PIN, or fingerprint/face (with the PIN as backup). */
-  lockMode: 'off' | 'pin' | 'biometric';
+  /** Ask for the phone's own unlock (fingerprint, face, PIN or pattern) when opening the app. */
+  appLock: boolean;
 };
 
-const DEFAULTS: Settings = { pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, lockMode: 'off' };
+const DEFAULTS: Settings = { pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
@@ -28,9 +28,11 @@ db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL,
 function load(): Settings {
   const rows = db.getAllSync<{ key: string; value: string }>('SELECT key, value FROM settings');
   const stored = Object.fromEntries(rows.map((r) => [r.key, JSON.parse(r.value)]));
-  // Before PINs existed the lock was a single switch for fingerprint/face.
-  if (stored.appLock === true && stored.lockMode == null) stored.lockMode = 'biometric';
-  delete stored.appLock;
+  // A short-lived version had separate PIN / fingerprint modes; either one means "locked".
+  if (stored.lockMode != null) {
+    if (stored.appLock == null) stored.appLock = stored.lockMode !== 'off';
+    delete stored.lockMode;
+  }
   // Paydays used to be a day of the month only.
   if (typeof stored.payday === 'number' && stored.pay == null) stored.pay = { every: 'month', day: stored.payday };
   delete stored.payday;
