@@ -54,7 +54,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "dev": "expo start",
-    "dev:tunnel": "expo start --tunnel ngrok",
+    "dev:tunnel": "expo start --tunnel",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "check": "tsc --noEmit && expo lint && vitest run"
