@@ -1,56 +1,52 @@
-# Welcome to your Expo app 👋
+# due.
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Scan a bill, get reminded before it's due, pay it from the QR code when the time comes.
 
-## Get started
+- **Scan**: the camera reads payment codes exactly on the device (Swiss QR-bill, EPC/GiroCode). Gemini reads the photo for everything else: due date, description, category, and the full details when there is no code. Each field shows where it came from (**QR** or **AI**).
+- **Remind**: one local notification per bill, a set number of days before it's due, moved to Friday when it would fall on a weekend. The notification has *Tomorrow* and *Paid* actions.
+- **Pay**: the bill screen shows a QR code your banking app can scan: the original QR-bill or GiroCode, or a GiroCode built from printed SEPA details.
+- **Stats**: what you paid per week/month/year, how often on time, how many days before the due date, and by category.
 
-1. Install dependencies
+Design: [canvas](https://claude.ai/artifact/X5vyGPve69UzXvytz2rqzR).
 
-   ```bash
-   npm install
-   ```
+## Run it on your Android phone
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+You need Node 20+ and the **Expo Go** app from the Play Store (a recent version; this project uses Expo SDK 58).
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env.local   # then paste your Gemini API key
+npm run dev
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+Scan the QR code in the terminal with Expo Go. Phone and computer must be on the same Wi-Fi. If the phone can't connect (guest Wi-Fi, firewall, VPN), use a tunnel instead:
 
-### Other setup steps
+```bash
+npm run dev:tunnel
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+In development, **long-press the "due" logo** on the home screen to load sample bills.
 
-## Learn more
+Without a Gemini key the app still works: QR codes are read on the device and you fill in the due date yourself.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Notes
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- Everything runs in Expo Go: camera, QR scanning, local notifications, SQLite. Remote push isn't used (Expo Go doesn't support it on Android), and isn't needed: reminders are scheduled on the phone.
+- The Gemini key is bundled into the app (`EXPO_PUBLIC_…`). Fine for personal testing. Before shipping to anyone else, put the call behind a small server so the key stays private.
+- Data stays on the phone, in SQLite (`due.db`).
 
-## Join the community
+## Code
 
-Join our community of developers creating universal apps.
+```
+src/app/            screens (Expo Router): index, scan, review, bill/[id], stats
+src/lib/payment-codes.ts   Swiss QR-bill + EPC/GiroCode parsers, GiroCode builder
+src/lib/extract.ts  Gemini call; merges code + model results into a draft bill
+src/lib/reminders.ts       scheduling, snooze, paid, notification actions
+src/lib/store.ts    SQLite storage + useBills()
+src/lib/stats.ts    stats bucketing
+src/ui/             theme + small component kit
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npm run check   # typecheck + lint + tests
+```

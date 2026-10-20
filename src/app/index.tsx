@@ -1,98 +1,194 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link, router } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { daysBetween, fromIso, relativeDays, shortDay, todayIso } from '@/lib/dates';
+import { formatAmount } from '@/lib/money';
+import { seedSampleBills } from '@/lib/seed';
+import { useBills } from '@/lib/store';
+import { CATEGORY_LABEL, type Bill } from '@/lib/types';
+import { Amount, Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
+import { C, F, GUTTER } from '@/ui/theme';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+const HORIZON = 30;
+
+/** The currency most open bills are in; totals are shown in it and other currencies are counted separately. */
+function mainCurrency(bills: Bill[]): string {
+  const n = new Map<string, number>();
+  bills.forEach((b) => n.set(b.currency, (n.get(b.currency) ?? 0) + 1));
+  return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'CHF';
+}
+
+export default function Bills() {
+  const insets = useSafeAreaInsets();
+  const bills = useBills();
+  const [tab, setTab] = useState<'open' | 'paid'>('open');
+  const today = todayIso();
+
+  const open = useMemo(() => bills.filter((b) => b.status === 'open'), [bills]);
+  const paid = useMemo(() => bills.filter((b) => b.status === 'paid').sort((a, b) => (b.paidAt ?? '').localeCompare(a.paidAt ?? '')), [bills]);
+  const ccy = mainCurrency(open);
+  const window = open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= HORIZON);
+  const total = window.filter((b) => b.currency === ccy).reduce((sum, b) => sum + (b.amountMinor ?? 0), 0);
+  const otherCcy = window.some((b) => b.currency !== ccy);
+  const next = open.find((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0);
+
+  const groups: { title: string; items: Bill[] }[] =
+    tab === 'paid'
+      ? [{ title: 'Paid', items: paid }]
+      : [
+          { title: 'Overdue', items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) < 0) },
+          { title: 'This week', items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0 && daysBetween(today, b.dueDate) < 7) },
+          { title: 'Later', items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 7) },
+          { title: 'No due date', items: open.filter((b) => !b.dueDate) },
+        ];
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: 140 }}>
+        <View style={st.header}>
+          {/* Long-press the logo in development to load sample bills. */}
+          <Pressable onLongPress={__DEV__ ? seedSampleBills : undefined} style={st.logo} accessibilityRole="header">
+            <T style={st.logoText}>due</T>
+            <View style={st.logoDot} />
+          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <IconButton label="Stats" onPress={() => router.push('/stats')}>
+              <Icon name="stats" color={C.muted} />
+            </IconButton>
+          </View>
+        </View>
+
+        <View style={{ marginTop: 22 }}>
+          <Eyebrow>Next {HORIZON} days</Eyebrow>
+          <View style={{ marginTop: 8 }}>
+            <Amount currency={ccy} value={formatAmount(total, ccy)} />
+          </View>
+          <T style={st.sub}>
+            {open.length === 0
+              ? 'Nothing to pay. Scan a bill when one arrives.'
+              : `${open.length} ${open.length === 1 ? 'bill' : 'bills'} open${next?.dueDate ? ` · next due ${shortDay(next.dueDate)}` : ''}${otherCcy ? ' · plus other currencies' : ''}`}
+          </T>
+        </View>
+
+        <Runway bills={window} today={today} ccy={ccy} />
+
+        <View style={st.tabs}>
+          {(['open', 'paid'] as const).map((k) => {
+            const on = tab === k;
+            return (
+              <Pressable key={k} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setTab(k)} style={[st.tab, on && st.tabOn]}>
+                <T style={[st.tabText, { color: on ? C.fg : C.dim }]}>
+                  {k === 'open' ? 'Upcoming' : 'Paid'} <T style={st.tabCount}>{k === 'open' ? open.length : paid.length}</T>
+                </T>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {groups
+          .filter((g) => g.items.length)
+          .map((g) => (
+            <View key={g.title}>
+              <Eyebrow style={{ marginTop: 18, marginBottom: 2 }}>{g.title}</Eyebrow>
+              {g.items.map((b) => (
+                <BillRow key={b.id} bill={b} today={today} />
+              ))}
+            </View>
+          ))}
+      </ScrollView>
+
+      <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
+        <Link href="/scan" asChild>
+          <Button title="Scan a bill" icon={<Icon name="scan" color={C.bg} size={20} />} />
+        </Link>
+      </View>
+    </View>
   );
 }
 
-export default function HomeScreen() {
+function BillRow({ bill, today }: { bill: Bill; today: string }) {
+  const days = bill.dueDate ? daysBetween(today, bill.dueDate) : null;
+  const urgent = bill.status === 'open' && days != null && days <= 3;
+  const sub = [bill.description ?? CATEGORY_LABEL[bill.category], bill.dueDate && shortDay(bill.dueDate)].filter(Boolean).join(' · ');
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <Link href={{ pathname: '/bill/[id]', params: { id: bill.id } }} asChild>
+      <Pressable style={({ pressed }) => [st.row, pressed && { opacity: 0.6 }]}>
+        <View style={st.mono}>
+          <T style={st.monoText}>{bill.payee.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}</T>
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <T style={st.rowTitle} numberOfLines={1}>{bill.payee}</T>
+          <T style={st.rowSub} numberOfLines={1}>{sub}</T>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+          <T style={st.rowAmount}>
+            {bill.currency !== 'CHF' ? `${bill.currency} ` : ''}
+            {formatAmount(bill.amountMinor, bill.currency)}
+          </T>
+          <T style={[st.rowDays, { color: urgent ? C.accent : C.dim }]}>
+            {bill.status === 'paid' ? 'PAID' : bill.dueDate ? relativeDays(bill.dueDate, today) : '—'}
+          </T>
+        </View>
+      </Pressable>
+    </Link>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+/** A 30-day strip: one bar per bill at its due date, height by amount. Shows at a glance how bills are spread out. */
+function Runway({ bills, today, ccy }: { bills: Bill[]; today: string; ccy: string }) {
+  const max = Math.max(1, ...bills.map((b) => b.amountMinor ?? 0));
+  const end = fromIso(today);
+  end.setDate(end.getDate() + HORIZON);
+  const mid = fromIso(today);
+  mid.setDate(mid.getDate() + HORIZON / 2);
+  return (
+    <View style={st.runway} accessibilityLabel={`Due dates over the next ${HORIZON} days`}>
+      <View style={{ height: 64 }}>
+        <View style={st.ticks}>
+          {Array.from({ length: HORIZON + 1 }, (_, i) => (
+            <View key={i} style={{ width: 1, height: i % 7 === 0 ? 8 : 4, backgroundColor: i % 7 === 0 ? C.barMuted : '#2a2a2a' }} />
+          ))}
+        </View>
+        <View style={[st.bar, { left: 0, width: 6, height: 6, marginLeft: 0, backgroundColor: C.accent }]} />
+        {bills.map((b) => {
+          const d = Math.max(0, daysBetween(today, b.dueDate!));
+          const h = b.currency === ccy && b.amountMinor ? Math.max(8, (b.amountMinor / max) * 48) : 8;
+          return <View key={b.id} style={[st.bar, { left: `${(d / HORIZON) * 100}%`, height: h, backgroundColor: d <= 7 ? C.accent : C.fg }]} />;
+        })}
+      </View>
+      <View style={st.runwayLabels}>
+        <T style={[st.runwayLabel, { color: C.fg }]}>TODAY</T>
+        <T style={st.runwayLabel}>{mid.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}</T>
+        <T style={st.runwayLabel}>{end.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}</T>
+      </View>
+    </View>
+  );
+}
+
+const st = StyleSheet.create({
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 48 },
+  logo: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+  logoText: { fontFamily: F.semibold, fontSize: 26, letterSpacing: -0.8, lineHeight: 28 },
+  logoDot: { width: 7, height: 7, backgroundColor: C.accent, marginBottom: 6 },
+  sub: { marginTop: 10, fontSize: 14, color: C.muted },
+  runway: { marginTop: 26, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, paddingTop: 16, paddingBottom: 10 },
+  ticks: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  bar: { position: 'absolute', bottom: 14, width: 7, marginLeft: -3 },
+  runwayLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  runwayLabel: { fontFamily: F.mono, fontSize: 10.5, color: C.dim, letterSpacing: 0.4 },
+  tabs: { flexDirection: 'row', gap: 22, marginTop: 20 },
+  tab: { paddingBottom: 8, minHeight: 32, justifyContent: 'flex-end' },
+  tabOn: { borderBottomWidth: 1.5, borderBottomColor: C.fg },
+  tabText: { fontFamily: F.medium, fontSize: 14 },
+  tabCount: { fontFamily: F.mono, fontSize: 11, color: C.dim },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 62, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
+  mono: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
+  monoText: { fontFamily: F.semibold, fontSize: 12 },
+  rowTitle: { fontFamily: F.medium, fontSize: 15 },
+  rowSub: { fontSize: 12.5, color: C.dim },
+  rowAmount: { fontFamily: F.medium, fontSize: 15, fontVariant: ['tabular-nums'] },
+  rowDays: { fontFamily: F.mono, fontSize: 11 },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: 'rgba(10,10,10,0.94)' },
 });
