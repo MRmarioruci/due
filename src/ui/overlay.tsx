@@ -12,7 +12,7 @@ import { C, F, GUTTER } from './theme';
  */
 
 export type SheetAction = { label: string; kind?: 'primary' | 'secondary' | 'destructive'; onPress?: () => void };
-export type SheetOptions = { title: string; message?: string; content?: ReactNode; actions?: SheetAction[]; onDismiss?: () => void };
+export type SheetOptions = { title?: string; message?: string; content?: ReactNode; actions?: SheetAction[]; onDismiss?: () => void };
 
 let current: SheetOptions | null = null;
 let toastText: { text: string; id: number } | null = null;
@@ -105,7 +105,7 @@ export function OverlayHost() {
           </Animated.View>
           <Animated.View entering={SlideInDown.duration(260)} exiting={SlideOutDown.duration(200)} style={[st.panel, { paddingBottom: insets.bottom + 20 }]}>
             <View style={st.grabber} />
-            <T style={st.title}>{state.title}</T>
+            {!!state.title?.trim() && <T style={st.title}>{state.title}</T>}
             {state.message && <T style={st.message}>{state.message}</T>}
             {state.content}
             {state.actions && state.actions.length > 0 && (

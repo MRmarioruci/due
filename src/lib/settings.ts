@@ -1,9 +1,11 @@
 import * as SQLite from 'expo-sqlite';
 import { useSyncExternalStore } from 'react';
 
+import type { PaySchedule } from './plan';
+
 export type Settings = {
-  /** Day of the month the salary arrives (1–31), or null when not set. */
-  payday: number | null;
+  /** When pay arrives, or null when not set. */
+  pay: PaySchedule | null;
   /** Hour of the day reminders go off. */
   remindHour: number;
   /** Default lead time for new bills, in days before the due date. */
@@ -14,11 +16,11 @@ export type Settings = {
   weeklyDigest: boolean;
   /** Id of the scheduled weekly summary, so it can be replaced. */
   digestId: string | null;
-  /** Ask for the fingerprint or face when opening the app. */
-  appLock: boolean;
+  /** How the app is locked: not at all, with the app PIN, or fingerprint/face (with the PIN as backup). */
+  lockMode: 'off' | 'pin' | 'biometric';
 };
 
-const DEFAULTS: Settings = { payday: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
+const DEFAULTS: Settings = { pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, lockMode: 'off' };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
@@ -26,6 +28,12 @@ db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL,
 function load(): Settings {
   const rows = db.getAllSync<{ key: string; value: string }>('SELECT key, value FROM settings');
   const stored = Object.fromEntries(rows.map((r) => [r.key, JSON.parse(r.value)]));
+  // Before PINs existed the lock was a single switch for fingerprint/face.
+  if (stored.appLock === true && stored.lockMode == null) stored.lockMode = 'biometric';
+  delete stored.appLock;
+  // Paydays used to be a day of the month only.
+  if (typeof stored.payday === 'number' && stored.pay == null) stored.pay = { every: 'month', day: stored.payday };
+  delete stored.payday;
   return { ...DEFAULTS, ...stored };
 }
 

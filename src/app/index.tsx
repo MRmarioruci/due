@@ -40,7 +40,8 @@ export default function Bills() {
   const totalShown = useCountUp(total);
   const otherCcy = window.some((b) => b.currency !== ccy);
   const next = open.find((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0);
-  const plan = settings.payday && open.length ? planAroundPayday(open, settings.payday, ccy, today) : null;
+  // Paid daily, there's no before/after payday to plan around.
+  const plan = settings.pay && settings.pay.every !== 'day' && open.length ? planAroundPayday(open, settings.pay, ccy, today) : null;
   const expected = expectedBills(findSeries(bills, today), today);
 
   const groups: { title: string; items: Bill[] }[] =
@@ -99,7 +100,7 @@ export default function Bills() {
           </Animated.View>
         ) : (
           open.length > 0 &&
-          !settings.payday && (
+          !settings.pay && (
             <Pressable accessibilityRole="link" onPress={() => router.push('/settings')} style={{ marginTop: 14, alignSelf: 'flex-start', paddingVertical: 6 }}>
               <T style={{ fontSize: 13.5, color: C.muted }}>Set your payday to plan around it →</T>
             </Pressable>

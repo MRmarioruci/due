@@ -60,7 +60,7 @@ export default function BillScreen() {
   const days = bill.dueDate ? daysBetween(today, bill.dueDate) : null;
   const code = payableCode(bill);
   const discount = activeDiscount(bill, today);
-  const advice = settings.payday ? paydayAdvice(bill, settings.payday, today) : null;
+  const advice = settings.pay && settings.pay.every !== 'day' ? paydayAdvice(bill, settings.pay, today) : null;
   const paid = bill.status === 'paid';
 
   /** Most Swiss banking apps can read a QR code from an image, so share it as a PNG. */
