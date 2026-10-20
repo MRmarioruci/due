@@ -8,9 +8,15 @@ export type Settings = {
   remindHour: number;
   /** Default lead time for new bills, in days before the due date. */
   remindDaysBefore: number;
+  /** A "last call" the day before the deadline and an "overdue" nudge the day after. */
+  extraNudges: boolean;
+  /** A Monday-morning summary of the week's bills. */
+  weeklyDigest: boolean;
+  /** Id of the scheduled weekly summary, so it can be replaced. */
+  digestId: string | null;
 };
 
-const DEFAULTS: Settings = { payday: null, remindHour: 9, remindDaysBefore: 3 };
+const DEFAULTS: Settings = { payday: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');

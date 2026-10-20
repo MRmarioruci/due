@@ -2,11 +2,11 @@ import type { NotificationResponse } from 'expo-notifications';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
-import { addDaysIso, reminderMoment, shortDay, todayIso, daysBetween } from './dates';
-import { activeDiscount, targetDate } from './discount';
-import { formatMoney } from './money';
+import { addDaysIso, reminderMoment, shortDay, todayIso } from './dates';
+import { activeDiscount } from './discount';
 import { Notifications } from './notifications-module';
-import { getSettings } from './settings';
+import { planDigest, planReminders } from './reminder-plan';
+import { getSettings, updateSettings } from './settings';
 import { getBill, getBills, saveBill } from './store';
 import type { Bill } from './types';
 
@@ -43,41 +43,57 @@ export async function setupNotifications(): Promise<boolean> {
   return asked.granted;
 }
 
-/** Cancels the bill's current reminder and schedules the next one. Returns the bill with reminder fields updated. */
-export async function scheduleReminder(bill: Bill, at?: Date): Promise<Bill> {
-  if (!Notifications) return { ...bill, reminderId: null, remindAt: null };
-  if (bill.reminderId) await Notifications.cancelScheduledNotificationAsync(bill.reminderId).catch(() => {});
-  const target = targetDate(bill);
-  const when = at ?? (bill.status === 'open' && target ? reminderMoment(target, bill.remindDaysBefore, getSettings().remindHour) : null);
-  if (!when) return { ...bill, reminderId: null, remindAt: null };
+/** Cancels every notification scheduled for the bill. */
+async function cancelFor(bill: Bill) {
+  if (!Notifications) return;
+  for (const id of [bill.reminderId, ...(bill.extraReminderIds ?? [])]) {
+    if (id) await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+  }
+}
 
-  const discount = activeDiscount(bill, todayIso(when));
-  const days = bill.dueDate ? daysBetween(todayIso(when), bill.dueDate) : null;
-  const dueText = discount
-    ? `${discount.percent}% off until ${shortDay(discount.until)}: pay ${formatMoney(discount.payMinor, bill.currency)}.`
-    : bill.dueDate == null
-      ? ''
-      : days === 0
-        ? 'Due today.'
-        : days === 1
-          ? 'Due tomorrow.'
-          : `Due ${shortDay(bill.dueDate)}.`;
-  const id = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: `${bill.payee} · ${formatMoney(bill.amountMinor, bill.currency)}`,
-      body: `${dueText} Tap to open the QR code.`.trim(),
-      data: { billId: bill.id },
-      categoryIdentifier: CATEGORY,
-    },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when, channelId: CHANNEL },
-  });
-  return { ...bill, reminderId: id, remindAt: when.toISOString() };
+/** Replaces the bill's notifications with a fresh plan. Returns the bill with reminder fields updated. */
+export async function scheduleReminder(bill: Bill, snoozedTo?: Date): Promise<Bill> {
+  const cleared = { ...bill, reminderId: null, remindAt: null, extraReminderIds: [] };
+  if (!Notifications) return cleared;
+  await cancelFor(bill);
+  const { remindHour, extraNudges } = getSettings();
+  const plan = planReminders(bill, { remindHour, extraNudges }, new Date(), snoozedTo);
+  const ids: { kind: string; id: string; at: Date }[] = [];
+  for (const r of plan) {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: { title: r.title, body: r.kind === 'main' ? `${r.body} Tap to open the QR code.` : r.body, data: { billId: bill.id }, categoryIdentifier: CATEGORY },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: r.at, channelId: CHANNEL },
+    });
+    ids.push({ kind: r.kind, id, at: r.at });
+  }
+  const main = ids.find((x) => x.kind === 'main');
+  return {
+    ...cleared,
+    reminderId: main?.id ?? null,
+    remindAt: main?.at.toISOString() ?? null,
+    extraReminderIds: ids.filter((x) => x !== main).map((x) => x.id),
+  };
+}
+
+/** Replaces the Monday summary with one for the coming week. */
+export async function scheduleDigest(bills: Bill[]) {
+  if (!Notifications) return;
+  const { weeklyDigest, remindHour, digestId } = getSettings();
+  if (digestId) await Notifications.cancelScheduledNotificationAsync(digestId).catch(() => {});
+  const d = weeklyDigest ? planDigest(bills, remindHour) : null;
+  const id = d
+    ? await Notifications.scheduleNotificationAsync({
+        content: { title: d.title, body: d.body, data: {} },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: d.at, channelId: CHANNEL },
+      })
+    : null;
+  updateSettings({ digestId: id });
 }
 
 export async function markPaid(bill: Bill) {
-  if (bill.reminderId) await Notifications?.cancelScheduledNotificationAsync(bill.reminderId).catch(() => {});
+  await cancelFor(bill);
   const discount = activeDiscount(bill);
-  saveBill({ ...bill, status: 'paid', paidAt: new Date().toISOString(), paidAmountMinor: discount?.payMinor ?? null, reminderId: null, remindAt: null });
+  saveBill({ ...bill, status: 'paid', paidAt: new Date().toISOString(), paidAmountMinor: discount?.payMinor ?? null, reminderId: null, remindAt: null, extraReminderIds: [] });
 }
 
 export async function markOpen(bill: Bill) {

@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatHour } from '@/lib/dates';
@@ -72,6 +72,15 @@ export default function SettingsScreen() {
         {remindersAvailable ? 'Before the due date. You can change it per bill when you save one.' : 'Reminders don’t run in Expo Go on Android. They work in a development build.'}
       </T>
 
+      <Eyebrow style={st.section}>Extra reminders</Eyebrow>
+      <Toggle
+        label="Last call and overdue"
+        help="A nudge the day before the deadline, and one the day after it's due if it's still open."
+        value={s.extraNudges}
+        onChange={(v) => { updateSettings({ extraNudges: v }); rescheduleAll(); }}
+      />
+      <Toggle label="Weekly summary" help="Monday morning: what's due this week and how much." value={s.weeklyDigest} onChange={(v) => updateSettings({ weeklyDigest: v })} />
+
       {__DEV__ && (
         <>
           <Eyebrow style={st.section}>Development</Eyebrow>
@@ -79,6 +88,18 @@ export default function SettingsScreen() {
         </>
       )}
     </ScrollView>
+  );
+}
+
+function Toggle({ label, help, value, onChange }: { label: string; help: string; value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <View style={st.toggle}>
+      <View style={{ flex: 1, gap: 4 }}>
+        <T style={{ fontFamily: F.medium, fontSize: 15 }}>{label}</T>
+        <T style={{ fontSize: 13, lineHeight: 18, color: C.dim }}>{help}</T>
+      </View>
+      <Switch value={value} onValueChange={onChange} trackColor={{ false: C.border, true: C.accent }} thumbColor={C.fg} accessibilityLabel={label} />
+    </View>
   );
 }
 
@@ -98,6 +119,7 @@ const st = StyleSheet.create({
   stepBtn: { width: 52, height: 52, alignItems: 'center', justifyContent: 'center' },
   stepGlyph: { fontFamily: F.medium, fontSize: 22, color: C.fg },
   stepValue: { fontFamily: F.semibold, fontSize: 22, letterSpacing: -0.5 },
+  toggle: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { height: 44, paddingHorizontal: 16, borderWidth: 1, borderColor: C.border, justifyContent: 'center' },
   chipOn: { backgroundColor: C.fg, borderColor: C.fg },

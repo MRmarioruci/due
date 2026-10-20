@@ -6,7 +6,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { usePayCheck } from '@/lib/pay-check';
-import { listenForResponses, setupNotifications } from '@/lib/reminders';
+import { listenForResponses, scheduleDigest, setupNotifications } from '@/lib/reminders';
+import { useSettings } from '@/lib/settings';
+import { useBills } from '@/lib/store';
 import { C } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -24,6 +26,14 @@ export default function RootLayout() {
   }, [ready, fontError]);
 
   usePayCheck();
+
+  // Keep the Monday summary in step with the bills (debounced: saving one bill can touch several rows).
+  const bills = useBills();
+  const { weeklyDigest, remindHour } = useSettings();
+  useEffect(() => {
+    const t = setTimeout(() => scheduleDigest(bills), 1500);
+    return () => clearTimeout(t);
+  }, [bills, weeklyDigest, remindHour]);
 
   useEffect(() => {
     setupNotifications();

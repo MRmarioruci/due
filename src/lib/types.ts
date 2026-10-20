@@ -71,13 +71,15 @@ export type Bill = {
   remindDaysBefore: number;
   remindAt: string | null; // ISO timestamp of the scheduled reminder
   reminderId: string | null;
+  /** The "last call" and "overdue" nudges scheduled alongside the main reminder. */
+  extraReminderIds?: string[];
   imageUri: string | null;
 };
 
 export type SourcedField = 'payee' | 'amount' | 'currency' | 'dueDate' | 'iban' | 'reference';
 
 /** What a scan produces before the user confirms it. */
-export type BillDraft = Omit<Bill, 'id' | 'status' | 'paidAt' | 'paidAmountMinor' | 'createdAt' | 'remindAt' | 'reminderId'>;
+export type BillDraft = Omit<Bill, 'id' | 'status' | 'paidAt' | 'paidAmountMinor' | 'createdAt' | 'remindAt' | 'reminderId' | 'extraReminderIds'>;
 
 export const emptyPayment = (): Payment => ({
   standard: null,
