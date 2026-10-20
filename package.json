@@ -12,6 +12,7 @@
     "expo-camera": "~57.0.6",
     "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.22",
+    "expo-dev-client": "~57.0.20",
     "expo-device": "~57.0.2",
     "expo-document-picker": "~57.0.3",
     "expo-file-system": "~57.0.7",
@@ -58,11 +59,13 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "dev": "expo start",
-    "dev:tunnel": "expo start --tunnel",
+    "dev": "expo start --go",
+    "dev:tunnel": "expo start --go --tunnel",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "check": "tsc --noEmit && expo lint && vitest run"
+    "check": "tsc --noEmit && expo lint && vitest run",
+    "dev:client": "expo start --dev-client",
+    "build:dev": "npx eas-cli@latest build --profile development --platform android"
   },
   "private": true
 }

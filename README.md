@@ -29,6 +29,17 @@ In development, **long-press the "due" logo** on the home screen to load sample 
 
 Without a Gemini key the app still works: QR codes are read on the device and you fill in the due date yourself.
 
+## Development build (reminders, widget)
+
+Expo Go can't run notifications on Android or the home-screen widget. For those, install a development build of due on the phone once:
+
+```bash
+npx eas-cli login            # your Expo account
+npm run build:dev            # builds an APK in the cloud (~15 min), prints a link + QR
+```
+
+Open the link on the phone and install the APK. From then on, start the server with `npm run dev:client` and open due (not Expo Go); JavaScript changes still reload instantly. Rebuild only after adding a library with native code.
+
 ## Notes
 
 - Everything runs in Expo Go: camera, QR scanning, local notifications, SQLite. Remote push isn't used (Expo Go doesn't support it on Android), and isn't needed: reminders are scheduled on the phone.
