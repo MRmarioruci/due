@@ -65,12 +65,19 @@ async function askModel(base64Jpeg: string, decoded: DecodedCode | null): Promis
   });
   if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const json = await res.json();
-  const text: string | undefined = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const parts: { text?: string; thought?: boolean }[] = json?.candidates?.[0]?.content?.parts ?? [];
+  const text = parts.filter((p) => !p.thought && p.text).map((p) => p.text).join('');
   if (!text) throw new Error('Gemini returned no content');
   return JSON.parse(text) as ModelBill;
 }
 
-const isoDate = (s: string | null | undefined) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null);
+/** Accepts YYYY-MM-DD, and DD.MM.YYYY / DD/MM/YYYY in case the model copies the printed form. */
+function isoDate(s: string | null | undefined): string | null {
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : null;
+}
 
 /**
  * Turns a scan into a draft bill. Values decoded from a payment code are exact and always win;
