@@ -20,6 +20,7 @@ import { getSettings, useSettings } from '@/lib/settings';
 import { deleteBill, useBill } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
+import { Animated, enterFade } from '@/ui/motion';
 import { C, F, GUTTER } from '@/ui/theme';
 
 /** The Swiss cross that goes in the middle of a QR-bill code (it's part of the exported image too). */
@@ -123,13 +124,13 @@ export default function BillScreen() {
         </View>
 
         {discount && (
-          <View style={st.discount}>
+          <Animated.View entering={enterFade(80)} style={st.discount}>
             <T style={st.discountBadge}>−{discount.percent}%</T>
             <T style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: C.muted }}>
               <T style={{ fontSize: 13.5, color: C.fg }}>Pay by {shortDay(discount.until)} and save {formatMoney(discount.savingMinor, bill.currency)}.</T>{' '}
               Full amount {formatAmount(bill.amountMinor, bill.currency)} after that.{code ? ' The QR code already has the discount.' : ''}
             </T>
-          </View>
+          </Animated.View>
         )}
         {paid && bill.paidAmountMinor != null && bill.amountMinor != null && bill.paidAmountMinor < bill.amountMinor && (
           <T style={{ marginTop: 10, fontSize: 13.5, color: C.muted }}>Saved {formatMoney(bill.amountMinor - bill.paidAmountMinor, bill.currency)} with the early-payment discount.</T>
@@ -139,7 +140,7 @@ export default function BillScreen() {
         {advice && <T style={{ marginTop: 16, fontSize: 13.5, lineHeight: 19, color: C.muted }}>{advice}</T>}
 
         {code ? (
-          <View style={st.qrWrap}>
+          <Animated.View entering={enterFade(180)} style={st.qrWrap}>
             <QRCode
               value={code.value}
               size={232}
@@ -160,7 +161,7 @@ export default function BillScreen() {
                 <T style={{ fontFamily: F.medium, fontSize: 14 }}>Share QR to your bank app</T>
               </Pressable>
             )}
-          </View>
+          </Animated.View>
         ) : (
           bill.payment.payUrl && (
             <Button title="Open payment page" kind="secondary" style={{ marginTop: 24 }} onPress={() => { armPayCheck(bill.id); Linking.openURL(bill.payment.payUrl!); }} />

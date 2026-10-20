@@ -13,6 +13,7 @@ import { useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
 import { CATEGORY_LABEL, type Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
+import { Animated, enterFade, enterRow, GrowBar, moveRow, useCountUp } from '@/ui/motion';
 import { C, F, GUTTER } from '@/ui/theme';
 
 const HORIZON = 30;
@@ -36,6 +37,7 @@ export default function Bills() {
   const ccy = mainCurrency(open);
   const window = open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= HORIZON);
   const total = window.filter((b) => b.currency === ccy).reduce((sum, b) => sum + (activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0), 0);
+  const totalShown = useCountUp(total);
   const otherCcy = window.some((b) => b.currency !== ccy);
   const next = open.find((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0);
   const plan = settings.payday && open.length ? planAroundPayday(open, settings.payday, ccy, today) : null;
@@ -73,7 +75,7 @@ export default function Bills() {
         <View style={{ marginTop: 22 }}>
           <Eyebrow>Next {HORIZON} days</Eyebrow>
           <View style={{ marginTop: 8 }}>
-            <Amount currency={ccy} value={formatAmount(total, ccy)} />
+            <Amount currency={ccy} value={formatAmount(totalShown, ccy)} />
           </View>
           <T style={st.sub}>
             {open.length === 0
@@ -83,7 +85,7 @@ export default function Bills() {
         </View>
 
         {plan ? (
-          <View style={st.plan}>
+          <Animated.View entering={enterFade(150)} style={st.plan}>
             <View style={st.planCol}>
               <Eyebrow>Before payday</Eyebrow>
               <T style={st.planAmount}>{formatAmount(plan.beforeMinor, ccy)}</T>
@@ -94,7 +96,7 @@ export default function Bills() {
               <T style={st.planAmount}>{formatAmount(plan.afterMinor, ccy)}</T>
               <T style={st.planSub}>{plan.after.length} {plan.after.length === 1 ? 'bill waits' : 'bills wait'} for your salary</T>
             </View>
-          </View>
+          </Animated.View>
         ) : (
           open.length > 0 &&
           !settings.payday && (
@@ -123,8 +125,10 @@ export default function Bills() {
         {tab === 'open' && expected.length > 0 && (
           <View>
             <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>Expected</Eyebrow>
-            {expected.map((s) => (
-              <ExpectedRow key={s.key} series={s} />
+            {expected.map((s, idx) => (
+              <Animated.View key={s.key} entering={enterRow(idx)} layout={moveRow}>
+                <ExpectedRow series={s} />
+              </Animated.View>
             ))}
           </View>
         )}
@@ -134,8 +138,10 @@ export default function Bills() {
           .map((g) => (
             <View key={g.title}>
               <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>{g.title}</Eyebrow>
-              {g.items.map((b) => (
-                <BillRow key={b.id} bill={b} today={today} />
+              {g.items.map((b, idx) => (
+                <Animated.View key={b.id} entering={enterRow(idx)} layout={moveRow}>
+                  <BillRow bill={b} today={today} />
+                </Animated.View>
               ))}
             </View>
           ))}
@@ -228,15 +234,17 @@ function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today:
         {expected
           .filter((s) => !s.late && daysBetween(today, s.nextDue) <= HORIZON)
           .map((s) => (
-            <View
+            <GrowBar
               key={'x' + s.key}
-              style={[st.bar, { left: `${(daysBetween(today, s.nextDue) / HORIZON) * 100}%`, height: s.currency === ccy ? Math.max(8, (s.amountMinor / max) * 48) : 8, borderWidth: 1, borderColor: C.barMuted }]}
+              size={s.currency === ccy ? Math.max(8, (s.amountMinor / max) * 48) : 8}
+              delay={300 + (daysBetween(today, s.nextDue) / HORIZON) * 300}
+              style={[st.bar, { left: `${(daysBetween(today, s.nextDue) / HORIZON) * 100}%`, borderWidth: 1, borderColor: C.barMuted }]}
             />
           ))}
         {bills.map((b) => {
           const d = Math.max(0, daysBetween(today, b.dueDate!));
           const h = b.currency === ccy && b.amountMinor ? Math.max(8, (b.amountMinor / max) * 48) : 8;
-          return <View key={b.id} style={[st.bar, { left: `${(d / HORIZON) * 100}%`, height: h, backgroundColor: d <= 7 ? C.accent : C.fg }]} />;
+          return <GrowBar key={b.id} size={h} delay={(d / HORIZON) * 300} style={[st.bar, { left: `${(d / HORIZON) * 100}%`, backgroundColor: d <= 7 ? C.accent : C.fg }]} />;
         })}
       </View>
       <View style={st.runwayLabels}>

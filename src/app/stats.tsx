@@ -10,7 +10,10 @@ import { computeStats, type Period } from '@/lib/stats';
 import { useBills } from '@/lib/store';
 import { CATEGORY_LABEL } from '@/lib/types';
 import { Amount, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
+import { Animated, enterRow, GrowBar, useCountUp } from '@/ui/motion';
 import { C, F, GUTTER } from '@/ui/theme';
+
+const CHART_H = 150;
 
 const PERIODS: { key: Period; label: string; current: string; prev: string }[] = [
   { key: 'week', label: 'Week', current: 'Paid this week', prev: 'last week' },
@@ -33,6 +36,7 @@ export default function StatsScreen() {
   const prev = s.buckets[n - 2].minor;
   const max = Math.max(1, ...s.buckets.map((b) => b.minor));
   const catMax = Math.max(1, ...s.categories.map((c) => c.minor));
+  const shownV = useCountUp(v);
   const sub =
     sel != null && sel !== n - 1
       ? 'Tap the last bar to go back'
@@ -64,7 +68,7 @@ export default function StatsScreen() {
       <View style={{ marginTop: 22 }}>
         <Eyebrow>{sel != null && sel !== n - 1 ? `Paid · ${s.buckets[i].label}` : p.current}</Eyebrow>
         <View style={{ marginTop: 8 }}>
-          <Amount currency={s.currency} value={formatAmount(v, s.currency)} size={44} />
+          <Amount currency={s.currency} value={formatAmount(shownV, s.currency)} size={44} />
         </View>
         <T style={{ marginTop: 8, fontSize: 13.5, color: C.muted }}>{sub}</T>
       </View>
@@ -73,7 +77,11 @@ export default function StatsScreen() {
         <View style={st.chart}>
           {s.buckets.map((b, k) => (
             <Pressable key={k} accessibilityRole="button" accessibilityLabel={`${b.label}: ${s.currency} ${formatAmount(b.minor, s.currency)}`} onPress={() => setSel(k)} style={st.barHit}>
-              <View style={{ width: '100%', maxWidth: 30, height: `${(b.minor / max) * 100}%`, minHeight: 2, backgroundColor: k === i ? C.accent : C.barMuted, borderTopLeftRadius: 4, borderTopRightRadius: 4 }} />
+              <GrowBar
+                size={Math.max(2, (b.minor / max) * CHART_H)}
+                delay={k * 45}
+                style={{ width: '100%', maxWidth: 30, backgroundColor: k === i ? C.accent : C.barMuted, borderTopLeftRadius: 4, borderTopRightRadius: 4 }}
+              />
             </Pressable>
           ))}
         </View>
@@ -117,12 +125,12 @@ export default function StatsScreen() {
             </T>
             <T style={{ fontSize: 13, color: C.dim }}>per month</T>
           </View>
-          {series.map((x) => (
-            <View key={x.key} style={st.seriesRow}>
+          {series.map((x, idx) => (
+            <Animated.View key={x.key} entering={enterRow(idx)} style={st.seriesRow}>
               <T style={{ flex: 1, fontSize: 13.5 }} numberOfLines={1}>{x.payee}</T>
               <T style={{ fontSize: 12.5, color: C.dim }}>{CADENCE_LABEL[x.cadence]}</T>
               <T style={{ width: 84, textAlign: 'right', fontSize: 13.5, color: C.muted, fontVariant: ['tabular-nums'] }}>{formatAmount(x.amountMinor, x.currency)}</T>
-            </View>
+            </Animated.View>
           ))}
         </View>
       )}
@@ -130,16 +138,16 @@ export default function StatsScreen() {
       {s.categories.length > 0 && (
         <View style={{ marginTop: 28 }}>
           <Eyebrow style={{ marginBottom: 8 }}>By category</Eyebrow>
-          {s.categories.map((c) => (
-            <View key={c.category} style={{ paddingVertical: 12, gap: 8 }}>
+          {s.categories.map((c, idx) => (
+            <Animated.View key={c.category} entering={enterRow(idx)} style={{ paddingVertical: 12, gap: 8 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <T style={{ fontSize: 13.5 }}>{CATEGORY_LABEL[c.category]}</T>
                 <T style={{ fontSize: 13.5, color: C.muted, fontVariant: ['tabular-nums'] }}>{formatAmount(c.minor, s.currency)}</T>
               </View>
               <View style={{ height: 4, backgroundColor: '#161616' }}>
-                <View style={{ height: 4, width: `${(c.minor / catMax) * 100}%`, backgroundColor: C.muted }} />
+                <GrowBar horizontal size={c.minor / catMax} delay={150 + idx * 60} style={{ height: 4, backgroundColor: C.muted }} />
               </View>
-            </View>
+            </Animated.View>
           ))}
         </View>
       )}
@@ -151,7 +159,7 @@ const st = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
   segment: { marginTop: 16, flexDirection: 'row', borderWidth: 1, borderColor: C.line, padding: 3 },
   segItem: { flex: 1, height: 38, alignItems: 'center', justifyContent: 'center' },
-  chart: { height: 150, flexDirection: 'row', alignItems: 'flex-end', gap: 6, borderBottomWidth: 1, borderBottomColor: '#333' },
+  chart: { height: CHART_H, flexDirection: 'row', alignItems: 'flex-end', gap: 6, borderBottomWidth: 1, borderBottomColor: '#333' },
   barHit: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center' },
   barLabel: { flex: 1, textAlign: 'center', fontFamily: F.mono, fontSize: 10 },
   tiles: { marginTop: 28, flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line },
