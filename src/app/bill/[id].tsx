@@ -1,10 +1,10 @@
 import * as Clipboard from 'expo-clipboard';
 import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useRef, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,6 +21,7 @@ import { deleteBill, useBill } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
 import { Animated, enterFade } from '@/ui/motion';
+import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER } from '@/ui/theme';
 
 /** The Swiss cross that goes in the middle of a QR-bill code (it's part of the exported image too). */
@@ -72,7 +73,7 @@ export default function BillScreen() {
         armPayCheck(bill!.id);
         await Sharing.shareAsync(file.uri, { mimeType: 'image/png', dialogTitle: `Pay ${bill!.payee}` });
       } catch (e) {
-        Alert.alert('Couldn’t share the QR code', (e as Error).message);
+        toast(`Couldn’t share the QR code: ${(e as Error).message}`);
       }
     });
   }
@@ -86,10 +87,25 @@ export default function BillScreen() {
   }
 
   function more() {
-    Alert.alert(bill!.payee, undefined, [
-      { text: 'Delete bill', style: 'destructive', onPress: () => { deleteBill(bill!.id); goBack(); } },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    const b = bill!;
+    sheet.show({
+      title: b.payee,
+      actions: [
+        { label: 'Edit details', kind: 'secondary', onPress: () => router.push({ pathname: '/review', params: { id: b.id } }) },
+        {
+          label: 'Delete bill',
+          kind: 'secondary',
+          onPress: async () => {
+            const sure = await sheet.confirm({ title: `Delete ${b.payee}?`, message: 'Its reminders are cancelled too. This can’t be undone.', confirm: 'Delete', destructive: true });
+            if (!sure) return;
+            await markPaid(b); // cancels its notifications
+            deleteBill(b.id);
+            toast('Bill deleted');
+            goBack();
+          },
+        },
+      ],
+    });
   }
 
   const rows: { label: string; value: string; mono?: boolean }[] = [
@@ -203,7 +219,7 @@ export default function BillScreen() {
               onPress={async () => {
                 await snooze(bill);
                 Haptics.selectionAsync();
-                Alert.alert('Snoozed', `We’ll remind you tomorrow at ${formatHour(getSettings().remindHour)}.`);
+                toast(`Snoozed until tomorrow, ${formatHour(getSettings().remindHour)}`);
               }}
             />
             <Button
@@ -212,6 +228,7 @@ export default function BillScreen() {
               onPress={async () => {
                 await markPaid(bill);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                toast(`${bill.payee} marked paid`);
                 goBack();
               }}
             />

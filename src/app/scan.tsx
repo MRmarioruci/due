@@ -196,6 +196,9 @@ export default function Scan() {
             <T style={{ fontFamily: F.mono, fontSize: 11, letterSpacing: 0.6 }}>PDF</T>
           </IconButton>
         </View>
+        <Pressable accessibilityRole="button" onPress={() => { setPendingDraft(null); router.replace('/review'); }} hitSlop={8} style={{ paddingVertical: 6 }}>
+          <T style={{ fontSize: 13.5, color: C.muted, textDecorationLine: 'underline' }}>Enter by hand</T>
+        </Pressable>
       </View>
       )}
     </View>

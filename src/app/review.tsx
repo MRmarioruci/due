@@ -1,20 +1,22 @@
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { formatHour, fromIso, longDate, toIso, todayIso, daysBetween } from '@/lib/dates';
+import { formatHour, longDate, todayIso, daysBetween } from '@/lib/dates';
 import { activeDiscount, targetDate } from '@/lib/discount';
 import { takePendingDraft } from '@/lib/draft';
 import { formatMoney } from '@/lib/money';
+import { goBack } from '@/lib/nav';
 import { toMinor } from '@/lib/payment-codes';
 import { describeReminder, scheduleReminder } from '@/lib/reminders';
 import { getSettings } from '@/lib/settings';
-import { newId, saveBill } from '@/lib/store';
-import { CATEGORY_LABEL, emptyPayment, type Bill, type BillDraft, type SourcedField } from '@/lib/types';
+import { getBill, newId, saveBill } from '@/lib/store';
+import { CATEGORY_LABEL, emptyPayment, type Bill, type BillDraft, type Category, type SourcedField } from '@/lib/types';
+import { pickDate } from '@/ui/calendar';
 import { Button, Eyebrow, Icon, IconButton, SourceTag, T } from '@/ui/kit';
+import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER } from '@/ui/theme';
 
 const REMIND_OPTIONS = [
@@ -40,12 +42,20 @@ const blankDraft = (): BillDraft => ({
   imageUri: null,
 });
 
+/** The editable part of a saved bill. */
+function toDraft(b: Bill): BillDraft {
+  const { id: _id, status: _s, paidAt: _p, paidAmountMinor: _pa, createdAt: _c, remindAt: _r, reminderId: _ri, extraReminderIds: _e, ...draft } = b;
+  return draft;
+}
+
+/** Checks a new scan before saving it, or edits a saved bill (`/review?id=…`). */
 export default function Review() {
   const insets = useSafeAreaInsets();
-  const [initial] = useState(() => takePendingDraft() ?? { draft: blankDraft(), warning: null });
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const [existing] = useState(() => (id ? getBill(id) : undefined));
+  const [initial] = useState(() => (existing ? { draft: toDraft(existing), warning: null } : (takePendingDraft() ?? { draft: blankDraft(), warning: null })));
   const [d, setD] = useState<BillDraft>(initial.draft);
   const [amountText, setAmountText] = useState(d.amountMinor != null ? (d.amountMinor / 100).toFixed(2) : '');
-  const [iosPicker, setIosPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
   /** Editing a field makes it the user's, so its QR/AI tag goes away. */
@@ -56,13 +66,32 @@ export default function Review() {
     setD((prev) => ({ ...prev, payment: { ...prev.payment, [key]: value || null }, sources: { ...prev.sources, [key]: 'user' } }));
   }
 
-  function pickDate() {
-    const value = d.dueDate ? fromIso(d.dueDate) : new Date();
-    if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({ value, mode: 'date', onChange: (e, date) => e.type === 'set' && date && edit('dueDate', toIso(date), 'dueDate') });
-    } else {
-      setIosPicker((v) => !v);
-    }
+  async function chooseDueDate() {
+    const picked = await pickDate('Due date', d.dueDate);
+    if (picked) edit('dueDate', picked, 'dueDate');
+  }
+
+  function chooseCategory() {
+    sheet.show({
+      title: 'Category',
+      content: (
+        <View style={st.chips}>
+          {(Object.keys(CATEGORY_LABEL) as Category[]).map((c) => (
+            <Pressable
+              key={c}
+              accessibilityRole="button"
+              accessibilityState={{ selected: c === d.category }}
+              onPress={() => {
+                edit('category', c);
+                sheet.hide();
+              }}
+              style={[st.chip, c === d.category && st.chipOn]}>
+              <T style={{ fontFamily: F.medium, fontSize: 14, color: c === d.category ? C.bg : C.fg }}>{CATEGORY_LABEL[c]}</T>
+            </Pressable>
+          ))}
+        </View>
+      ),
+    });
   }
 
   const discount = activeDiscount({ ...d, amountMinor: toMinor(amountText), status: 'open' });
@@ -71,6 +100,12 @@ export default function Review() {
 
   async function save() {
     setSaving(true);
+    if (existing) {
+      const updated: Bill = { ...existing, ...d, payee: d.payee.trim(), amountMinor: toMinor(amountText), currency: d.currency.trim().toUpperCase() || 'CHF' };
+      saveBill(await scheduleReminder(updated));
+      toast('Changes saved');
+      return goBack();
+    }
     const bill: Bill = {
       ...d,
       payee: d.payee.trim(),
@@ -91,10 +126,10 @@ export default function Review() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
         <View style={st.header}>
-          <IconButton label="Retake photo" onPress={() => router.replace('/scan')}>
-            <Icon name="back" />
+          <IconButton label={existing ? 'Close without saving' : 'Retake photo'} onPress={() => (existing ? goBack() : router.replace('/scan'))}>
+            <Icon name={existing ? 'close' : 'back'} />
           </IconButton>
-          <T style={st.headerTitle}>CHECK DETAILS</T>
+          <T style={st.headerTitle}>{existing ? 'EDIT BILL' : 'CHECK DETAILS'}</T>
           <View style={{ width: 44 }} />
         </View>
 
@@ -111,7 +146,14 @@ export default function Review() {
               <TextInput value={d.payee} onChangeText={(v) => edit('payee', v, 'payee')} placeholder="Who to pay" placeholderTextColor={C.dim} style={st.payee} accessibilityLabel="Payee" />
               <SourceTag source={d.sources.payee} />
             </View>
-            <T style={{ fontSize: 13, color: C.dim }}>{d.description ?? CATEGORY_LABEL[d.category]}</T>
+            <TextInput
+              value={d.description ?? ''}
+              onChangeText={(v) => edit('description', v || null)}
+              placeholder="What it's for"
+              placeholderTextColor={C.barMuted}
+              style={st.description}
+              accessibilityLabel="What the bill is for"
+            />
           </View>
         </View>
 
@@ -149,7 +191,7 @@ export default function Review() {
           </View>
         )}
 
-        <Pressable onPress={pickDate} style={st.field} accessibilityRole="button" accessibilityLabel="Change due date">
+        <Pressable onPress={chooseDueDate} style={st.field} accessibilityRole="button" accessibilityLabel="Change due date">
           <T style={st.label}>Due</T>
           <View style={st.fieldRight}>
             <T style={{ fontSize: 14, color: d.dueDate ? C.fg : C.accent }}>
@@ -158,9 +200,10 @@ export default function Review() {
             <SourceTag source={d.sources.dueDate} />
           </View>
         </Pressable>
-        {iosPicker && Platform.OS === 'ios' && (
-          <DateTimePicker value={d.dueDate ? fromIso(d.dueDate) : new Date()} mode="date" display="inline" themeVariant="dark" onChange={(_, date) => date && edit('dueDate', toIso(date), 'dueDate')} />
-        )}
+        <Pressable onPress={chooseCategory} style={st.field} accessibilityRole="button" accessibilityLabel="Change category">
+          <T style={st.label}>Category</T>
+          <T style={{ fontSize: 14 }}>{CATEGORY_LABEL[d.category]}</T>
+        </Pressable>
         <View style={st.field}>
           <T style={st.label}>IBAN</T>
           <View style={st.fieldRight}>
@@ -197,7 +240,7 @@ export default function Review() {
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button title="Save bill" onPress={save} loading={saving} disabled={!valid} />
+        <Button title={existing ? 'Save changes' : 'Save bill'} onPress={save} loading={saving} disabled={!valid} />
       </View>
     </KeyboardAvoidingView>
   );
@@ -221,5 +264,6 @@ const st = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { width: '48.8%', height: 46, borderWidth: 1, borderColor: C.border, justifyContent: 'center', paddingHorizontal: 14 },
   chipOn: { backgroundColor: C.fg, borderColor: C.fg },
+  description: { color: C.dim, fontSize: 13, padding: 0 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: 'rgba(10,10,10,0.94)' },
 });

@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { Alert, AppState } from 'react-native';
+import { AppState } from 'react-native';
 
 import { formatMoney } from './money';
 import { markPaid } from './reminders';
 import { getBill } from './store';
+import { sheet, toast } from '@/ui/overlay';
 
 /**
  * After the user shares the QR code or copies payment details, they usually switch to their banking app.
@@ -29,10 +30,20 @@ export function usePayCheck() {
       if (!a || Date.now() - a.at > WINDOW_MS) return;
       const bill = getBill(a.billId);
       if (!bill || bill.status === 'paid') return;
-      Alert.alert(`Did you pay ${bill.payee}?`, formatMoney(bill.amountMinor, bill.currency), [
-        { text: 'Not yet', style: 'cancel' },
-        { text: 'Yes, mark paid', onPress: () => markPaid(bill) },
-      ]);
+      sheet.show({
+        title: `Did you pay ${bill.payee}?`,
+        message: formatMoney(bill.amountMinor, bill.currency),
+        actions: [
+          {
+            label: 'Yes, mark paid',
+            onPress: async () => {
+              await markPaid(bill);
+              toast(`${bill.payee} marked paid`);
+            },
+          },
+          { label: 'Not yet', kind: 'secondary' },
+        ],
+      });
     });
     return () => sub.remove();
   }, []);

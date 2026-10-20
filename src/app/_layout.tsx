@@ -11,6 +11,7 @@ import { listenForResponses, scheduleDigest, setupNotifications } from '@/lib/re
 import { useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
 import { updateWidget } from '@/widget';
+import { OverlayHost } from '@/ui/overlay';
 import { C } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -69,6 +70,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'fade_from_bottom' }}>
           <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
         </Stack>
+        <OverlayHost />
       </LockGate>
     </ThemeProvider>
   );

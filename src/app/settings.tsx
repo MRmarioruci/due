@@ -1,4 +1,4 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatHour } from '@/lib/dates';
@@ -8,6 +8,7 @@ import { remindersAvailable, rescheduleAll } from '@/lib/reminders';
 import { seedSampleBills } from '@/lib/seed';
 import { updateSettings, useSettings } from '@/lib/settings';
 import { Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
+import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER } from '@/ui/theme';
 
 const HOURS = [7, 8, 9, 12, 18, 20];
@@ -89,15 +90,18 @@ export default function SettingsScreen() {
         value={s.appLock}
         onChange={async (v) => {
           if (!v) return updateSettings({ appLock: false });
-          if (!(await canLock())) return Alert.alert('No fingerprint or face set up', 'Add one in your phone’s security settings first.');
-          if (await authenticate('Turn on the app lock')) updateSettings({ appLock: true });
+          if (!(await canLock())) return sheet.show({ title: 'No fingerprint or face set up', message: 'Add one in your phone’s security settings first, then turn this on.', actions: [{ label: 'OK' }] });
+          if (await authenticate('Turn on the app lock')) {
+            updateSettings({ appLock: true });
+            toast('App lock is on');
+          }
         }}
       />
 
       {__DEV__ && (
         <>
           <Eyebrow style={st.section}>Development</Eyebrow>
-          <Button title="Load sample bills" kind="secondary" onPress={() => { seedSampleBills(); goBack(); }} />
+          <Button title="Load sample bills" kind="secondary" onPress={() => { seedSampleBills(); toast('Sample bills loaded'); goBack(); }} />
         </>
       )}
     </ScrollView>
