@@ -1,16 +1,18 @@
 import * as Clipboard from 'expo-clipboard';
+import { File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import * as Sharing from 'expo-sharing';
+import { useRef, useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
 import { daysBetween, formatHour, longDate, shortDay, todayIso } from '@/lib/dates';
 import { activeDiscount, withSwissAmount } from '@/lib/discount';
 import { formatAmount, formatMoney } from '@/lib/money';
 import { goBack } from '@/lib/nav';
+import { armPayCheck } from '@/lib/pay-check';
 import { buildEpc, buildSwissQr } from '@/lib/payment-codes';
 import { paydayAdvice } from '@/lib/plan';
 import { markOpen, markPaid, snooze } from '@/lib/reminders';
@@ -19,6 +21,9 @@ import { deleteBill, useBill } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
 import { C, F, GUTTER } from '@/ui/theme';
+
+/** The Swiss cross that goes in the middle of a QR-bill code (it's part of the exported image too). */
+const SWISS_CROSS = '<svg viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg"><rect width="30" height="30" fill="#fff"/><rect x="2.5" y="2.5" width="25" height="25" fill="#000"/><path d="M12.5 7.5h5v5h5v5h-5v5h-5v-5h-5v-5h5z" fill="#fff"/></svg>';
 
 /** The code a banking app can scan: the original QR-bill / GiroCode, or one built from the printed details. */
 function payableCode(b: Bill): { value: string; swiss: boolean } | null {
@@ -45,6 +50,7 @@ export default function BillScreen() {
   const settings = useSettings();
   const insets = useSafeAreaInsets();
   const [copied, setCopied] = useState<string | null>(null);
+  const qrRef = useRef<{ toDataURL: (cb: (base64: string) => void) => void } | null>(null);
 
   if (!bill) return <Loading />;
 
@@ -55,8 +61,24 @@ export default function BillScreen() {
   const advice = settings.payday ? paydayAdvice(bill, settings.payday, today) : null;
   const paid = bill.status === 'paid';
 
+  /** Most Swiss banking apps can read a QR code from an image, so share it as a PNG. */
+  function shareQr() {
+    qrRef.current?.toDataURL(async (base64) => {
+      try {
+        const file = new File(Paths.cache, `due-${bill!.id}.png`);
+        file.create({ overwrite: true });
+        file.write(base64, { encoding: 'base64' });
+        armPayCheck(bill!.id);
+        await Sharing.shareAsync(file.uri, { mimeType: 'image/png', dialogTitle: `Pay ${bill!.payee}` });
+      } catch (e) {
+        Alert.alert('Couldn’t share the QR code', (e as Error).message);
+      }
+    });
+  }
+
   async function copy(label: string, value: string) {
     await Clipboard.setStringAsync(value.replace(/\s/g, label === 'IBAN' ? '' : ' '));
+    armPayCheck(bill!.id);
     Haptics.selectionAsync();
     setCopied(label);
     setTimeout(() => setCopied(null), 1400);
@@ -118,21 +140,30 @@ export default function BillScreen() {
 
         {code ? (
           <View style={st.qrWrap}>
-            <View style={st.qrCard}>
-              <QRCode value={code.value} size={200} ecl="M" quietZone={0} backgroundColor="#fff" color="#000" />
-              {code.swiss && (
-                <View style={st.cross}>
-                  <Svg width={16} height={16} viewBox="0 0 10 10">
-                    <Path d="M4 1.5h2v2.5h2.5v2H6v2.5H4V6H1.5V4H4z" fill="#fff" />
-                  </Svg>
-                </View>
-              )}
-            </View>
+            <QRCode
+              value={code.value}
+              size={232}
+              ecl="M"
+              quietZone={16}
+              backgroundColor="#fff"
+              color="#000"
+              logoSVG={code.swiss ? SWISS_CROSS : undefined}
+              logoSize={code.swiss ? 34 : undefined}
+              logoBackgroundColor="transparent"
+              logoMargin={0}
+              getRef={(r) => (qrRef.current = r)}
+            />
             <Eyebrow>Scan with your banking app</Eyebrow>
+            {!paid && (
+              <Pressable accessibilityRole="button" onPress={shareQr} style={st.shareBtn}>
+                <Icon name="share" size={16} />
+                <T style={{ fontFamily: F.medium, fontSize: 14 }}>Share QR to your bank app</T>
+              </Pressable>
+            )}
           </View>
         ) : (
           bill.payment.payUrl && (
-            <Button title="Open payment page" kind="secondary" style={{ marginTop: 24 }} onPress={() => Linking.openURL(bill.payment.payUrl!)} />
+            <Button title="Open payment page" kind="secondary" style={{ marginTop: 24 }} onPress={() => { armPayCheck(bill.id); Linking.openURL(bill.payment.payUrl!); }} />
           )
         )}
 
@@ -229,8 +260,7 @@ const st = StyleSheet.create({
   line: { position: 'absolute', top: 10, height: 1 },
   tl: { fontFamily: F.mono, fontSize: 10, color: C.dim, letterSpacing: 0.4 },
   qrWrap: { marginTop: 24, alignItems: 'center', gap: 12 },
-  qrCard: { padding: 16, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  cross: { position: 'absolute', width: 30, height: 30, backgroundColor: '#000', borderWidth: 3, borderColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  shareBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 44, paddingHorizontal: 16, borderWidth: 1, borderColor: C.border },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 54, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   rowLabel: { width: 84, fontSize: 13, color: C.dim },
   rowValue: { flex: 1, fontSize: 14 },

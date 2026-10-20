@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { usePayCheck } from '@/lib/pay-check';
 import { listenForResponses, setupNotifications } from '@/lib/reminders';
 import { C } from '@/ui/theme';
 
@@ -21,6 +22,8 @@ export default function RootLayout() {
     if (fontError) console.warn('[fonts] failed to load, using system fonts', fontError);
     if (ready) SplashScreen.hideAsync();
   }, [ready, fontError]);
+
+  usePayCheck();
 
   useEffect(() => {
     setupNotifications();

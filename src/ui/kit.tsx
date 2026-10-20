@@ -77,7 +77,7 @@ export function Loading() {
   );
 }
 
-type IconName = 'back' | 'close' | 'scan' | 'stats' | 'settings' | 'copy' | 'bell' | 'flash' | 'photo' | 'more' | 'check';
+type IconName = 'back' | 'close' | 'scan' | 'stats' | 'settings' | 'copy' | 'bell' | 'flash' | 'photo' | 'more' | 'check' | 'share';
 
 export function Icon({ name, color = C.fg, size = 18 }: { name: IconName; color?: string; size?: number }) {
   const p = { stroke: color, strokeWidth: 1.7, fill: 'none' as const, strokeLinecap: 'square' as const };
@@ -110,6 +110,7 @@ export function Icon({ name, color = C.fg, size = 18 }: { name: IconName; color?
       )}
       {name === 'more' && <Path d="M5 12h.01M12 12h.01M19 12h.01" {...p} strokeWidth={3} />}
       {name === 'check' && <Path d="M5 12.5l4.5 4.5L19 7.5" {...p} />}
+      {name === 'share' && <Path d="M12 15V3.5M7.5 8L12 3.5 16.5 8M5 12v8.5h14V12" {...p} />}
     </Svg>
   );
 }
