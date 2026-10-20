@@ -14,9 +14,11 @@ export type Settings = {
   weeklyDigest: boolean;
   /** Id of the scheduled weekly summary, so it can be replaced. */
   digestId: string | null;
+  /** Ask for the fingerprint or face when opening the app. */
+  appLock: boolean;
 };
 
-const DEFAULTS: Settings = { payday: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null };
+const DEFAULTS: Settings = { payday: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');

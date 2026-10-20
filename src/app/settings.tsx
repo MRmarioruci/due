@@ -1,7 +1,8 @@
-import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatHour } from '@/lib/dates';
+import { authenticate, canLock } from '@/lib/lock';
 import { goBack } from '@/lib/nav';
 import { remindersAvailable, rescheduleAll } from '@/lib/reminders';
 import { seedSampleBills } from '@/lib/seed';
@@ -80,6 +81,18 @@ export default function SettingsScreen() {
         onChange={(v) => { updateSettings({ extraNudges: v }); rescheduleAll(); }}
       />
       <Toggle label="Weekly summary" help="Monday morning: what's due this week and how much." value={s.weeklyDigest} onChange={(v) => updateSettings({ weeklyDigest: v })} />
+
+      <Eyebrow style={st.section}>Privacy</Eyebrow>
+      <Toggle
+        label="Lock with fingerprint or face"
+        help="Asks when you open due, and again after it's been in the background for a minute."
+        value={s.appLock}
+        onChange={async (v) => {
+          if (!v) return updateSettings({ appLock: false });
+          if (!(await canLock())) return Alert.alert('No fingerprint or face set up', 'Add one in your phone’s security settings first.');
+          if (await authenticate('Turn on the app lock')) updateSettings({ appLock: true });
+        }}
+      />
 
       {__DEV__ && (
         <>

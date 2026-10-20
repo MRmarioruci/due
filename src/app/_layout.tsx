@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { LockGate } from '@/lib/lock';
 import { usePayCheck } from '@/lib/pay-check';
 import { listenForResponses, scheduleDigest, setupNotifications } from '@/lib/reminders';
 import { useSettings } from '@/lib/settings';
@@ -49,9 +50,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={theme}>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'fade_from_bottom' }}>
-        <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
-      </Stack>
+      <LockGate>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'fade_from_bottom' }}>
+          <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
+        </Stack>
+      </LockGate>
     </ThemeProvider>
   );
 }
