@@ -1,4 +1,4 @@
-import { Link, router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,10 +6,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { daysBetween, fromIso, relativeDays, shortDay, todayIso } from '@/lib/dates';
 import { activeDiscount } from '@/lib/discount';
 import { formatAmount } from '@/lib/money';
+import { openScan } from '@/lib/nav';
 import { planAroundPayday } from '@/lib/plan';
 import { CADENCE_LABEL, expectedBills, findSeries, type Series } from '@/lib/recurring';
 import { seedSampleBills } from '@/lib/seed';
-import { useSettings } from '@/lib/settings';
+import { homeCurrency, useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
 import { CATEGORY_LABEL, type Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
@@ -22,7 +23,7 @@ const HORIZON = 30;
 function mainCurrency(bills: Bill[]): string {
   const n = new Map<string, number>();
   bills.forEach((b) => n.set(b.currency, (n.get(b.currency) ?? 0) + 1));
-  return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'CHF';
+  return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? homeCurrency();
 }
 
 export default function Bills() {
@@ -53,6 +54,8 @@ export default function Bills() {
           { title: 'Later', items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 7) },
           { title: 'No due date', items: open.filter((b) => !b.dueDate) },
         ];
+
+  if (!settings.onboarded) return <Redirect href="/onboarding" />;
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -149,9 +152,7 @@ export default function Bills() {
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Link href="/scan" asChild>
-          <Button title="Scan a bill" icon={<Icon name="scan" color={C.bg} size={20} />} />
-        </Link>
+        <Button onPress={() => openScan()} title="Scan a bill" icon={<Icon name="scan" color={C.bg} size={20} />} />
       </View>
     </View>
   );
@@ -179,7 +180,7 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
       </View>
       <View style={{ alignItems: 'flex-end', gap: 5 }}>
         <T style={st.rowAmount}>
-          {bill.currency !== 'CHF' ? `${bill.currency} ` : ''}
+          {bill.currency !== homeCurrency() ? `${bill.currency} ` : ''}
           {formatAmount(discount?.payMinor ?? (bill.status === 'paid' ? bill.paidAmountMinor : null) ?? bill.amountMinor, bill.currency)}
         </T>
         <T style={[st.rowDays, { color: urgent ? C.accent : C.dim }]}>

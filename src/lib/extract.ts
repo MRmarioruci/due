@@ -1,7 +1,8 @@
 import type { DecodedCode } from './payment-codes';
 import { toMinor } from './payment-codes';
 import { todayIso } from './dates';
-import { getSettings } from './settings';
+import { countryByCode } from './regions';
+import { getSettings, homeCountry, homeCurrency } from './settings';
 import { emptyPayment, type BillDraft, type Category, type PayMethod, type SourcedField, type Source } from './types';
 
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
@@ -63,8 +64,11 @@ const SCHEMA = {
   },
 };
 
-const PROMPT = `You read a photo or PDF of a bill or invoice from any country and language and return its payment details as JSON.
-Rules: read only what is printed; use null for anything you cannot read with confidence. Dates must be YYYY-MM-DD; read day/month order from the bill's country conventions. Today is ${todayIso()}.`;
+const prompt = () => {
+  const home = countryByCode(homeCountry())?.name;
+  return `You read a photo or PDF of a bill or invoice from any country and language and return its payment details as JSON.
+Rules: read only what is printed; use null for anything you cannot read with confidence. Dates must be YYYY-MM-DD; read day/month order from the bill's country conventions${home ? ` (the user lives in ${home}, which is usually the bill's country too)` : ''}. Today is ${todayIso()}.`;
+};
 
 /** A scanned page or an imported document, as sent to the model. */
 export type BillFile = { base64: string; mimeType: 'image/jpeg' | 'application/pdf' };
@@ -75,7 +79,7 @@ async function askModel(file: BillFile, decoded: DecodedCode | null): Promise<Mo
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': API_KEY! },
     body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: PROMPT + hint }, { inline_data: { mime_type: file.mimeType, data: file.base64 } }] }],
+      contents: [{ role: 'user', parts: [{ text: prompt() + hint }, { inline_data: { mime_type: file.mimeType, data: file.base64 } }] }],
       generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
     }),
   });
@@ -131,7 +135,7 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; file: Bill
     payee: pick('payee', decoded?.payee, ai?.payee) ?? 'Unknown biller',
     description: ai?.description ?? null,
     amountMinor: pick('amount', decoded?.amountMinor, ai?.amount ? toMinor(ai.amount) : null),
-    currency: pick('currency', decoded?.currency, ai?.currency?.toUpperCase()) ?? 'CHF',
+    currency: pick('currency', decoded?.currency, ai?.currency?.toUpperCase()) ?? homeCurrency(),
     dueDate: pick('dueDate', decoded?.dueDate, isoDate(ai?.due_date)),
     issueDate: decoded?.issueDate ?? isoDate(ai?.issue_date),
     discount:

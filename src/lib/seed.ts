@@ -1,31 +1,35 @@
 import { addDaysIso, todayIso } from './dates';
+import { homeCountry, homeCurrency } from './settings';
 import { saveBill } from './store';
 import { emptyPayment, type Bill, type Category } from './types';
 
 /** Dev-only sample data so the list, bill and stats screens can be tried without scanning anything. */
 export function seedSampleBills() {
   const today = todayIso();
+  // Sample bills in your own currency; Swiss ones carry a real QR-bill payload, others a GiroCode-style IBAN.
+  const currency = homeCurrency();
+  const swiss = currency === 'CHF';
   const mk = (payee: string, description: string, category: Category, minor: number, dueIn: number, paidDaysAgo?: number, discountPct?: number): Bill => ({
     id: `seed-${payee}-${dueIn}`,
     payee,
     description,
     amountMinor: minor,
-    currency: 'CHF',
+    currency,
     dueDate: addDaysIso(today, dueIn),
     issueDate: addDaysIso(today, dueIn - 30),
     discount: discountPct ? { percent: discountPct, until: addDaysIso(today, paidDaysAgo != null ? dueIn - 20 : 5) } : null,
     paidAmountMinor: discountPct && paidDaysAgo != null ? minor - Math.round((minor * discountPct) / 100) : null,
     category,
-    country: 'CH',
+    country: swiss ? 'CH' : homeCountry(),
     payMethod: 'qr_transfer',
     payment: {
       ...emptyPayment(),
-      standard: 'swiss_qr',
-      iban: 'CH4431999123000889012',
+      standard: swiss ? 'swiss_qr' : null,
+      iban: swiss ? 'CH4431999123000889012' : 'DE89370400440532013000',
       creditorName: payee,
-      referenceType: 'QRR',
-      reference: '210000000003139471430009017',
-      raw: [
+      referenceType: swiss ? 'QRR' : null,
+      reference: swiss ? '210000000003139471430009017' : `INV-${dueIn + 100}`,
+      raw: !swiss ? null : [
         'SPC', '0200', '1', 'CH4431999123000889012', 'S', payee, 'Musterstrasse', '1', '8000', 'Zürich', 'CH',
         '', '', '', '', '', '', '', (minor / 100).toFixed(2), 'CHF',
         '', '', '', '', '', '', '', 'QRR', '210000000003139471430009017', description, 'EPD',

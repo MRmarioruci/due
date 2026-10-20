@@ -24,8 +24,8 @@ import { Animated, enterFade } from '@/ui/motion';
 import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER } from '@/ui/theme';
 
-/** The Swiss cross that goes in the middle of a QR-bill code (it's part of the exported image too). */
-const SWISS_CROSS = '<svg viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg"><rect width="30" height="30" fill="#fff"/><rect x="2.5" y="2.5" width="25" height="25" fill="#000"/><path d="M12.5 7.5h5v5h5v5h-5v5h-5v-5h-5v-5h5z" fill="#fff"/></svg>';
+/** due's mark in the middle of the payment code (the code's error correction leaves room for it). */
+const CENTER_MARK = '<svg viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg"><rect width="30" height="30" fill="#fff"/><rect x="3" y="3" width="24" height="24" fill="#0a0a0a"/><rect x="16.5" y="16.5" width="6" height="6" fill="#FF5A36"/></svg>';
 
 /** The code a banking app can scan: the original QR-bill / GiroCode, or one built from the printed details. */
 function payableCode(b: Bill): { value: string; swiss: boolean } | null {
@@ -164,8 +164,8 @@ export default function BillScreen() {
               quietZone={16}
               backgroundColor="#fff"
               color="#000"
-              logoSVG={code.swiss ? SWISS_CROSS : undefined}
-              logoSize={code.swiss ? 34 : undefined}
+              logoSVG={CENTER_MARK}
+              logoSize={32}
               logoBackgroundColor="transparent"
               logoMargin={0}
               getRef={(r) => (qrRef.current = r)}

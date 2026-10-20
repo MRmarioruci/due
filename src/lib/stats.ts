@@ -43,11 +43,11 @@ function label(period: Period, d: Date): string {
 }
 
 /** Paid bills bucketed by when they were paid. Only bills in the most common currency are summed. */
-export function computeStats(bills: Bill[], period: Period, now = new Date()): Stats {
+export function computeStats(bills: Bill[], period: Period, now = new Date(), fallbackCurrency = 'EUR'): Stats {
   const paid = bills.filter((b) => b.status === 'paid' && b.paidAt);
   const counts = new Map<string, number>();
   paid.forEach((b) => counts.set(b.currency, (counts.get(b.currency) ?? 0) + 1));
-  const currency = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'CHF';
+  const currency = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? fallbackCurrency;
 
   const n = COUNT[period];
   const current = startOf(period, now);

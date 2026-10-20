@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 
 import { todayIso } from '@/lib/dates';
+import { homeCurrency } from '@/lib/settings';
 import { getBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 
@@ -23,7 +24,7 @@ if (Platform.OS === 'android') {
 function render(bills: Bill[]) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- only reachable where the native module exists
   const { DueWidget } = require('./DueWidget') as typeof import('./DueWidget');
-  return <DueWidget data={widgetData(bills, todayIso())} />;
+  return <DueWidget data={widgetData(bills, todayIso(), homeCurrency())} />;
 }
 
 /** Runs headless when Android adds, refreshes (every 30 min) or resizes the widget. */

@@ -1,9 +1,15 @@
+import { getLocales } from 'expo-localization';
 import * as SQLite from 'expo-sqlite';
 import { useSyncExternalStore } from 'react';
 
 import type { PaySchedule } from './plan';
 
 export type Settings = {
+  /** Finished the first-run setup. */
+  onboarded: boolean;
+  /** Home country (ISO 3166-1 alpha-2) and currency (ISO 4217); null means "use the phone's". */
+  country: string | null;
+  currency: string | null;
   /** When pay arrives, or null when not set. */
   pay: PaySchedule | null;
   /** Hour of the day reminders go off. */
@@ -20,7 +26,7 @@ export type Settings = {
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
+const DEFAULTS: Settings = { onboarded: false, country: null, currency: null, pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
@@ -61,4 +67,19 @@ const subscribe = (l: () => void) => {
 
 export function useSettings(): Settings {
   return useSyncExternalStore(subscribe, () => snapshot);
+}
+
+/** The phone's own region and currency, used until the user picks theirs. */
+export function deviceRegion(): { country: string | null; currency: string | null } {
+  const l = getLocales()[0];
+  return { country: l?.regionCode ?? null, currency: l?.currencyCode ?? null };
+}
+
+/** Currency for new bills and totals when nothing else decides it. */
+export function homeCurrency(): string {
+  return snapshot.currency ?? deviceRegion().currency ?? 'EUR';
+}
+
+export function homeCountry(): string | null {
+  return snapshot.country ?? deviceRegion().country;
 }

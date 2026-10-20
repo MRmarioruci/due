@@ -6,6 +6,7 @@ import { todayIso } from '@/lib/dates';
 import { formatAmount } from '@/lib/money';
 import { goBack } from '@/lib/nav';
 import { CADENCE_LABEL, findSeries, monthlyFixedCosts } from '@/lib/recurring';
+import { homeCurrency } from '@/lib/settings';
 import { computeStats, type Period } from '@/lib/stats';
 import { useBills } from '@/lib/store';
 import { CATEGORY_LABEL } from '@/lib/types';
@@ -26,7 +27,7 @@ export default function StatsScreen() {
   const bills = useBills();
   const [period, setPeriod] = useState<Period>('month');
   const [sel, setSel] = useState<number | null>(null);
-  const s = useMemo(() => computeStats(bills, period), [bills, period]);
+  const s = useMemo(() => computeStats(bills, period, new Date(), homeCurrency()), [bills, period]);
   const series = useMemo(() => findSeries(bills, todayIso()).filter((x) => x.currency === s.currency), [bills, s.currency]);
   const p = PERIODS.find((x) => x.key === period)!;
 

@@ -8,10 +8,10 @@ import { formatHour, longDate, todayIso, daysBetween } from '@/lib/dates';
 import { activeDiscount, targetDate } from '@/lib/discount';
 import { takePendingDraft } from '@/lib/draft';
 import { formatMoney } from '@/lib/money';
-import { goBack } from '@/lib/nav';
+import { goBack, openScan } from '@/lib/nav';
 import { toMinor } from '@/lib/payment-codes';
 import { describeReminder, scheduleReminder } from '@/lib/reminders';
-import { getSettings } from '@/lib/settings';
+import { getSettings, homeCurrency } from '@/lib/settings';
 import { getBill, newId, saveBill } from '@/lib/store';
 import { CATEGORY_LABEL, emptyPayment, type Bill, type BillDraft, type Category, type SourcedField } from '@/lib/types';
 import { pickDate } from '@/ui/calendar';
@@ -30,7 +30,7 @@ const blankDraft = (): BillDraft => ({
   payee: '',
   description: null,
   amountMinor: null,
-  currency: 'CHF',
+  currency: homeCurrency(),
   dueDate: null,
   issueDate: null,
   category: 'other',
@@ -101,7 +101,7 @@ export default function Review() {
   async function save() {
     setSaving(true);
     if (existing) {
-      const updated: Bill = { ...existing, ...d, payee: d.payee.trim(), amountMinor: toMinor(amountText), currency: d.currency.trim().toUpperCase() || 'CHF' };
+      const updated: Bill = { ...existing, ...d, payee: d.payee.trim(), amountMinor: toMinor(amountText), currency: d.currency.trim().toUpperCase() || homeCurrency() };
       saveBill(await scheduleReminder(updated));
       toast('Changes saved');
       return goBack();
@@ -110,7 +110,7 @@ export default function Review() {
       ...d,
       payee: d.payee.trim(),
       amountMinor: toMinor(amountText),
-      currency: d.currency.trim().toUpperCase() || 'CHF',
+      currency: d.currency.trim().toUpperCase() || homeCurrency(),
       id: newId(),
       status: 'open',
       paidAt: null,
@@ -126,7 +126,7 @@ export default function Review() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
         <View style={st.header}>
-          <IconButton label={existing ? 'Close without saving' : 'Retake photo'} onPress={() => (existing ? goBack() : router.replace('/scan'))}>
+          <IconButton label={existing ? 'Close without saving' : 'Retake photo'} onPress={() => (existing ? goBack() : openScan(true))}>
             <Icon name={existing ? 'close' : 'back'} />
           </IconButton>
           <T style={st.headerTitle}>{existing ? 'EDIT BILL' : 'CHECK DETAILS'}</T>

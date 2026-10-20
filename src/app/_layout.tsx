@@ -56,10 +56,12 @@ export default function RootLayout() {
     return () => clearTimeout(t);
   }, [bills, weeklyDigest, remindHour]);
 
+  // The permission prompt waits for onboarding, which asks for it with an explanation first.
+  const { onboarded } = useSettings();
   useEffect(() => {
-    setupNotifications();
-    return listenForResponses();
-  }, []);
+    if (onboarded) setupNotifications();
+  }, [onboarded]);
+  useEffect(() => listenForResponses(), []);
 
   if (!ready) return null;
 

@@ -11,11 +11,11 @@ export type WidgetData = {
 };
 
 /** What the home-screen widget shows: the 30-day total and the next bill to deal with. */
-export function widgetData(bills: Bill[], today: string): WidgetData {
+export function widgetData(bills: Bill[], today: string, fallbackCurrency = 'EUR'): WidgetData {
   const open = bills.filter((b) => b.status === 'open');
   const counts = new Map<string, number>();
   open.forEach((b) => counts.set(b.currency, (counts.get(b.currency) ?? 0) + 1));
-  const currency = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'CHF';
+  const currency = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? fallbackCurrency;
 
   const pay = (b: Bill) => activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0;
   const window = open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= 30);

@@ -5,14 +5,14 @@ import * as Haptics from 'expo-haptics';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { setPendingDraft } from '@/lib/draft';
 import { buildDraft } from '@/lib/extract';
-import { goBack } from '@/lib/nav';
+import { goBack, takeScanRequest } from '@/lib/nav';
 import { decodePaymentCode, type DecodedCode } from '@/lib/payment-codes';
 import { Button, Icon, IconButton, T } from '@/ui/kit';
 import { C, F, GUTTER } from '@/ui/theme';
@@ -38,6 +38,13 @@ async function decodeFromImage(uri: string): Promise<DecodedCode | null> {
 }
 
 export default function Scan() {
+  // Only open when the user asked for it; a relaunch that lands here goes home instead.
+  const [requested] = useState(takeScanRequest);
+  if (!requested) return <Redirect href="/" />;
+  return <ScanCamera />;
+}
+
+function ScanCamera() {
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
@@ -179,7 +186,7 @@ export default function Scan() {
         <View style={st.status}>
           <View style={[st.dot, { backgroundColor: decoded ? C.accent : C.dim }]} />
           <T style={st.statusText}>
-            {busy ? 'READING DETAILS' : decoded ? `QR-BILL FOUND · ${decoded.payee?.toUpperCase() ?? ''}`.slice(0, 40) : 'LOOKING FOR A PAYMENT CODE'}
+            {busy ? 'READING DETAILS' : decoded ? `PAYMENT CODE FOUND · ${decoded.payee?.toUpperCase() ?? ''}`.slice(0, 40) : 'LOOKING FOR A PAYMENT CODE'}
           </T>
         </View>
         <T style={st.hint}>
