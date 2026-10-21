@@ -19,7 +19,9 @@ import { buildEpc, buildSwissQr } from '@/lib/payment-codes';
 import { paydayAdvice } from '@/lib/plan';
 import { markOpen, markPaid, snooze } from '@/lib/reminders';
 import { getSettings, useSettings } from '@/lib/settings';
-import { deleteBill, useBill } from '@/lib/store';
+import { useBill } from '@/lib/store';
+import { openOriginal, originalOf } from '@/lib/originals';
+import { removeBill } from '@/lib/remove';
 import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
 import { Animated, enterFade } from '@/ui/motion';
@@ -116,8 +118,7 @@ export default function BillScreen() {
           onPress: async () => {
             const sure = await sheet.confirm({ title: t('bill.deleteTitle', { payee: b.payee }), message: t('bill.deleteText'), confirm: t('bill.deleteConfirm'), destructive: true });
             if (!sure) return;
-            await markPaid(b); // cancels its notifications
-            deleteBill(b.id);
+            await removeBill(b);
             toast(t('bill.deleted'));
             goBack();
           },
@@ -125,6 +126,8 @@ export default function BillScreen() {
       ],
     });
   }
+
+  const original = originalOf(bill);
 
   const rows: { label: string; value: string; mono?: boolean }[] = [
     bill.payment.iban && { label: 'IBAN', value: groupIban(bill.payment.iban), mono: true },
@@ -206,6 +209,13 @@ export default function BillScreen() {
               }}
             />
           )}
+          {original && (
+            <ActionTile
+              icon="photo"
+              label={t('bill.original')}
+              onPress={() => openOriginal(original).catch(() => toast(t('bill.originalFailed')))}
+            />
+          )}
           <ActionTile icon="download" label={pdfBusy ? t('pdf.making') : t('pdf.short')} onPress={downloadPdf} busy={pdfBusy} />
         </Animated.View>
 
@@ -266,7 +276,7 @@ export default function BillScreen() {
 }
 
 /** One action for the bill: icon over a short label, all the same size. */
-function ActionTile({ icon, label, onPress, busy }: { icon: 'share' | 'link' | 'download'; label: string; onPress: () => void; busy?: boolean }) {
+function ActionTile({ icon, label, onPress, busy }: { icon: 'share' | 'link' | 'download' | 'photo'; label: string; onPress: () => void; busy?: boolean }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} disabled={busy} style={({ pressed }) => [st.tile, (pressed || busy) && { backgroundColor: C.surface }]}>
       <Icon name={icon} size={18} />

@@ -1,48 +1,21 @@
-import { CameraView, scanFromURLAsync, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
+import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { Image } from 'expo-image';
 import { Redirect, router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { setPendingDraft } from '@/lib/draft';
-import { buildDraft } from '@/lib/extract';
 import { t } from '@/i18n/core';
 import { goBack, takeScanRequest } from '@/lib/nav';
 import { decodePaymentCode, type DecodedCode } from '@/lib/payment-codes';
-import { Button, Icon, IconButton, T } from '@/ui/kit';
+import { readPdf, readPhoto } from '@/lib/reading';
+import { Button, Icon, IconButton } from '@/ui/kit';
+import { CapturedPreview, ReadingPanel, Tx, type Captured } from '@/ui/reading';
 // The camera screen stays dark in both themes.
 import { DARK as C, F, GUTTER } from '@/ui/theme';
-
-/** Text on the camera screen: light by default, whatever the app theme. */
-function Tx({ style, ...props }: React.ComponentProps<typeof T>) {
-  return <T {...props} style={[{ color: C.fg }, style]} />;
-}
-
-/** Shrinks the photo before it goes to the model: a bill stays readable at 1600 px and the upload stays small. */
-async function toJpeg(uri: string): Promise<{ uri: string; base64: string }> {
-  const ctx = ImageManipulator.manipulate(uri);
-  ctx.resize({ width: 1600 });
-  const img = await ctx.renderAsync();
-  const out = await img.saveAsync({ format: SaveFormat.JPEG, compress: 0.75, base64: true });
-  return { uri: out.uri, base64: out.base64! };
-}
-
-async function decodeFromImage(uri: string): Promise<DecodedCode | null> {
-  try {
-    const found = await scanFromURLAsync(uri, ['qr']);
-    for (const r of found) {
-      const d = decodePaymentCode(r.data);
-      if (d) return d;
-    }
-  } catch {}
-  return null;
-}
 
 export default function Scan() {
   // Only open when the user asked for it; a relaunch that lands here goes home instead.
@@ -60,7 +33,7 @@ function ScanCamera() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** What's being read: a photo (shown in place of the camera) or an imported PDF (shown by name). */
-  const [captured, setCaptured] = useState<{ uri: string; pdfName?: string } | null>(null);
+  const [captured, setCaptured] = useState<Captured | null>(null);
 
   function onBarcode(r: BarcodeScanningResult) {
     if (decoded || busy) return;
@@ -85,25 +58,16 @@ function ScanCamera() {
 
   function finish(photoUri: string) {
     setCaptured({ uri: photoUri });
-    read(async () => {
-      const jpeg = await toJpeg(photoUri);
-      const code = decoded ?? (await decodeFromImage(photoUri));
-      return buildDraft({ decoded: code, file: { base64: jpeg.base64, mimeType: 'image/jpeg' }, imageUri: jpeg.uri });
-    });
+    read(() => readPhoto(photoUri, decoded));
   }
 
-  /** PDFs go to the model as they are; the QR code on them is read from its printed details instead. */
   async function importDocument() {
     const res = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true });
     const doc = res.canceled ? null : res.assets[0];
     if (!doc) return;
     if (doc.mimeType !== 'application/pdf') return finish(doc.uri);
     setCaptured({ uri: doc.uri, pdfName: doc.name });
-    read(async () => {
-      if ((doc.size ?? 0) > 15_000_000) throw new Error(t('scan.pdfTooBig'));
-      const base64 = await new File(doc.uri).base64();
-      return buildDraft({ decoded: null, file: { base64, mimeType: 'application/pdf' }, imageUri: null });
-    });
+    read(() => readPdf(doc.uri, doc.size ?? null));
   }
 
   async function shoot() {
@@ -147,17 +111,7 @@ function ScanCamera() {
         onBarcodeScanned={decoded ? undefined : onBarcode}
       />
 
-      {captured &&
-        (captured.pdfName ? (
-          <View style={[StyleSheet.absoluteFill, st.pdfStage]}>
-            <View style={st.pdfCard}>
-              <Tx style={st.pdfBadge}>PDF</Tx>
-              <Tx style={{ fontFamily: F.medium, fontSize: 15, color: C.bg, textAlign: 'center' }} numberOfLines={3}>{captured.pdfName}</Tx>
-            </View>
-          </View>
-        ) : (
-          <Image source={{ uri: captured.uri }} style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]} contentFit="contain" transition={150} />
-        ))}
+      {captured && <CapturedPreview captured={captured} />}
 
       <View style={[st.top, { top: insets.top + 12 }]}>
         <IconButton label={t('common.close')} onPress={() => goBack()} style={st.glass}>
@@ -170,24 +124,20 @@ function ScanCamera() {
       </View>
 
       {captured ? (
-        <View style={[st.bottom, { paddingBottom: insets.bottom + 24 }]}>
-          {busy && <ProgressSweep />}
-          <View style={st.reading}>
-            {busy ? <ActivityIndicator color={C.fg} /> : <Icon name="close" color={C.accent} />}
-            <View style={{ flex: 1, gap: 4 }}>
-              <Tx style={{ fontFamily: F.semibold, fontSize: 15 }}>{busy ? t('scan.reading') : t('scan.readFailed')}</Tx>
-              <Tx style={{ fontSize: 13, color: C.muted, lineHeight: 18 }} numberOfLines={3}>
-                {busy ? (decoded ? t('scan.readingWithQr') : t('scan.readingNoQr')) : error}
-              </Tx>
-            </View>
-          </View>
-          {!busy && (
-            <View style={{ flexDirection: 'row', gap: 8, alignSelf: 'stretch', paddingHorizontal: GUTTER }}>
-              <Button palette={C} title={t('scan.retake')} kind="secondary" style={{ flex: 1 }} onPress={() => { setCaptured(null); setError(null); }} />
-              <Button palette={C} title={t('scan.fillByHand')} style={{ flex: 1 }} onPress={() => { setPendingDraft(null); router.replace('/review'); }} />
-            </View>
-          )}
-        </View>
+        <ReadingPanel
+          busy={busy}
+          error={error}
+          detail={decoded ? t('scan.readingWithQr') : t('scan.readingNoQr')}
+          retryLabel={t('scan.retake')}
+          onRetry={() => {
+            setCaptured(null);
+            setError(null);
+          }}
+          onFillByHand={() => {
+            setPendingDraft(null);
+            router.replace('/review');
+          }}
+        />
       ) : (
       <View style={[st.bottom, { paddingBottom: insets.bottom + 24 }]}>
         <View style={st.status}>
@@ -219,29 +169,8 @@ function ScanCamera() {
   );
 }
 
-/** An indeterminate bar along the top of the bottom panel while the bill is being read. */
-function ProgressSweep() {
-  const [x] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    const loop = Animated.loop(Animated.timing(x, { toValue: 1, duration: 1300, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }));
-    loop.start();
-    return () => loop.stop();
-  }, [x]);
-  return (
-    <View style={st.track}>
-      <Animated.View style={[st.sweep, { transform: [{ translateX: x.interpolate({ inputRange: [0, 1], outputRange: [-140, 420] }) }] }]} />
-    </View>
-  );
-}
-
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
-  pdfStage: { backgroundColor: '#111', alignItems: 'center', justifyContent: 'center', paddingBottom: 160 },
-  pdfCard: { width: 200, height: 260, backgroundColor: C.paper, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 20, transform: [{ rotate: '-2deg' }] },
-  pdfBadge: { fontFamily: F.mono, fontSize: 12, letterSpacing: 1.2, color: C.paper, backgroundColor: C.accent, paddingHorizontal: 8, paddingVertical: 3 },
-  reading: { flexDirection: 'row', alignItems: 'center', gap: 14, alignSelf: 'stretch', marginHorizontal: GUTTER, padding: 16, backgroundColor: 'rgba(10,10,10,0.9)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  track: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.06)' },
-  sweep: { width: 140, height: 2, backgroundColor: C.accent },
   top: { position: 'absolute', left: GUTTER, right: GUTTER, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   glass: { backgroundColor: 'rgba(10,10,10,0.6)', borderColor: 'rgba(255,255,255,0.08)' },
   title: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.3, color: C.muted },

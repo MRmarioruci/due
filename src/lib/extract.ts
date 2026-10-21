@@ -78,7 +78,7 @@ async function askApi(file: BillFile, decoded: DecodedCode | null): Promise<Mode
  * Turns a scan into a draft bill. Values decoded from a payment code are exact and always win;
  * the model fills in the rest (and everything, when the bill has no code).
  */
-export async function buildDraft(opts: { decoded: DecodedCode | null; file: BillFile | null; imageUri: string | null }): Promise<{ draft: BillDraft; warning: string | null }> {
+export async function buildDraft(opts: { decoded: DecodedCode | null; file: BillFile | null; imageUri: string | null; pdfUri: string | null }): Promise<{ draft: BillDraft; warning: string | null }> {
   const { decoded } = opts;
   let ai: ModelBill | null = null;
   let warning: string | null = null;
@@ -142,6 +142,7 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; file: Bill
     sources,
     remindDaysBefore: getSettings().remindDaysBefore,
     imageUri: opts.imageUri,
+    pdfUri: opts.pdfUri,
   };
   return { draft, warning };
 }

@@ -14,7 +14,9 @@ import { PAY_STYLES } from '@/lib/reminder-plan';
 import { describeReminder, scheduleReminder } from '@/lib/reminders';
 import { payeeKey } from '@/lib/recurring';
 import { getSettings, homeCurrency, updateSettings } from '@/lib/settings';
-import { getBill, newId, saveBill } from '@/lib/store';
+import { getBill, newId, saveBill, useBills } from '@/lib/store';
+import { findDuplicate } from '@/lib/duplicates';
+import { keepOriginals } from '@/lib/originals';
 import { CATEGORIES, emptyPayment, type Bill, type BillDraft, type SourcedField } from '@/lib/types';
 import { t } from '@/i18n/core';
 import { categoryLabel, leadLabel, payStyleLabel } from '@/i18n/labels';
@@ -39,6 +41,7 @@ const blankDraft = (): BillDraft => ({
   sources: {},
   remindDaysBefore: getSettings().remindDaysBefore,
   imageUri: null,
+  pdfUri: null,
 });
 
 /** The editable part of a saved bill. */
@@ -56,6 +59,9 @@ export default function Review() {
   const [d, setD] = useState<BillDraft>(initial.draft);
   const [amountText, setAmountText] = useState(d.amountMinor != null ? (d.amountMinor / 100).toFixed(2) : '');
   const [saving, setSaving] = useState(false);
+  const bills = useBills();
+  // The same bill already saved (scanned twice)? Checked live, as the details get corrected.
+  const duplicate = existing ? null : findDuplicate({ ...d, amountMinor: toMinor(amountText) }, bills);
 
   /** Editing a field makes it the user's, so its QR/AI tag goes away. */
   function edit<K extends keyof BillDraft>(key: K, value: BillDraft[K], field?: SourcedField) {
@@ -133,7 +139,7 @@ export default function Review() {
       remindAt: null,
       reminderId: null,
     };
-    saveBill(await scheduleReminder(bill));
+    saveBill(await scheduleReminder(keepOriginals(bill)));
     router.dismissTo('/');
   }
 
@@ -154,8 +160,26 @@ export default function Review() {
           </View>
         )}
 
+        {duplicate && (
+          <View style={st.duplicate}>
+            <T style={{ fontFamily: F.semibold, fontSize: 14.5 }}>{t('dup.title')}</T>
+            <T style={{ fontSize: 13.5, color: C.muted, lineHeight: 19 }}>
+              {duplicate.status === 'paid' && duplicate.paidAt
+                ? t('dup.paid', { date: longDate(duplicate.paidAt.slice(0, 10)) })
+                : t('dup.open', { date: longDate(duplicate.createdAt.slice(0, 10)) })}
+            </T>
+            <Button title={t('dup.show')} kind="secondary" style={{ marginTop: 6 }} onPress={() => router.replace({ pathname: '/bill/[id]', params: { id: duplicate.id } })} />
+          </View>
+        )}
+
         <View style={st.hero}>
-          {d.imageUri ? <Image source={{ uri: d.imageUri }} style={st.thumb} contentFit="cover" /> : <View style={[st.thumb, { backgroundColor: C.paper }]} />}
+          {d.imageUri ? (
+            <Image source={{ uri: d.imageUri }} style={st.thumb} contentFit="cover" />
+          ) : (
+            <View style={[st.thumb, { backgroundColor: C.paper, alignItems: 'center', justifyContent: 'center' }]}>
+              {d.pdfUri && <T style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 0.8, color: C.paper, backgroundColor: C.accent, paddingHorizontal: 4, paddingVertical: 1 }}>PDF</T>}
+            </View>
+          )}
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <TextInput value={d.payee} onChangeText={(v) => edit('payee', v, 'payee')} placeholder={t('review.payeePlaceholder')} placeholderTextColor={C.dim} style={st.payee} accessibilityLabel={t('review.payee')} />
@@ -268,7 +292,7 @@ export default function Review() {
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button title={existing ? t('review.saveChanges') : t('review.saveBill')} onPress={save} loading={saving} disabled={!valid} />
+        <Button title={existing ? t('review.saveChanges') : duplicate ? t('dup.saveAnyway') : t('review.saveBill')} onPress={save} loading={saving} disabled={!valid} />
       </View>
     </KeyboardAvoidingView>
   );
@@ -277,6 +301,7 @@ export default function Review() {
 const st = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
   headerTitle: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.3, color: C.muted },
+  duplicate: { marginTop: 16, gap: 4, borderWidth: 1, borderColor: C.accent, padding: 14 },
   warning: { marginTop: 16, borderWidth: 1, borderColor: C.border, padding: 12 },
   hero: { marginTop: 22, flexDirection: 'row', gap: 14, alignItems: 'center' },
   thumb: { width: 46, height: 62, transform: [{ rotate: '-3deg' }] },

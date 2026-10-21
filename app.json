@@ -2,7 +2,7 @@
   "expo": {
     "name": "due",
     "slug": "due",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "due",
@@ -29,6 +29,16 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-sharing",
+        {
+          "android": {
+            "enabled": true,
+            "singleShareMimeTypes": ["image/*", "application/pdf"],
+            "multipleShareMimeTypes": ["image/*", "application/pdf"]
+          }
+        }
+      ],
       "expo-sqlite",
       [
         "expo-splash-screen",

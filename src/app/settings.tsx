@@ -11,7 +11,9 @@ import { widgetProblem } from '@/widget';
 import { deviceLang, LANGUAGES, t } from '@/i18n';
 import { countryName, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { remindersAvailable, rescheduleAll } from '@/lib/reminders';
+import { removeAllBills } from '@/lib/remove';
 import { seedSampleBills } from '@/lib/seed';
+import { useBills } from '@/lib/store';
 import { deviceRegion, getSettings, homeCurrency, updateSettings, useSettings } from '@/lib/settings';
 import { chooseCountry, chooseCurrency, chooseLanguageSheet, choosePay, Options } from '@/ui/choosers';
 import { Eyebrow, Icon, IconButton, T } from '@/ui/kit';
@@ -24,6 +26,7 @@ const HOURS = [7, 8, 9, 12, 18, 20];
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const s = useSettings();
+  const billCount = useBills().length;
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + 40 }}>
@@ -79,6 +82,24 @@ export default function SettingsScreen() {
             router.replace('/onboarding');
           }}
         />
+        {billCount > 0 && (
+          <Row
+            label={t('settings.deleteAll')}
+            value={String(billCount)}
+            danger
+            onPress={async () => {
+              const sure = await sheet.confirm({
+                title: t('settings.deleteAllTitle', { n: billCount }),
+                message: t('settings.deleteAllText'),
+                confirm: t('settings.deleteAllConfirm'),
+                destructive: true,
+              });
+              if (!sure) return;
+              await removeAllBills();
+              toast(t('settings.deletedAll'));
+            }}
+          />
+        )}
       </Section>
 
       {__DEV__ && (
@@ -205,10 +226,10 @@ function Section({ title, note, children }: { title: string; note?: string | nul
   );
 }
 
-function Row({ label, value, onPress }: { label: string; value?: string; onPress: () => void }) {
+function Row({ label, value, onPress, danger }: { label: string; value?: string; onPress: () => void; danger?: boolean }) {
   return (
     <Pressable accessibilityRole="button" accessibilityHint={value} onPress={onPress} style={({ pressed }) => [st.row, pressed && { backgroundColor: C.surface }]}>
-      <T style={st.rowLabel}>{label}</T>
+      <T style={[st.rowLabel, danger && { color: C.accent }]}>{label}</T>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 }}>
         {value && (
           <T style={st.rowValue} numberOfLines={1}>

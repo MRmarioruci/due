@@ -75,7 +75,10 @@ export type Bill = {
   reminderId: string | null;
   /** The "last call" and "overdue" nudges scheduled alongside the main reminder. */
   extraReminderIds?: string[];
+  /** The photo the bill was read from (a JPEG kept in the app's files). */
   imageUri: string | null;
+  /** The PDF the bill was imported from, when it came as a PDF. */
+  pdfUri?: string | null;
 };
 
 export type SourcedField = 'payee' | 'amount' | 'currency' | 'dueDate' | 'iban' | 'reference';

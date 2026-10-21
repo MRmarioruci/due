@@ -96,6 +96,7 @@ export default function RootLayout() {
         <View key={`${language ?? 'phone'}-${themeName}`} style={{ flex: 1, backgroundColor: C.bg }}>
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'fade_from_bottom' }}>
             <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="shared" options={{ animation: 'fade' }} />
           </Stack>
         </View>
         <OverlayHost />

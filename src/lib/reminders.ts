@@ -45,7 +45,7 @@ export async function setupNotifications(): Promise<boolean> {
 }
 
 /** Cancels every notification scheduled for the bill. */
-async function cancelFor(bill: Bill) {
+export async function cancelFor(bill: Bill) {
   if (!Notifications) return;
   for (const id of [bill.reminderId, ...(bill.extraReminderIds ?? [])]) {
     if (id) await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
