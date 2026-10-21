@@ -303,6 +303,8 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.lockOffPrompt': 'Wyłącz blokadę aplikacji',
   'settings.lockOn': 'Blokada aplikacji włączona',
   'settings.lockOff': 'Blokada aplikacji wyłączona',
+  'settings.widget': 'Widżet',
+  'settings.widgetBroken': 'Widżet nie może się uruchomić',
   'settings.general': 'Ogólne',
   'settings.rerunSetup': 'Uruchom konfigurację ponownie',
   'settings.development': 'Programowanie',

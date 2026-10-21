@@ -7,6 +7,7 @@ import { authenticate, phoneHasLock } from '@/lib/lock';
 import { goBack } from '@/lib/nav';
 import { describePay } from '@/lib/plan';
 import { PAY_STYLES } from '@/lib/reminder-plan';
+import { widgetProblem } from '@/widget';
 import { deviceLang, LANGUAGES, t } from '@/i18n';
 import { countryName, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { remindersAvailable, rescheduleAll } from '@/lib/reminders';
@@ -62,6 +63,12 @@ export default function SettingsScreen() {
       <Section title={t('settings.security')} note={t('settings.lockNote')}>
         <ToggleRow label={t('settings.lock')} value={s.appLock} onChange={toggleLock} />
       </Section>
+
+      {widgetProblem && (
+        <Section title={t('settings.widget')} note={widgetProblem}>
+          <Row label={t('settings.widgetBroken')} onPress={() => toast(widgetProblem ?? '')} />
+        </Section>
+      )}
 
       <Section title={t('settings.general')}>
         <Row

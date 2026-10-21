@@ -40,3 +40,13 @@ export function DueWidget({ data }: { data: WidgetData }) {
     </FlexWidget>
   );
 }
+
+/** Shown when the widget can't be drawn, so a problem is visible instead of an empty box. */
+export function WidgetError({ message }: { message: string }) {
+  return (
+    <FlexWidget clickAction="OPEN_APP" style={{ height: 'match_parent', width: 'match_parent', backgroundColor: BG, borderRadius: 20, padding: 16, flexDirection: 'column', flexGap: 6 }}>
+      <TextWidget text="due · widget error" style={{ fontSize: 12, color: ACCENT }} />
+      <TextWidget text={message.slice(0, 300)} maxLines={5} style={{ fontSize: 11, color: FG }} />
+    </FlexWidget>
+  );
+}

@@ -14,11 +14,25 @@ export const WIDGET_NAME = 'Due';
 // The widget module is native: it's missing in Expo Go, so load it defensively.
 type WidgetModule = typeof import('react-native-android-widget');
 let mod: WidgetModule | null = null;
+/** Why the widget can't run in this build, if it can't (shown in Settings). Null when it's fine or in Expo Go. */
+export let widgetProblem: string | null = null;
 if (Platform.OS === 'android') {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- must stay a guarded runtime require
     mod = require('react-native-android-widget') as WidgetModule;
-  } catch {}
+  } catch (err) {
+    // Expected in Expo Go, which lacks the native module; anywhere else it's a real problem.
+    if (!isExpoGo()) widgetProblem = `load: ${String((err as Error)?.message ?? err)}`;
+  }
+}
+
+function isExpoGo(): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- tiny optional lookup
+    return require('expo-constants').default?.executionEnvironment === 'storeClient';
+  } catch {
+    return false;
+  }
 }
 
 // Loaded lazily too: the widget components import the native module.
@@ -28,21 +42,39 @@ function render(bills: Bill[]) {
   return <DueWidget data={widgetData(bills, todayIso(), homeCurrency())} />;
 }
 
+/** If drawing fails, show the error on the widget itself instead of leaving an empty box. */
+function renderSafely(load: () => Bill[]) {
+  try {
+    return render(load());
+  } catch (err) {
+    console.error('[widget]', err);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- only reachable where the native module exists
+    const { WidgetError } = require('./DueWidget') as typeof import('./DueWidget');
+    return <WidgetError message={String((err as Error)?.message ?? err)} />;
+  }
+}
+
 /** Runs headless when Android adds, refreshes (every 30 min) or resizes the widget. */
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
-  syncLanguage();
   if (props.widgetAction === 'WIDGET_ADDED' || props.widgetAction === 'WIDGET_UPDATE' || props.widgetAction === 'WIDGET_RESIZED') {
-    props.renderWidget(render(getBills()));
+    props.renderWidget(
+      renderSafely(() => {
+        syncLanguage();
+        return getBills();
+      }),
+    );
   }
 }
 
 export function registerWidget() {
   try {
     mod?.registerWidgetTaskHandler(widgetTaskHandler);
-  } catch {}
+  } catch (err) {
+    widgetProblem = `register: ${String((err as Error)?.message ?? err)}`;
+  }
 }
 
 /** Redraws widgets on the home screen; call whenever bills change. No-op in Expo Go. */
 export function updateWidget(bills: Bill[]) {
-  mod?.requestWidgetUpdate({ widgetName: WIDGET_NAME, renderWidget: () => render(bills) }).catch(() => {});
+  mod?.requestWidgetUpdate({ widgetName: WIDGET_NAME, renderWidget: () => renderSafely(() => bills) }).catch((e) => console.warn('[widget] update failed', e));
 }

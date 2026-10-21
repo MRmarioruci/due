@@ -285,6 +285,8 @@ export const fr: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.lockOffPrompt': 'Désactiver le verrouillage',
   'settings.lockOn': 'Verrouillage activé',
   'settings.lockOff': 'Verrouillage désactivé',
+  'settings.widget': 'Widget',
+  'settings.widgetBroken': 'Le widget ne peut pas démarrer',
   'settings.general': 'Général',
   'settings.rerunSetup': 'Relancer la configuration',
   'settings.development': 'Développement',

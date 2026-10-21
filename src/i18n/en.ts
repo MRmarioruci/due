@@ -303,6 +303,8 @@ export const en = {
   'settings.lockOffPrompt': 'Turn off the app lock',
   'settings.lockOn': 'App lock is on',
   'settings.lockOff': 'App lock is off',
+  'settings.widget': 'Widget',
+  'settings.widgetBroken': 'The home-screen widget can’t start',
   'settings.general': 'General',
   'settings.rerunSetup': 'Run setup again',
   'settings.development': 'Development',

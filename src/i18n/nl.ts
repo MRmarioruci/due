@@ -285,6 +285,8 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.lockOffPrompt': 'App-vergrendeling uitzetten',
   'settings.lockOn': 'App-vergrendeling staat aan',
   'settings.lockOff': 'App-vergrendeling staat uit',
+  'settings.widget': 'Widget',
+  'settings.widgetBroken': 'De widget kan niet starten',
   'settings.general': 'Algemeen',
   'settings.rerunSetup': 'Instellen opnieuw doorlopen',
   'settings.development': 'Ontwikkeling',

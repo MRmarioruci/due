@@ -285,6 +285,8 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.lockOffPrompt': 'App-Sperre ausschalten',
   'settings.lockOn': 'App-Sperre ist an',
   'settings.lockOff': 'App-Sperre ist aus',
+  'settings.widget': 'Widget',
+  'settings.widgetBroken': 'Das Widget kann nicht starten',
   'settings.general': 'Allgemein',
   'settings.rerunSetup': 'Einrichtung erneut starten',
   'settings.development': 'Entwicklung',

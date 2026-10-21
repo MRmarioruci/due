@@ -285,6 +285,8 @@ export const pt: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.lockOffPrompt': 'Desativar o bloqueio',
   'settings.lockOn': 'Bloqueio ativado',
   'settings.lockOff': 'Bloqueio desativado',
+  'settings.widget': 'Widget',
+  'settings.widgetBroken': 'O widget não consegue iniciar',
   'settings.general': 'Geral',
   'settings.rerunSetup': 'Repetir a configuração',
   'settings.development': 'Desenvolvimento',
