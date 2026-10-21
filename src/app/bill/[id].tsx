@@ -174,7 +174,7 @@ export default function BillScreen() {
         {!paid && bill.dueDate && <Timeline bill={bill} today={today} />}
         {advice && <T style={{ marginTop: 16, fontSize: 13.5, lineHeight: 19, color: C.muted }}>{advice}</T>}
 
-        {code ? (
+        {code && (
           <Animated.View entering={enterFade(180)} style={st.qrWrap}>
             <QRCode
               value={code.value}
@@ -190,24 +190,31 @@ export default function BillScreen() {
               getRef={(r) => (qrRef.current = r)}
             />
             <Eyebrow>{t('bill.scanWithBank')}</Eyebrow>
-            {!paid && (
-              <Pressable accessibilityRole="button" onPress={shareQr} style={st.shareBtn}>
-                <Icon name="share" size={16} />
-                <T style={{ fontFamily: F.medium, fontSize: 14 }}>{t('bill.shareQr')}</T>
-              </Pressable>
-            )}
           </Animated.View>
-        ) : (
-          bill.payment.payUrl && (
-            <Button title={t('bill.openPaymentPage')} kind="secondary" style={{ marginTop: 24 }} onPress={() => { armPayCheck(bill.id); Linking.openURL(bill.payment.payUrl!); }} />
-          )
         )}
+
+        {/* Every action for the bill, in one row of equal tiles. */}
+        <Animated.View entering={enterFade(240)} style={st.actions}>
+          {code && !paid && <ActionTile icon="share" label={t('bill.shareQrShort')} onPress={shareQr} />}
+          {bill.payment.payUrl && (
+            <ActionTile
+              icon="link"
+              label={t('bill.payOnline')}
+              onPress={() => {
+                armPayCheck(bill.id);
+                Linking.openURL(bill.payment.payUrl!);
+              }}
+            />
+          )}
+          <ActionTile icon="download" label={pdfBusy ? t('pdf.making') : t('pdf.short')} onPress={downloadPdf} busy={pdfBusy} />
+        </Animated.View>
 
         {bill.payMethod === 'direct_debit' && (
           <T style={{ marginTop: 18, color: C.muted, fontSize: 13.5, lineHeight: 20 }}>{t('bill.directDebit')}</T>
         )}
 
-        <View style={{ marginTop: 18, borderTopWidth: rows.length ? 1 : 0, borderTopColor: C.line }}>
+        <Eyebrow style={{ marginTop: 28, marginBottom: 6 }}>{t('bill.details')}</Eyebrow>
+        <View style={{ borderTopWidth: 1, borderTopColor: C.line }}>
           {rows.map((r) => (
             <View key={r.label} style={st.row}>
               <T style={st.rowLabel}>{r.label}</T>
@@ -224,11 +231,6 @@ export default function BillScreen() {
             </View>
           )}
         </View>
-
-        <Pressable accessibilityRole="button" onPress={downloadPdf} disabled={pdfBusy} style={[st.shareBtn, { alignSelf: 'flex-start', marginTop: 20, opacity: pdfBusy ? 0.6 : 1 }]}>
-          <Icon name="download" size={16} />
-          <T style={{ fontFamily: F.medium, fontSize: 14 }}>{pdfBusy ? t('pdf.making') : t('pdf.download')}</T>
-        </Pressable>
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
@@ -260,6 +262,18 @@ export default function BillScreen() {
         )}
       </View>
     </View>
+  );
+}
+
+/** One action for the bill: icon over a short label, all the same size. */
+function ActionTile({ icon, label, onPress, busy }: { icon: 'share' | 'link' | 'download'; label: string; onPress: () => void; busy?: boolean }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} disabled={busy} style={({ pressed }) => [st.tile, (pressed || busy) && { backgroundColor: C.surface }]}>
+      <Icon name={icon} size={18} />
+      <T style={st.tileLabel} numberOfLines={1}>
+        {label}
+      </T>
+    </Pressable>
   );
 }
 
@@ -302,7 +316,9 @@ const st = themed(() => StyleSheet.create({
   line: { position: 'absolute', top: 10, height: 1 },
   tl: { fontFamily: F.mono, fontSize: 10, color: C.dim, letterSpacing: 0.4 },
   qrWrap: { marginTop: 24, alignItems: 'center', gap: 12 },
-  shareBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 44, paddingHorizontal: 16, borderWidth: 1, borderColor: C.border },
+  actions: { marginTop: 20, flexDirection: 'row', gap: 8 },
+  tile: { flex: 1, height: 68, alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1, borderColor: C.border },
+  tileLabel: { fontFamily: F.medium, fontSize: 12.5, textAlign: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 54, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   rowLabel: { width: 84, fontSize: 13, color: C.dim },
   rowValue: { flex: 1, fontSize: 14 },
