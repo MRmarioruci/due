@@ -15,7 +15,7 @@ You need Node 20+ and the **Expo Go** app from the Play Store (a recent version;
 
 ```bash
 npm install
-cp .env.example .env.local   # then paste your Gemini API key
+cp .env.example .env.local   # due-api address + app key
 npm run dev
 ```
 
@@ -27,7 +27,7 @@ npm run dev:tunnel
 
 In development, **long-press the "due" logo** on the home screen to load sample bills.
 
-Without a Gemini key the app still works: QR codes are read on the device and you fill in the due date yourself.
+Bills are read by [due-api](../due-api), which holds the Gemini key; run it locally with `npm run serve` in that repo. Without it the app still works: QR codes are read on the device and you fill in the rest.
 
 ## Development build (reminders, widget)
 
@@ -43,7 +43,7 @@ Open the link on the phone and install the APK. From then on, start the server w
 ## Notes
 
 - Everything runs in Expo Go: camera, QR scanning, local notifications, SQLite. Remote push isn't used (Expo Go doesn't support it on Android), and isn't needed: reminders are scheduled on the phone.
-- The Gemini key is bundled into the app (`EXPO_PUBLIC_…`). Fine for personal testing. Before shipping to anyone else, put the call behind a small server so the key stays private.
+- The app holds no model key: it sends the photo to due-api, which rate-limits per device and calls Gemini.
 - Data stays on the phone, in SQLite (`due.db`).
 
 ## Code

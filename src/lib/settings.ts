@@ -6,6 +6,8 @@ import type { PaySchedule } from './plan';
 import type { PayStyle } from './reminder-plan';
 
 export type Settings = {
+  /** Anonymous random id sent to due-api for rate limiting; not tied to the person or phone. */
+  deviceId: string | null;
   /** Finished the first-run setup. */
   onboarded: boolean;
   /** Home country (ISO 3166-1 alpha-2) and currency (ISO 4217); null means "use the phone's". */
@@ -29,7 +31,7 @@ export type Settings = {
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
+const DEFAULTS: Settings = { deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
@@ -85,4 +87,12 @@ export function homeCurrency(): string {
 
 export function homeCountry(): string | null {
   return snapshot.country ?? deviceRegion().country;
+}
+
+/** This install's anonymous id, created on first use. */
+export function deviceId(): string {
+  if (snapshot.deviceId) return snapshot.deviceId;
+  const id = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  updateSettings({ deviceId: id });
+  return id;
 }
