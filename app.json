@@ -8,7 +8,7 @@
     "scheme": "due",
     "userInterfaceStyle": "dark",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "dev.due.app"
     },
     "android": {
@@ -35,7 +35,7 @@
         {
           "backgroundColor": "#0a0a0a",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 180
         }
       ],
       [
@@ -54,6 +54,7 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/images/notification-icon.png",
           "color": "#FF5A36"
         }
       ],
