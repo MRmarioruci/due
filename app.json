@@ -19,7 +19,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "dev.due.app"
+      "package": "dev.due.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "output": "server",
@@ -92,6 +98,13 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "backgroundColor": "#0a0a0a"
+    "backgroundColor": "#0a0a0a",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e8176122-1369-4237-a151-e9366166ba82"
+      }
+    },
+    "owner": "marioruci"
   }
 }
