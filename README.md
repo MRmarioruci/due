@@ -33,20 +33,15 @@ In development, **long-press the "due" logo** on the home screen to load sample 
 
 Bills are read by [due-api](../due-api), which holds the Gemini key; run it locally with `npm run serve` in that repo. Without it the app still works: QR codes are read on the device and you fill in the rest.
 
-## Development build (reminders, widget)
+## Install on your phone
 
-Expo Go can't run notifications on Android or the home-screen widget. For those, install a development build of due on the phone once:
+Every push to `main` builds a release APK in GitHub Actions (`.github/workflows/android-apk.yml`) and attaches it to the GitHub Release for the version in `package.json`: download `due-<version>.apk` from the latest release on the phone and install it. Bump the version for a new release. The build is arm64-only with code and resource shrinking on.
 
-```bash
-npx eas-cli login            # your Expo account
-npm run build:dev            # builds an APK in the cloud (~15 min), prints a link + QR
-```
-
-Open the link on the phone and install the APK. From then on, start the server with `npm run dev:client` and open due (not Expo Go); JavaScript changes still reload instantly. Rebuild only after adding a library with native code.
+The API address and app key are baked in from the repo secrets `DUE_API_URL` and `DUE_APP_KEY`.
 
 ## Notes
 
-- Everything runs in Expo Go: camera, QR scanning, local notifications, SQLite. Remote push isn't used (Expo Go doesn't support it on Android), and isn't needed: reminders are scheduled on the phone.
+- In Expo Go (`npm run dev`) everything works except reminders and the widget, which need the installed APK.
 - The app holds no model key: it sends the photo to due-api, which rate-limits per device and calls Gemini.
 - Data stays on the phone, in SQLite (`due.db`).
 

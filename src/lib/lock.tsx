@@ -1,5 +1,4 @@
 import * as LocalAuthentication from 'expo-local-authentication';
-import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 
@@ -25,9 +24,6 @@ export async function authenticate(prompt?: string): Promise<boolean> {
   const r = await LocalAuthentication.authenticateAsync({ promptMessage: prompt ?? t('lock.prompt') });
   return r.success;
 }
-
-// Earlier versions stored their own app PIN; it isn't used any more.
-SecureStore.deleteItemAsync('due.pin').catch(() => {});
 
 /** Covers the app until it's unlocked, when the lock is on. */
 export function LockGate({ children }: { children: ReactNode }) {
