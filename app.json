@@ -27,10 +27,6 @@
         "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
-    "web": {
-      "output": "server",
-      "favicon": "./assets/images/favicon.png"
-    },
     "plugins": [
       "expo-router",
       "expo-sqlite",
