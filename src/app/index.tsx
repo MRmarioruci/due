@@ -317,7 +317,12 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
     ? [t(`dun.level${bill.dunning.level}`), bill.dueDate && t('row.due', { date: shortDay(bill.dueDate) })].filter(Boolean).join(' · ')
     : discount
     ? t('row.discount', { pct: discount.percent, date: shortDay(discount.until) })
-    : [bill.description ?? categoryLabel(bill.category), bill.dueDate && t('row.due', { date: shortDay(bill.dueDate) })].filter(Boolean).join(' · ');
+    : [
+        bill.description ?? categoryLabel(bill.category),
+        bill.status === 'open' && bill.snoozedUntil && new Date(bill.snoozedUntil) > new Date()
+          ? t('row.snoozed', { date: shortDay(new Date(bill.snoozedUntil)) })
+          : bill.dueDate && t('row.due', { date: shortDay(bill.dueDate) }),
+      ].filter(Boolean).join(' · ');
   // A plain Pressable, laid out like ExpectedRow: wrapping it in <Link asChild> merged styles and broke the row layout.
   return (
     <Pressable

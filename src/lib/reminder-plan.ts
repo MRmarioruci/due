@@ -70,8 +70,9 @@ export function currentMain(bill: Pick<Bill, 'snoozedUntil' | 'remindAt'> & Bill
 }
 
 /**
- * Every notification a bill should get: the main reminder (or a snoozed one), and with extra nudges on,
- * one the day before its deadline and one the day after it's due if it's still open then.
+ * Every notification a bill should get: the main reminder, and with extra nudges on, one the day before
+ * its deadline and one the day after it's due if it's still open then. While the bill is snoozed,
+ * nothing goes off before the snooze ends; then it reminds once, and later nudges still come.
  */
 export function planReminders(bill: Bill, prefs: Prefs, now = new Date()): PlannedReminder[] {
   if (bill.status !== 'open') return [];
@@ -92,6 +93,11 @@ export function planReminders(bill: Bill, prefs: Prefs, now = new Date()): Plann
   if (prefs.extraNudges && bill.dueDate) {
     const late = at(addDaysIso(bill.dueDate, 1), prefs.remindHour);
     if (late > now) out.push({ kind: 'overdue', at: late, title, body: t('notify.overdue', { date: shortDay(bill.dueDate) }) });
+  }
+  const until = bill.snoozedUntil ? new Date(bill.snoozedUntil) : null;
+  if (until && until > now) {
+    const sameDay = (a: Date) => todayIso(a) === todayIso(until);
+    return out.filter((r) => r.kind === 'main' || (r.at > until && !sameDay(r.at)));
   }
   return out;
 }
@@ -147,11 +153,11 @@ export function withinBudget<T extends { kind: PlannedReminder['kind']; at: Date
   return [...mains, ...extras].sort((a, b) => a.at.getTime() - b.at.getTime());
 }
 
-export type SnoozeOption = { key: 'later' | 'tomorrow' | 'days3' | 'payday'; at: Date };
+export type SnoozeOption = { key: 'day1' | 'days3' | 'week1' | 'weeks2' | 'payday'; at: Date; afterDue: boolean };
 
 /**
- * "Remind me later" choices with exact times: later today (3 hours on, until 21:00), tomorrow, in
- * 3 days and on payday, at the usual reminder hour. Options past the bill's deadline are left out.
+ * How long to snooze a bill: a day, 3 days, a week, two weeks, or until payday. Each ends at the usual
+ * reminder hour; `afterDue` marks the ones that end after the bill's deadline.
  */
 export function snoozeOptions(bill: Bill, hour: number, payday: string | null, now = new Date()): SnoozeOption[] {
   const target = targetDate(bill, todayIso(now));
@@ -163,17 +169,16 @@ export function snoozeOptions(bill: Bill, hour: number, payday: string | null, n
     d.setHours(hour, 0, 0, 0);
     return d;
   };
-  const out: SnoozeOption[] = [];
-  const later = new Date(now.getTime() + 3 * 3600_000);
-  later.setMinutes(later.getMinutes() < 30 ? 30 : 60, 0, 0);
-  if (later.getHours() < 21 && later.getHours() >= 7 && todayIso(later) === todayIso(now)) out.push({ key: 'later', at: later });
-  out.push({ key: 'tomorrow', at: dayAt(1) });
-  out.push({ key: 'days3', at: dayAt(3) });
+  const out: Omit<SnoozeOption, 'afterDue'>[] = [
+    { key: 'day1', at: dayAt(1) },
+    { key: 'days3', at: dayAt(3) },
+    { key: 'week1', at: dayAt(7) },
+    { key: 'weeks2', at: dayAt(14) },
+  ];
   if (payday && daysBetween(todayIso(now), payday) > 1) {
     const p = fromIso(payday);
     p.setHours(hour, 0, 0, 0);
-    if (p.getTime() !== dayAt(3).getTime()) out.push({ key: 'payday', at: p });
+    if (!out.some((o) => o.at.getTime() === p.getTime())) out.push({ key: 'payday', at: p });
   }
-  // Tomorrow always stays, even when the bill is due today: better late than forgotten.
-  return out.filter((o) => o.key === 'tomorrow' || !deadline || o.at <= deadline).sort((a, b) => a.at.getTime() - b.at.getTime());
+  return out.map((o) => ({ ...o, afterDue: !!deadline && o.at > deadline })).sort((a, b) => a.at.getTime() - b.at.getTime());
 }

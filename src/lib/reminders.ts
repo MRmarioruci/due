@@ -166,7 +166,7 @@ export async function markOpen(bill: Bill) {
   await syncReminders();
 }
 
-/** "Remind me later": the main reminder moves to `at` (tomorrow at the usual time when not given). */
+/** Snooze: no reminders for the bill until `at` (tomorrow at the usual time when not given), then one. */
 export async function snooze(bill: Bill, at?: Date) {
   if (!at) {
     at = new Date();
@@ -174,6 +174,12 @@ export async function snooze(bill: Bill, at?: Date) {
     at.setHours(getSettings().remindHour, 0, 0, 0);
   }
   saveBill({ ...bill, snoozedUntil: at.toISOString() });
+  await syncReminders();
+}
+
+/** Ends a snooze early: the bill's reminders are planned again as usual. */
+export async function unsnooze(bill: Bill) {
+  saveBill({ ...bill, snoozedUntil: null, remindAt: null });
   await syncReminders();
 }
 

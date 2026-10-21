@@ -114,13 +114,24 @@ describe('withinBudget', () => {
   });
 });
 
-describe('snoozeOptions', () => {
-  const keys = (o: { key: string; at: Date }[]) => o.map((x) => `${x.key} ${day(x.at)}`);
-  it('offers later today, tomorrow, in 3 days and payday, with exact times', () => {
-    expect(keys(snoozeOptions(bill(), 9, '2026-10-25', now))).toEqual(['later 10/20 15h', 'tomorrow 10/21 9h', 'days3 10/23 9h', 'payday 10/25 9h']);
+describe('snoozing', () => {
+  const prefs = { remindHour: 9, extraNudges: true };
+  it('silences every reminder until the snooze ends, then reminds once; later nudges stay', () => {
+    // Due Wed 4 Nov: normally a reminder 30 Oct, a last call 3 Nov and an overdue nudge 5 Nov.
+    const snoozed = bill({ snoozedUntil: new Date(2026, 10, 3, 9).toISOString() });
+    expect(planReminders(snoozed, prefs, now).map((r) => [r.kind, day(r.at)])).toEqual([
+      ['main', '11/3 9h'],
+      ['overdue', '11/5 9h'],
+    ]);
+    const past = bill({ snoozedUntil: new Date(2026, 10, 10, 9).toISOString() });
+    expect(planReminders(past, prefs, now).map((r) => [r.kind, day(r.at)])).toEqual([['main', '11/10 9h']]);
   });
-  it('leaves out what is past the due date, but keeps tomorrow', () => {
-    expect(keys(snoozeOptions(bill({ dueDate: '2026-10-21' }), 9, '2026-10-25', now))).toEqual(['later 10/20 15h', 'tomorrow 10/21 9h']);
-    expect(keys(snoozeOptions(bill({ dueDate: '2026-10-20' }), 9, null, new Date(2026, 9, 20, 19)))).toEqual(['tomorrow 10/21 9h']);
+});
+
+describe('snoozeOptions', () => {
+  const keys = (o: { key: string; at: Date; afterDue: boolean }[]) => o.map((x) => `${x.key} ${day(x.at)}${x.afterDue ? ' late' : ''}`);
+  it('offers a day, 3 days, a week, two weeks and payday, marking those after the due date', () => {
+    expect(keys(snoozeOptions(bill(), 9, '2026-10-25', now))).toEqual(['day1 10/21 9h', 'days3 10/23 9h', 'payday 10/25 9h', 'week1 10/27 9h', 'weeks2 11/3 9h']);
+    expect(keys(snoozeOptions(bill({ dueDate: '2026-10-22' }), 9, null, now))).toEqual(['day1 10/21 9h', 'days3 10/23 9h late', 'week1 10/27 9h late', 'weeks2 11/3 9h late']);
   });
 });

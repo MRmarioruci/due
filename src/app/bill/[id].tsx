@@ -20,7 +20,7 @@ import { nextPayday, paydayAdvice } from '@/lib/plan';
 import { snoozeOptions } from '@/lib/reminder-plan';
 import { pickDate } from '@/ui/calendar';
 import { Options } from '@/ui/choosers';
-import { markOpen, markPaid, snooze } from '@/lib/reminders';
+import { markOpen, markPaid, snooze, unsnooze } from '@/lib/reminders';
 import { getSettings, useSettings } from '@/lib/settings';
 import { useBill, useBills } from '@/lib/store';
 import { priceChange } from '@/lib/price-change';
@@ -106,7 +106,7 @@ export default function BillScreen() {
     }
   }
 
-  /** "Remind me later": exact times to choose from, or any day on the calendar. */
+  /** Snooze: no reminders for this bill until the chosen day, then one reminder. */
   function remindLater() {
     const b = bill!;
     const { remindHour, pay } = getSettings();
@@ -119,12 +119,17 @@ export default function BillScreen() {
     };
     sheet.show({
       title: t('snooze.title'),
-      message: b.dueDate ? t('snooze.due', { date: shortDay(b.dueDate) }) : undefined,
+      message: b.dueDate ? t('snooze.text', { date: shortDay(b.dueDate) }) : t('snooze.textNoDate'),
       content: (
         <Options
           selected={null}
           options={[
-            ...snoozeOptions(b, remindHour, payday).map((o) => ({ key: o.key, label: t(`snooze.${o.key}`), detail: formatWhen(o.at), onPress: () => done(o.at) })),
+            ...snoozeOptions(b, remindHour, payday).map((o) => ({
+              key: o.key,
+              label: t(`snooze.${o.key}`),
+              detail: o.afterDue ? `${shortDay(o.at)} · ${t('snooze.afterDue')}` : shortDay(o.at),
+              onPress: () => done(o.at),
+            })),
             {
               key: 'pick',
               label: t('snooze.pick'),
@@ -138,6 +143,19 @@ export default function BillScreen() {
                 done(at);
               },
             },
+            ...(snoozed
+              ? [
+                  {
+                    key: 'off',
+                    label: t('snooze.off'),
+                    onPress: async () => {
+                      sheet.hide();
+                      await unsnooze(b);
+                      toast(t('snooze.offDone'));
+                    },
+                  },
+                ]
+              : []),
           ]}
         />
       ),
@@ -235,10 +253,10 @@ export default function BillScreen() {
         {!paid && bill.dueDate && <Timeline bill={bill} today={today} />}
         {!paid && nextReminder && (
           <Pressable accessibilityRole="button" onPress={remindLater} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, alignSelf: 'flex-start' }}>
-            <Icon name="bell" size={14} color={C.accent} />
+            <Icon name="bell" size={14} color={snoozed ? C.dim : C.accent} />
             <T style={{ fontSize: 13.5, color: C.muted }}>
               {t(snoozed ? 'bill.reminderSnoozed' : 'bill.reminderAt', { when: formatWhen(nextReminder) })}{' '}
-              <T style={{ fontSize: 13.5, color: C.fg, textDecorationLine: 'underline' }}>{t('bill.reminderChange')}</T>
+              <T style={{ fontSize: 13.5, color: C.fg, textDecorationLine: 'underline' }}>{t(snoozed ? 'bill.reminderChange' : 'bill.snooze')}</T>
             </T>
           </Pressable>
         )}
