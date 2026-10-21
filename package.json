@@ -1,6 +1,6 @@
 {
   "name": "due",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/archivo": "^0.4.2",

@@ -2,6 +2,7 @@ import type { DecodedCode } from './payment-codes';
 import { toMinor } from './payment-codes';
 import { todayIso } from './dates';
 import { pickCategory } from './categorize';
+import { looksLikeDunning } from './dunning';
 import { countryByCode } from './regions';
 import { currentLang, t } from '@/i18n/core';
 import { deviceId, getSettings, homeCountry, homeCurrency } from './settings';
@@ -38,6 +39,8 @@ type ModelBill = {
   creditor_town: string | null;
   discount_percent: number | null;
   discount_until: string | null;
+  reminder_level?: number | null;
+  late_fee?: string | null;
 };
 
 /** A scanned page or an imported document, as sent to the API. */
@@ -107,6 +110,8 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; file: Bill
   }
 
   const payment = decoded?.payment ?? emptyPayment();
+  const dunningLevel = ai?.reminder_level ?? (looksLikeDunning(ai?.description, payment.message) ? 1 : null);
+  const dunning = dunningLevel ? { level: Math.min(3, Math.max(1, dunningLevel)) as 1 | 2 | 3, feeMinor: ai?.late_fee ? toMinor(ai.late_fee) : null } : null;
   const draft: BillDraft = {
     payee: pick('payee', decoded?.payee, ai?.payee) ?? t('read.unknownBiller'),
     description: ai?.description ?? null,
@@ -117,6 +122,9 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; file: Bill
     discount:
       decoded?.discount ??
       (ai?.discount_percent && ai.discount_until ? { percent: ai.discount_percent, until: ai.discount_until } : null),
+    dunning,
+    // A reminder means it's already late: suggest paying it right away.
+    payStyle: dunning ? 'early' : undefined,
     category: pickCategory({
       payee: decoded?.payee ?? ai?.payee ?? '',
       description: ai?.description,

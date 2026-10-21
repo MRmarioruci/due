@@ -19,7 +19,9 @@ import { buildEpc, buildSwissQr } from '@/lib/payment-codes';
 import { paydayAdvice } from '@/lib/plan';
 import { markOpen, markPaid, snooze } from '@/lib/reminders';
 import { getSettings, useSettings } from '@/lib/settings';
-import { useBill } from '@/lib/store';
+import { useBill, useBills } from '@/lib/store';
+import { priceChange } from '@/lib/price-change';
+import { PriceChangeLine } from '@/ui/price-change';
 import { openOriginal, originalOf } from '@/lib/originals';
 import { removeBill } from '@/lib/remove';
 import type { Bill } from '@/lib/types';
@@ -53,6 +55,7 @@ const groupIban = (iban: string) => iban.replace(/\s/g, '').replace(/(.{4})/g, '
 export default function BillScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const bill = useBill(id);
+  const bills = useBills();
   const settings = useSettings();
   const insets = useSafeAreaInsets();
   const [copied, setCopied] = useState<string | null>(null);
@@ -67,6 +70,7 @@ export default function BillScreen() {
   const discount = activeDiscount(bill, today);
   const advice = settings.pay && settings.pay.every !== 'day' ? paydayAdvice(bill, settings.pay, today) : null;
   const paid = bill.status === 'paid';
+  const change = priceChange(bill, bills);
 
   /** Most Swiss banking apps can read a QR code from an image, so share it as a PNG. */
   function shareQr() {
@@ -159,6 +163,17 @@ export default function BillScreen() {
                 : t('home.noDueDate')}
           </T>
         </View>
+
+        {bill.dunning && !paid && (
+          <Animated.View entering={enterFade(60)} style={st.discount}>
+            <T style={st.discountBadge}>!</T>
+            <T style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: C.muted }}>
+              <T style={{ fontSize: 13.5, color: C.fg }}>{t(`dun.level${bill.dunning.level}`)}.</T> {t('dun.payNow')}
+              {bill.dunning.feeMinor ? ` ${t('dun.fee', { fee: formatMoney(bill.dunning.feeMinor, bill.currency) })}` : ''}
+            </T>
+          </Animated.View>
+        )}
+        {change && <PriceChangeLine change={change} currency={bill.currency} />}
 
         {discount && (
           <Animated.View entering={enterFade(80)} style={st.discount}>

@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { daysBetween, fromIso, relativeDays, shortDay, todayIso } from '@/lib/dates';
@@ -16,12 +16,26 @@ import { getSettings, homeCurrency, updateSettings, useSettings } from '@/lib/se
 import { Options } from '@/ui/choosers';
 import { sheet } from '@/ui/overlay';
 import { useBills } from '@/lib/store';
-import type { Bill } from '@/lib/types';
+import { CATEGORIES, type Bill, type Category } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
 import { Animated, enterFade, enterRow, GrowBar, moveRow, useCountUp } from '@/ui/motion';
 import { C, F, GUTTER, themed } from '@/ui/theme';
 
 const HORIZON = 30;
+
+type Filter = { category: Category | null; year: number | null };
+
+/** The year a bill belongs to in the list: its due date, else when it was paid or saved. */
+const yearOf = (b: Bill) => Number((b.dueDate ?? b.paidAt ?? b.createdAt).slice(0, 4));
+
+/** Every word typed must appear in the payee, description, category, reference, IBAN or amount. */
+function matches(b: Bill, query: string): boolean {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const amount = b.amountMinor != null ? `${(b.amountMinor / 100).toFixed(2)} ${formatAmount(b.amountMinor, b.currency)}` : '';
+  const hay = [b.payee, b.description, categoryLabel(b.category), b.payment.reference, b.payment.iban?.replace(/\s/g, ''), amount, b.currency].join(' ').toLowerCase();
+  return words.every((w) => hay.includes(w));
+}
 
 /** The currency most open bills are in; totals are shown in it and other currencies are counted separately. */
 function mainCurrency(bills: Bill[]): string {
@@ -37,8 +51,17 @@ export default function Bills() {
   const today = todayIso();
   const settings = useSettings();
 
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>({ category: null, year: null });
+  const narrowed = searching && !!query.trim() ? true : filter.category != null || filter.year != null;
+
   const open = useMemo(() => bills.filter((b) => b.status === 'open'), [bills]);
   const paid = useMemo(() => bills.filter((b) => b.status === 'paid').sort((a, b) => (b.paidAt ?? '').localeCompare(a.paidAt ?? '')), [bills]);
+  // Search and filters narrow the lists; the totals above stay for everything.
+  const keep = (b: Bill) => (!filter.category || b.category === filter.category) && (!filter.year || yearOf(b) === filter.year) && (!searching || matches(b, query));
+  const openShown = open.filter(keep);
+  const paidShown = paid.filter(keep);
   const ccy = mainCurrency(open);
   const window = open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= HORIZON);
   const total = window.filter((b) => b.currency === ccy).reduce((sum, b) => sum + (activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0), 0);
@@ -55,15 +78,54 @@ export default function Bills() {
     settings.sortBy === 'name' ? [...xs].sort((a, b) => a.payee.localeCompare(b.payee, locale(), { sensitivity: 'base' })) : [...xs].sort((a, b) => pay(b) - pay(a));
   const groups: { title: string; items: Bill[] }[] =
     settings.sortBy !== 'due'
-      ? [{ title: t(`sort.${settings.sortBy}`), items: sortList(tab === 'paid' ? paid : open) }]
+      ? [{ title: t(`sort.${settings.sortBy}`), items: sortList(tab === 'paid' ? paidShown : openShown) }]
       : tab === 'paid'
-      ? [{ title: t('home.paid'), items: paid }]
+      ? [{ title: t('home.paid'), items: paidShown }]
       : [
-          { title: t('home.overdue'), items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) < 0) },
-          { title: t('home.thisWeek'), items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0 && daysBetween(today, b.dueDate) < 7) },
-          { title: t('home.later'), items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 7) },
-          { title: t('home.noDueDate'), items: open.filter((b) => !b.dueDate) },
+          { title: t('home.overdue'), items: openShown.filter((b) => b.dueDate && daysBetween(today, b.dueDate) < 0) },
+          { title: t('home.thisWeek'), items: openShown.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0 && daysBetween(today, b.dueDate) < 7) },
+          { title: t('home.later'), items: openShown.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 7) },
+          { title: t('home.noDueDate'), items: openShown.filter((b) => !b.dueDate) },
         ];
+
+  /** One sheet with category and year chips; it re-opens on each tap so the ticks stay current. */
+  function chooseFilter(current: Filter = filter) {
+    const set = (next: Filter) => {
+      setFilter(next);
+      chooseFilter(next);
+    };
+    const cats = CATEGORIES.filter((c) => bills.some((b) => b.category === c));
+    const years = [...new Set(bills.map(yearOf))].sort((a, b) => b - a);
+    const chip = (key: string, label: string, on: boolean, onPress: () => void) => (
+      <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={onPress} style={[st.chip, on && st.chipOn]}>
+        <T style={{ fontSize: 13.5, color: on ? C.bg : C.fg }}>{label}</T>
+      </Pressable>
+    );
+    sheet.show({
+      title: t('filter.title'),
+      content: (
+        <View style={{ gap: 18, marginTop: 8 }}>
+          <View style={{ gap: 10 }}>
+            <Eyebrow>{t('review.category')}</Eyebrow>
+            <View style={st.chips}>
+              {chip('all', t('filter.all'), current.category == null, () => set({ ...current, category: null }))}
+              {cats.map((c) => chip(c, categoryLabel(c), current.category === c, () => set({ ...current, category: c })))}
+            </View>
+          </View>
+          {years.length > 1 && (
+            <View style={{ gap: 10 }}>
+              <Eyebrow>{t('filter.year')}</Eyebrow>
+              <View style={st.chips}>
+                {chip('all', t('filter.all'), current.year == null, () => set({ ...current, year: null }))}
+                {years.map((y) => chip(String(y), String(y), current.year === y, () => set({ ...current, year: y })))}
+              </View>
+            </View>
+          )}
+        </View>
+      ),
+      actions: [{ label: t('common.done'), kind: 'primary' }],
+    });
+  }
 
   if (!settings.onboarded) return <Redirect href="/onboarding" />;
 
@@ -77,6 +139,9 @@ export default function Bills() {
             <View style={st.logoDot} />
           </Pressable>
           <View style={{ flexDirection: 'row', gap: 8 }}>
+            <IconButton label={t('search.title')} onPress={() => setSearching(true)}>
+              <Icon name="search" color={C.muted} />
+            </IconButton>
             <IconButton label={t('common.stats')} onPress={() => router.push('/stats')}>
               <Icon name="stats" color={C.muted} />
             </IconButton>
@@ -85,6 +150,32 @@ export default function Bills() {
             </IconButton>
           </View>
         </View>
+
+        {searching && (
+          <Animated.View entering={enterFade(0)} style={st.search}>
+            <Icon name="search" size={16} color={C.dim} />
+            <TextInput
+              autoFocus
+              value={query}
+              onChangeText={setQuery}
+              placeholder={t('search.placeholder')}
+              placeholderTextColor={C.dim}
+              returnKeyType="search"
+              style={st.searchInput}
+              accessibilityLabel={t('search.title')}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('search.close')}
+              hitSlop={10}
+              onPress={() => {
+                setQuery('');
+                setSearching(false);
+              }}>
+              <Icon name="close" size={16} color={C.muted} />
+            </Pressable>
+          </Animated.View>
+        )}
 
         <View style={{ marginTop: 22 }}>
           <Eyebrow>{t('home.nextDays', { n: HORIZON })}</Eyebrow>
@@ -129,18 +220,40 @@ export default function Bills() {
               <Pressable key={k} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setTab(k)} style={[st.tab, on && st.tabOn]}>
                 <View style={st.tabInner}>
                   <T style={[st.tabText, { color: on ? C.fg : C.dim }]}>{k === 'open' ? t('home.upcoming') : t('home.paid')}</T>
-                  <T style={[st.tabCount, on && { color: C.muted }]}>{k === 'open' ? open.length : paid.length}</T>
+                  <T style={[st.tabCount, on && { color: C.muted }]}>{k === 'open' ? openShown.length : paidShown.length}</T>
                 </View>
               </Pressable>
             );
           })}
-          <Pressable accessibilityRole="button" accessibilityLabel={t('sort.title')} onPress={chooseSort} hitSlop={8} style={st.sort}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('filter.title')} onPress={() => chooseFilter()} hitSlop={8} style={[st.sort, { marginLeft: 'auto' }]}>
+            <Icon name="filter" size={14} color={filter.category || filter.year ? C.accent : C.dim} />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('sort.title')} onPress={chooseSort} hitSlop={8} style={[st.sort, { marginLeft: 0 }]}>
             <Icon name="sort" size={14} color={C.dim} />
             <T style={st.sortText}>{t(`sort.${settings.sortBy}`)}</T>
           </Pressable>
         </View>
 
-        {tab === 'open' && expected.length > 0 && (
+        {(filter.category || filter.year) && (
+          <View style={[st.chips, { marginTop: 14 }]}>
+            {filter.category && (
+              <Pressable accessibilityRole="button" accessibilityLabel={t('filter.remove', { what: categoryLabel(filter.category) })} onPress={() => setFilter({ ...filter, category: null })} style={[st.chip, st.chipOn, st.chipRow]}>
+                <T style={{ fontSize: 13, color: C.bg }}>{categoryLabel(filter.category)}</T>
+                <Icon name="close" size={12} color={C.bg} />
+              </Pressable>
+            )}
+            {filter.year && (
+              <Pressable accessibilityRole="button" accessibilityLabel={t('filter.remove', { what: String(filter.year) })} onPress={() => setFilter({ ...filter, year: null })} style={[st.chip, st.chipOn, st.chipRow]}>
+                <T style={{ fontSize: 13, color: C.bg }}>{filter.year}</T>
+                <Icon name="close" size={12} color={C.bg} />
+              </Pressable>
+            )}
+          </View>
+        )}
+
+        {narrowed && groups.every((g) => !g.items.length) && <T style={{ marginTop: 28, fontSize: 14, color: C.muted }}>{t('search.none')}</T>}
+
+        {tab === 'open' && !narrowed && expected.length > 0 && (
           <View>
             <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>{t('home.expected')}</Eyebrow>
             {expected.map((s, idx) => (
@@ -195,7 +308,9 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
   const days = bill.dueDate ? daysBetween(today, bill.dueDate) : null;
   const urgent = bill.status === 'open' && days != null && days <= 3;
   const discount = activeDiscount(bill, today);
-  const sub = discount
+  const sub = bill.dunning && bill.status === 'open'
+    ? [t(`dun.level${bill.dunning.level}`), bill.dueDate && t('row.due', { date: shortDay(bill.dueDate) })].filter(Boolean).join(' · ')
+    : discount
     ? t('row.discount', { pct: discount.percent, date: shortDay(discount.until) })
     : [bill.description ?? categoryLabel(bill.category), bill.dueDate && t('row.due', { date: shortDay(bill.dueDate) })].filter(Boolean).join(' · ');
   // A plain Pressable, laid out like ExpectedRow: wrapping it in <Link asChild> merged styles and broke the row layout.
@@ -209,7 +324,7 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
         <T style={st.rowTitle} numberOfLines={1}>{bill.payee}</T>
-        <T style={[st.rowSub, discount && { color: C.accent }]} numberOfLines={1}>{sub}</T>
+        <T style={[st.rowSub, (discount || (bill.dunning && bill.status === 'open')) && { color: C.accent }]} numberOfLines={1}>{sub}</T>
       </View>
       <View style={{ alignItems: 'flex-end', gap: 5 }}>
         <T style={st.rowAmount}>
@@ -310,6 +425,12 @@ const st = themed(() => StyleSheet.create({
   runwayLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   runwayLabel: { fontFamily: F.mono, fontSize: 10.5, color: C.dim, letterSpacing: 0.4 },
   tabs: { flexDirection: 'row', alignItems: 'flex-end', gap: 22, marginTop: 20 },
+  search: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10, height: 46, paddingHorizontal: 14, borderWidth: 1, borderColor: C.border },
+  searchInput: { flex: 1, color: C.fg, fontFamily: F.regular, fontSize: 15, paddingVertical: 0 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 12, height: 34, justifyContent: 'center', borderWidth: 1, borderColor: C.border },
+  chipOn: { backgroundColor: C.fg, borderColor: C.fg },
+  chipRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sort: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 8, minHeight: 32 },
   sortText: { fontSize: 13, color: C.dim },
   tab: { paddingBottom: 8, minHeight: 32, justifyContent: 'flex-end' },

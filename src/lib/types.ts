@@ -43,6 +43,9 @@ export type Payment = {
 /** Early-payment discount (Skonto): `percent` off when paid by `until` (YYYY-MM-DD). */
 export type Discount = { percent: number; until: string };
 
+/** A payment reminder (Mahnung) for an earlier bill: 1 first reminder, 2 second, 3 final notice. */
+export type Dunning = { level: 1 | 2 | 3; feeMinor: number | null };
+
 export type Address = { street: string | null; buildingNumber: string | null; postcode: string | null; town: string | null; country: string | null };
 
 export type Bill = {
@@ -57,6 +60,8 @@ export type Bill = {
   issueDate: string | null; // YYYY-MM-DD
   /** Optional in stored data: bills saved before discounts existed don't have it. */
   discount?: Discount | null;
+  /** Set when the bill is a payment reminder for an earlier one. */
+  dunning?: Dunning | null;
   category: Category;
   country: string | null; // ISO 3166-1 alpha-2
   payMethod: PayMethod;

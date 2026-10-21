@@ -16,6 +16,10 @@ import { payeeKey } from '@/lib/recurring';
 import { getSettings, homeCurrency, updateSettings } from '@/lib/settings';
 import { getBill, newId, saveBill, useBills } from '@/lib/store';
 import { findDuplicate } from '@/lib/duplicates';
+import { chasedBill } from '@/lib/dunning';
+import { priceChange } from '@/lib/price-change';
+import { removeBill } from '@/lib/remove';
+import { PriceChangeLine } from '@/ui/price-change';
 import { keepOriginals } from '@/lib/originals';
 import { CATEGORIES, emptyPayment, type Bill, type BillDraft, type SourcedField } from '@/lib/types';
 import { t } from '@/i18n/core';
@@ -62,6 +66,10 @@ export default function Review() {
   const bills = useBills();
   // The same bill already saved (scanned twice)? Checked live, as the details get corrected.
   const duplicate = existing ? null : findDuplicate({ ...d, amountMinor: toMinor(amountText) }, bills);
+  // A payment reminder replaces the open bill it chases, so it isn't paid twice.
+  const [keepChased, setKeepChased] = useState(false);
+  const chased = existing ? null : chasedBill({ ...d, amountMinor: toMinor(amountText) }, bills);
+  const change = priceChange({ ...d, id: existing?.id ?? '', createdAt: existing?.createdAt ?? new Date().toISOString(), amountMinor: toMinor(amountText) }, bills);
 
   /** Editing a field makes it the user's, so its QR/AI tag goes away. */
   function edit<K extends keyof BillDraft>(key: K, value: BillDraft[K], field?: SourcedField) {
@@ -140,6 +148,7 @@ export default function Review() {
       reminderId: null,
     };
     saveBill(await scheduleReminder(keepOriginals(bill)));
+    if (chased && !keepChased) await removeBill(chased);
     router.dismissTo('/');
   }
 
@@ -225,6 +234,33 @@ export default function Review() {
               {t('review.discount', { amount: formatMoney(discount.payMinor, d.currency), date: longDate(discount.until), saving: formatMoney(discount.savingMinor, d.currency) })}
             </T>
             <Pressable accessibilityRole="button" accessibilityLabel={t('review.ignoreDiscount')} hitSlop={10} onPress={() => edit('discount', null)}>
+              <Icon name="close" color={C.dim} size={14} />
+            </Pressable>
+          </View>
+        )}
+
+        {change && <PriceChangeLine change={change} currency={d.currency} />}
+
+        {d.dunning && (
+          <View style={st.discount}>
+            <T style={{ fontFamily: F.monoMedium, fontSize: 13, color: C.accent }}>!</T>
+            <View style={{ flex: 1, gap: 6 }}>
+              <T style={{ fontSize: 13.5, lineHeight: 19, color: C.muted }}>
+                <T style={{ fontSize: 13.5, color: C.fg }}>{t(`dun.level${d.dunning.level}`)}.</T>
+                {d.dunning.feeMinor ? ` ${t('dun.fee', { fee: formatMoney(d.dunning.feeMinor, d.currency) })}` : ''}
+              </T>
+              {chased && (
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !keepChased }} onPress={() => setKeepChased((k) => !k)} hitSlop={6}>
+                  <T style={{ fontSize: 13, lineHeight: 18, color: keepChased ? C.dim : C.fg }}>
+                    {keepChased
+                      ? t('dun.keepBoth')
+                      : t('dun.replaces', { amount: formatMoney(chased.amountMinor, chased.currency), date: chased.dueDate ? longDate(chased.dueDate) : '—' })}{' '}
+                    <T style={{ fontSize: 13, color: C.accent, textDecorationLine: 'underline' }}>{keepChased ? t('dun.replaceIt') : t('dun.keepIt')}</T>
+                  </T>
+                </Pressable>
+              )}
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('dun.notReminder')} hitSlop={10} onPress={() => edit('dunning', null)}>
               <Icon name="close" color={C.dim} size={14} />
             </Pressable>
           </View>

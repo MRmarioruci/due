@@ -5,7 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { todayIso } from '@/lib/dates';
 import { formatAmount } from '@/lib/money';
 import { goBack } from '@/lib/nav';
-import { findSeries, monthlyFixedCosts } from '@/lib/recurring';
+import { findSeries, monthlyFixedCosts, payeeKey } from '@/lib/recurring';
+import { priceChange } from '@/lib/price-change';
+import { exportYear } from '@/lib/tax-export-file';
+import { paidYears } from '@/lib/tax-export';
+import { Options } from '@/ui/choosers';
+import { sheet, toast } from '@/ui/overlay';
+import type { Bill } from '@/lib/types';
 import { t } from '@/i18n/core';
 import { cadenceLabel, categoryLabel } from '@/i18n/labels';
 import { homeCurrency } from '@/lib/settings';
@@ -130,6 +136,7 @@ export default function StatsScreen() {
           {series.map((x, idx) => (
             <Animated.View key={x.key} entering={enterRow(idx)} style={st.seriesRow}>
               <T style={{ flex: 1, fontSize: 13.5 }} numberOfLines={1}>{x.payee}</T>
+              <SeriesChange bills={bills} seriesKey={x.key} lastDue={x.lastDue} />
               <T style={{ fontSize: 12.5, color: C.dim }}>{cadenceLabel(x.cadence)}</T>
               <T style={{ width: 84, textAlign: 'right', fontSize: 13.5, color: C.muted, fontVariant: ['tabular-nums'] }}>{formatAmount(x.amountMinor, x.currency)}</T>
             </Animated.View>
@@ -153,8 +160,52 @@ export default function StatsScreen() {
           ))}
         </View>
       )}
+      {paidYears(bills).length > 0 && (
+        <View style={{ marginTop: 28 }}>
+          <Eyebrow style={{ marginBottom: 6 }}>{t('tax.section')}</Eyebrow>
+          <Pressable accessibilityRole="button" onPress={() => chooseExport(bills)} style={({ pressed }) => [st.exportRow, pressed && { backgroundColor: C.surface }]}>
+            <Icon name="download" size={16} />
+            <View style={{ flex: 1, gap: 3 }}>
+              <T style={{ fontSize: 15 }}>{t('tax.export')}</T>
+              <T style={{ fontSize: 12.5, color: C.dim }}>{t('tax.exportDetail')}</T>
+            </View>
+          </Pressable>
+        </View>
+      )}
     </ScrollView>
   );
+}
+
+/** "▲ 6%" next to a fixed cost whose latest bill changed against the one before. */
+function SeriesChange({ bills, seriesKey, lastDue }: { bills: Bill[]; seriesKey: string; lastDue: string }) {
+  const latest = bills.find((b) => payeeKey(b.payee) === seriesKey && b.dueDate === lastDue);
+  const change = latest ? priceChange(latest, bills) : null;
+  if (!change) return null;
+  return (
+    <T style={{ fontFamily: F.mono, fontSize: 11, color: change.pct > 0 ? C.accent : C.dim }}>
+      {change.pct > 0 ? '▲' : '▼'} {Math.round(Math.abs(change.pct))}%
+    </T>
+  );
+}
+
+/** Year, then format: a spreadsheet for the accountant or a PDF summary. */
+function chooseExport(bills: Bill[]) {
+  const years = paidYears(bills);
+  const pickFormat = (year: number) =>
+    sheet.show({
+      title: t('tax.title', { year }),
+      message: t('tax.formatText'),
+      actions: (['csv', 'pdf'] as const).map((f) => ({
+        label: t(`tax.${f}`),
+        kind: f === 'pdf' ? 'primary' : 'secondary',
+        onPress: () => exportYear(bills, year, f).catch((e) => toast(t('tax.failed', { error: (e as Error).message }))),
+      })),
+    });
+  if (years.length === 1) return pickFormat(years[0]);
+  sheet.show({
+    title: t('tax.export'),
+    content: <Options selected={null} options={years.map((y) => ({ key: y, label: String(y), onPress: () => pickFormat(y) }))} />,
+  });
 }
 
 const st = themed(() => StyleSheet.create({
@@ -171,4 +222,5 @@ const st = themed(() => StyleSheet.create({
   tileLabel: { fontSize: 12.5, lineHeight: 17, color: C.dim },
   seriesRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   tileUnit: { fontSize: 13, color: C.dim },
+  exportRow: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line },
 }));
