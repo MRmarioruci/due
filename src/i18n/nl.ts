@@ -37,6 +37,11 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.noDueDate': 'Geen vervaldatum',
   'home.scan': 'Rekening scannen',
 
+  'sort.title': 'Sorteren op',
+  'sort.due': 'Vervaldatum',
+  'sort.name': 'Naam',
+  'sort.amount': 'Bedrag',
+
   'row.discount': '{pct}% korting tot {date}',
   'row.due': 'vervalt {date}',
   'row.paid': 'BETAALD',

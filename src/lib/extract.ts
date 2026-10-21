@@ -1,6 +1,7 @@
 import type { DecodedCode } from './payment-codes';
 import { toMinor } from './payment-codes';
 import { todayIso } from './dates';
+import { pickCategory } from './categorize';
 import { countryByCode } from './regions';
 import { currentLang, t } from '@/i18n/core';
 import { deviceId, getSettings, homeCountry, homeCurrency } from './settings';
@@ -116,7 +117,12 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; file: Bill
     discount:
       decoded?.discount ??
       (ai?.discount_percent && ai.discount_until ? { percent: ai.discount_percent, until: ai.discount_until } : null),
-    category: ai?.category && CATEGORIES.includes(ai.category) ? ai.category : 'other',
+    category: pickCategory({
+      payee: decoded?.payee ?? ai?.payee ?? '',
+      description: ai?.description,
+      model: ai?.category && CATEGORIES.includes(ai.category) ? ai.category : null,
+      learned: getSettings().learnedCategories,
+    }),
     country: decoded?.country ?? ai?.country ?? null,
     payMethod: decoded ? 'qr_transfer' : ai?.pay_method && METHODS.includes(ai.pay_method) ? ai.pay_method : 'bank_transfer',
     payment: {

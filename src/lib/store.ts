@@ -70,3 +70,11 @@ export function useBill(id: string | undefined): Bill | undefined {
 export function newId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
+
+/** Re-files bills stuck in "other" whose biller now has a known category (keywords or an earlier choice). */
+export function recategorizeOthers(guess: (b: Bill) => Bill['category']) {
+  for (const b of snapshot.filter((x) => x.category === 'other')) {
+    const c = guess(b);
+    if (c !== 'other') saveBill({ ...b, category: c });
+  }
+}

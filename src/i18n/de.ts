@@ -37,6 +37,11 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.noDueDate': 'Ohne Fälligkeit',
   'home.scan': 'Rechnung scannen',
 
+  'sort.title': 'Sortieren nach',
+  'sort.due': 'Fälligkeit',
+  'sort.name': 'Name',
+  'sort.amount': 'Betrag',
+
   'row.discount': '{pct}% Skonto bis {date}',
   'row.due': 'fällig {date}',
   'row.paid': 'BEZAHLT',

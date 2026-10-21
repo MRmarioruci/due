@@ -40,6 +40,11 @@ export const en = {
   'home.noDueDate': 'No due date',
   'home.scan': 'Scan a bill',
 
+  'sort.title': 'Sort by',
+  'sort.due': 'Due date',
+  'sort.name': 'Name',
+  'sort.amount': 'Amount',
+
   'row.discount': '{pct}% off until {date}',
   'row.due': 'due {date}',
   'row.paid': 'PAID',

@@ -37,6 +37,11 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.noDueDate': 'Senza scadenza',
   'home.scan': 'Scansiona una fattura',
 
+  'sort.title': 'Ordina per',
+  'sort.due': 'Scadenza',
+  'sort.name': 'Nome',
+  'sort.amount': 'Importo',
+
   'row.discount': 'Sconto {pct}% fino al {date}',
   'row.due': 'scade {date}',
   'row.paid': 'PAGATA',

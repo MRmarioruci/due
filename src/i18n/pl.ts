@@ -43,6 +43,11 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.noDueDate': 'Bez terminu',
   'home.scan': 'Zeskanuj rachunek',
 
+  'sort.title': 'Sortuj według',
+  'sort.due': 'Termin',
+  'sort.name': 'Nazwa',
+  'sort.amount': 'Kwota',
+
   'row.discount': '{pct}% rabatu do {date}',
   'row.due': 'termin {date}',
   'row.paid': 'OPŁACONY',

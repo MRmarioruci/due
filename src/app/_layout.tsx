@@ -12,7 +12,8 @@ import { LockGate } from '@/lib/lock';
 import { usePayCheck } from '@/lib/pay-check';
 import { listenForResponses, scheduleDigest, setupNotifications } from '@/lib/reminders';
 import { getSettings, useSettings, type Settings } from '@/lib/settings';
-import { useBills } from '@/lib/store';
+import { recategorizeOthers, useBills } from '@/lib/store';
+import { pickCategory } from '@/lib/categorize';
 import { updateWidget } from '@/widget';
 import { OverlayHost } from '@/ui/overlay';
 import { applyTheme, C, currentTheme, type ThemeName } from '@/ui/theme';
@@ -77,6 +78,10 @@ export default function RootLayout() {
     if (onboarded) setupNotifications();
   }, [onboarded]);
   useEffect(() => listenForResponses(), []);
+  // Once per launch: bills filed under "other" get another look with the category rules.
+  useEffect(() => {
+    recategorizeOthers((b) => pickCategory({ payee: b.payee, description: b.description, model: null, learned: getSettings().learnedCategories }));
+  }, []);
 
   if (!ready) return null;
 

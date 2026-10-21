@@ -12,7 +12,9 @@ import { expectedBills, findSeries, type Series } from '@/lib/recurring';
 import { cadenceLabel, categoryLabel } from '@/i18n/labels';
 import { locale, t } from '@/i18n/core';
 import { seedSampleBills } from '@/lib/seed';
-import { homeCurrency, useSettings } from '@/lib/settings';
+import { getSettings, homeCurrency, updateSettings, useSettings } from '@/lib/settings';
+import { Options } from '@/ui/choosers';
+import { sheet } from '@/ui/overlay';
 import { useBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
@@ -47,8 +49,14 @@ export default function Bills() {
   const plan = settings.pay && settings.pay.every !== 'day' && open.length ? planAroundPayday(open, settings.pay, ccy, today) : null;
   const expected = expectedBills(findSeries(bills, today), today);
 
+  // Sorted by due date: grouped by when they're due. By name or amount: one list.
+  const pay = (b: Bill) => activeDiscount(b, today)?.payMinor ?? (b.status === 'paid' ? b.paidAmountMinor : null) ?? b.amountMinor ?? 0;
+  const sortList = (xs: Bill[]) =>
+    settings.sortBy === 'name' ? [...xs].sort((a, b) => a.payee.localeCompare(b.payee, locale(), { sensitivity: 'base' })) : [...xs].sort((a, b) => pay(b) - pay(a));
   const groups: { title: string; items: Bill[] }[] =
-    tab === 'paid'
+    settings.sortBy !== 'due'
+      ? [{ title: t(`sort.${settings.sortBy}`), items: sortList(tab === 'paid' ? paid : open) }]
+      : tab === 'paid'
       ? [{ title: t('home.paid'), items: paid }]
       : [
           { title: t('home.overdue'), items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) < 0) },
@@ -126,6 +134,10 @@ export default function Bills() {
               </Pressable>
             );
           })}
+          <Pressable accessibilityRole="button" accessibilityLabel={t('sort.title')} onPress={chooseSort} hitSlop={8} style={st.sort}>
+            <Icon name="sort" size={14} color={C.dim} />
+            <T style={st.sortText}>{t(`sort.${settings.sortBy}`)}</T>
+          </Pressable>
         </View>
 
         {tab === 'open' && expected.length > 0 && (
@@ -158,6 +170,25 @@ export default function Bills() {
       </View>
     </View>
   );
+}
+
+function chooseSort() {
+  sheet.show({
+    title: t('sort.title'),
+    content: (
+      <Options
+        selected={getSettings().sortBy}
+        options={(['due', 'name', 'amount'] as const).map((k) => ({
+          key: k,
+          label: t(`sort.${k}`),
+          onPress: () => {
+            updateSettings({ sortBy: k });
+            sheet.hide();
+          },
+        }))}
+      />
+    ),
+  });
 }
 
 function BillRow({ bill, today }: { bill: Bill; today: string }) {
@@ -278,7 +309,9 @@ const st = themed(() => StyleSheet.create({
   bar: { position: 'absolute', bottom: 14, width: 7, marginLeft: -3 },
   runwayLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   runwayLabel: { fontFamily: F.mono, fontSize: 10.5, color: C.dim, letterSpacing: 0.4 },
-  tabs: { flexDirection: 'row', gap: 22, marginTop: 20 },
+  tabs: { flexDirection: 'row', alignItems: 'flex-end', gap: 22, marginTop: 20 },
+  sort: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 8, minHeight: 32 },
+  sortText: { fontSize: 13, color: C.dim },
   tab: { paddingBottom: 8, minHeight: 32, justifyContent: 'flex-end' },
   tabOn: { borderBottomWidth: 1.5, borderBottomColor: C.fg },
   tabInner: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },

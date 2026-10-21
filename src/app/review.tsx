@@ -12,7 +12,8 @@ import { goBack, openScan } from '@/lib/nav';
 import { toMinor } from '@/lib/payment-codes';
 import { PAY_STYLES } from '@/lib/reminder-plan';
 import { describeReminder, scheduleReminder } from '@/lib/reminders';
-import { getSettings, homeCurrency } from '@/lib/settings';
+import { payeeKey } from '@/lib/recurring';
+import { getSettings, homeCurrency, updateSettings } from '@/lib/settings';
 import { getBill, newId, saveBill } from '@/lib/store';
 import { CATEGORIES, emptyPayment, type Bill, type BillDraft, type SourcedField } from '@/lib/types';
 import { t } from '@/i18n/core';
@@ -108,6 +109,12 @@ export default function Review() {
 
   async function save() {
     setSaving(true);
+    // Remember the category kept for this biller, so its next bills get it too.
+    if (d.category !== 'other' && d.payee.trim()) {
+      const learned = getSettings().learnedCategories;
+      const key = payeeKey(d.payee);
+      if (learned[key] !== d.category) updateSettings({ learnedCategories: { ...learned, [key]: d.category } });
+    }
     if (existing) {
       const updated: Bill = { ...existing, ...d, payee: d.payee.trim(), amountMinor: toMinor(amountText), currency: d.currency.trim().toUpperCase() || homeCurrency() };
       saveBill(await scheduleReminder(updated));
