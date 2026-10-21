@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { fromIso, toIso, todayIso } from '@/lib/dates';
+import { locale, t } from '@/i18n/core';
 
 import { Icon, T } from './kit';
 import { sheet } from './overlay';
@@ -22,16 +23,16 @@ export function Calendar({ value, onChange }: { value: string | null; onChange: 
   return (
     <View style={{ marginTop: 16 }}>
       <View style={st.head}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => shift(-1)} style={st.nav}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('calendar.prev')} onPress={() => shift(-1)} style={st.nav}>
           <Icon name="back" size={16} />
         </Pressable>
-        <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</T>
-        <Pressable accessibilityRole="button" accessibilityLabel="Next month" onPress={() => shift(1)} style={[st.nav, { transform: [{ rotate: '180deg' }] }]}>
+        <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{month.toLocaleDateString(locale(), { month: 'long', year: 'numeric' })}</T>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('calendar.next')} onPress={() => shift(1)} style={[st.nav, { transform: [{ rotate: '180deg' }] }]}>
           <Icon name="back" size={16} />
         </Pressable>
       </View>
       <View style={st.row}>
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+        {[1, 2, 3, 4, 5, 6, 7].map((wd) => new Date(2024, 0, wd).toLocaleDateString(locale(), { weekday: 'narrow' })).map((d, i) => (
           <T key={i} style={st.dow}>{d}</T>
         ))}
       </View>
@@ -42,7 +43,7 @@ export function Calendar({ value, onChange }: { value: string | null; onChange: 
             const on = iso === value;
             const isToday = iso === today;
             return (
-              <Pressable key={iso} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={fromIso(iso).toDateString()} onPress={() => onChange(iso)} style={st.cell}>
+              <Pressable key={iso} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={fromIso(iso).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })} onPress={() => onChange(iso)} style={st.cell}>
                 <View style={[st.day, isToday && st.today, on && st.selected]}>
                   <T style={{ fontSize: 14, fontVariant: ['tabular-nums'], color: on ? C.bg : i >= 5 ? C.dim : C.fg }}>{Number(iso.slice(8))}</T>
                 </View>
@@ -78,7 +79,7 @@ export function pickDate(title: string, value: string | null): Promise<string | 
           />
         ),
         onDismiss: () => done(null),
-        actions: [{ label: 'Done', onPress: () => done(picked) }],
+        actions: [{ label: t('common.done'), onPress: () => done(picked) }],
       });
     render();
   });

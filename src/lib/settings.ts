@@ -8,6 +8,8 @@ import type { PayStyle } from './reminder-plan';
 export type Settings = {
   /** Anonymous random id sent to due-api for rate limiting; not tied to the person or phone. */
   deviceId: string | null;
+  /** App language (see i18n); null follows the phone. */
+  language: string | null;
   /** Finished the first-run setup. */
   onboarded: boolean;
   /** Home country (ISO 3166-1 alpha-2) and currency (ISO 4217); null means "use the phone's". */
@@ -31,7 +33,7 @@ export type Settings = {
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
+const DEFAULTS: Settings = { language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');

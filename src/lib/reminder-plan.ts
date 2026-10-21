@@ -2,17 +2,15 @@ import { addDaysIso, daysBetween, fromIso, reminderMoment, shortDay, toIso, toda
 import { activeDiscount, targetDate } from './discount';
 import { formatMoney } from './money';
 import type { Bill } from './types';
+import { locale, t } from '../i18n/core';
 
 export type PlannedReminder = { kind: 'main' | 'tomorrow' | 'overdue'; at: Date; title: string; body: string };
 
 /** How early the user likes to pay: as soon as a bill arrives, halfway to the due date, or just before it. */
 export type PayStyle = 'early' | 'midway' | 'last';
 
-export const PAY_STYLES: { key: PayStyle; label: string; detail: string }[] = [
-  { key: 'early', label: 'Right away', detail: 'Remind me as soon as a bill arrives, so nothing hangs around.' },
-  { key: 'midway', label: 'Halfway', detail: 'Remind me halfway between a bill arriving and its due date.' },
-  { key: 'last', label: 'Just in time', detail: 'Remind me a few days before it’s due. The money stays with you longest.' },
-];
+/** Labels live in i18n (style.early, style.early.detail, …). */
+export const PAY_STYLES: { key: PayStyle }[] = [{ key: 'early' }, { key: 'midway' }, { key: 'last' }];
 
 type Prefs = { remindHour: number; extraNudges: boolean; payStyle?: PayStyle };
 
@@ -74,22 +72,22 @@ export function planReminders(bill: Bill, prefs: Prefs, now = new Date(), snooze
     const dayBefore = at(addDaysIso(target, -1), prefs.remindHour);
     const sameDay = (a: Date, b: Date) => todayIso(a) === todayIso(b);
     if (dayBefore > now && !out.some((r) => sameDay(r.at, dayBefore)) && (!main || dayBefore > main)) {
-      out.push({ kind: 'tomorrow', at: dayBefore, title, body: `${describeDue(bill, dayBefore)} Last call.` });
+      out.push({ kind: 'tomorrow', at: dayBefore, title, body: t('notify.lastCall', { text: describeDue(bill, dayBefore) }) });
     }
   }
   if (prefs.extraNudges && bill.dueDate) {
     const late = at(addDaysIso(bill.dueDate, 1), prefs.remindHour);
-    if (late > now) out.push({ kind: 'overdue', at: late, title, body: `Was due ${shortDay(bill.dueDate)} and isn't marked paid. Paid already? Tap Paid.` });
+    if (late > now) out.push({ kind: 'overdue', at: late, title, body: t('notify.overdue', { date: shortDay(bill.dueDate) }) });
   }
   return out;
 }
 
 function describeDue(bill: Bill, when: Date): string {
   const discount = activeDiscount(bill, todayIso(when));
-  if (discount) return `${discount.percent}% off until ${shortDay(discount.until)}: pay ${formatMoney(discount.payMinor, bill.currency)}.`;
-  if (!bill.dueDate) return 'Tap to open the QR code.';
+  if (discount) return t('notify.discount', { pct: discount.percent, date: shortDay(discount.until), amount: formatMoney(discount.payMinor, bill.currency) });
+  if (!bill.dueDate) return t('notify.openQr');
   const days = daysBetween(todayIso(when), bill.dueDate);
-  return days === 0 ? 'Due today.' : days === 1 ? 'Due tomorrow.' : `Due ${shortDay(bill.dueDate)}.`;
+  return days === 0 ? t('notify.dueToday') : days === 1 ? t('notify.dueTomorrow') : t('notify.dueOn', { date: shortDay(bill.dueDate) });
 }
 
 /** Monday morning summary of the week ahead; null when nothing is due that week. */
@@ -110,10 +108,10 @@ export function planDigest(bills: Bill[], hour: number, now = new Date()): { at:
 
   const ccy = week[0].b.currency;
   const total = week.filter((x) => x.b.currency === ccy).reduce((s, x) => s + (activeDiscount(x.b, start)?.payMinor ?? x.b.amountMinor ?? 0), 0);
-  const names = week.slice(0, 3).map((x) => `${x.b.payee} ${fromIso(x.deadline!).toLocaleDateString(undefined, { weekday: 'short' })}`);
+  const names = week.slice(0, 3).map((x) => `${x.b.payee} ${fromIso(x.deadline!).toLocaleDateString(locale(), { weekday: 'short' })}`);
   return {
     at: d,
-    title: `This week: ${week.length} ${week.length === 1 ? 'bill' : 'bills'}, ${formatMoney(total, ccy)}`,
-    body: names.join(' · ') + (week.length > 3 ? ` · +${week.length - 3} more` : ''),
+    title: t('notify.digestTitle', { n: week.length, total: formatMoney(total, ccy) }),
+    body: names.join(' · ') + (week.length > 3 ? ` · ${t('notify.more', { n: week.length - 3 })}` : ''),
   };
 }

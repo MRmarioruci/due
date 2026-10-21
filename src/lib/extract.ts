@@ -2,6 +2,7 @@ import type { DecodedCode } from './payment-codes';
 import { toMinor } from './payment-codes';
 import { todayIso } from './dates';
 import { countryByCode } from './regions';
+import { currentLang, t } from '@/i18n/core';
 import { deviceId, getSettings, homeCountry, homeCurrency } from './settings';
 import { emptyPayment, type BillDraft, type Category, type PayMethod, type SourcedField, type Source } from './types';
 
@@ -47,7 +48,7 @@ const MAX_BASE64 = 4_400_000;
 class ReadError extends Error {}
 
 async function askApi(file: BillFile, decoded: DecodedCode | null): Promise<ModelBill> {
-  if (file.base64.length > MAX_BASE64) throw new ReadError('That file is too large to read (over about 3 MB). Try a photo of the bill instead.');
+  if (file.base64.length > MAX_BASE64) throw new ReadError(t('read.tooLarge'));
   let res: Response;
   try {
     res = await fetch(`${API_URL}/v1/extract`, {
@@ -56,18 +57,19 @@ async function askApi(file: BillFile, decoded: DecodedCode | null): Promise<Mode
       body: JSON.stringify({
         file,
         today: todayIso(),
+        language: currentLang(),
         homeCountry: countryByCode(homeCountry())?.name,
         qrHint: decoded ? { payee: decoded.payee, amount: decoded.amountMinor != null ? decoded.amountMinor / 100 : null, currency: decoded.currency } : undefined,
       }),
     });
   } catch {
-    throw new ReadError('No connection to due’s server. Check your internet and try again.');
+    throw new ReadError(t('read.offline'));
   }
-  if (res.status === 429) throw new ReadError('You’ve reached today’s limit for reading bills. It resets tomorrow.');
-  if (res.status === 401) throw new ReadError('This version of due can’t reach the server. Update the app.');
-  if (!res.ok) throw new ReadError('The bill couldn’t be read this time. Try again in a moment.');
+  if (res.status === 429) throw new ReadError(t('read.limit'));
+  if (res.status === 401) throw new ReadError(t('read.update'));
+  if (!res.ok) throw new ReadError(t('read.failed'));
   const json = (await res.json()) as { bill?: ModelBill };
-  if (!json.bill) throw new ReadError('The bill couldn’t be read this time. Try again in a moment.');
+  if (!json.bill) throw new ReadError(t('read.failed'));
   return json.bill;
 }
 
@@ -83,11 +85,11 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; file: Bill
     try {
       ai = await askApi(opts.file, decoded);
     } catch (e) {
-      const why = e instanceof ReadError ? e.message : 'The bill couldn’t be read this time.';
-      warning = `${why} ${decoded ? 'The QR code was read; fill in the rest.' : 'Fill in the details below.'}`;
+      const why = e instanceof ReadError ? e.message : t('read.failed');
+      warning = `${why} ${decoded ? t('read.qrRead') : t('read.fillIn')}`;
     }
   } else if (!hasModel()) {
-    warning = 'Bill reading isn’t set up in this build (EXPO_PUBLIC_DUE_API_URL). Only the QR code was read.';
+    warning = t('read.notSetUp');
   }
 
   const sources: Partial<Record<SourcedField, Source>> = {};
@@ -105,7 +107,7 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; file: Bill
 
   const payment = decoded?.payment ?? emptyPayment();
   const draft: BillDraft = {
-    payee: pick('payee', decoded?.payee, ai?.payee) ?? 'Unknown biller',
+    payee: pick('payee', decoded?.payee, ai?.payee) ?? t('read.unknownBiller'),
     description: ai?.description ?? null,
     amountMinor: pick('amount', decoded?.amountMinor, ai?.amount ? toMinor(ai.amount) : null),
     currency: pick('currency', decoded?.currency, ai?.currency?.toUpperCase()) ?? homeCurrency(),

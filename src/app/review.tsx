@@ -14,18 +14,15 @@ import { PAY_STYLES } from '@/lib/reminder-plan';
 import { describeReminder, scheduleReminder } from '@/lib/reminders';
 import { getSettings, homeCurrency } from '@/lib/settings';
 import { getBill, newId, saveBill } from '@/lib/store';
-import { CATEGORY_LABEL, emptyPayment, type Bill, type BillDraft, type Category, type SourcedField } from '@/lib/types';
+import { CATEGORIES, emptyPayment, type Bill, type BillDraft, type SourcedField } from '@/lib/types';
+import { t } from '@/i18n/core';
+import { categoryLabel, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { pickDate } from '@/ui/calendar';
 import { Button, Eyebrow, Icon, IconButton, SourceTag, T } from '@/ui/kit';
 import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER } from '@/ui/theme';
 
-const REMIND_OPTIONS = [
-  { days: 0, label: 'On the due date' },
-  { days: 1, label: '1 day before' },
-  { days: 3, label: '3 days before' },
-  { days: 7, label: '1 week before' },
-];
+const REMIND_OPTIONS = [0, 1, 3, 7].map((days) => ({ days }));
 
 const blankDraft = (): BillDraft => ({
   payee: '',
@@ -68,16 +65,16 @@ export default function Review() {
   }
 
   async function chooseDueDate() {
-    const picked = await pickDate('Due date', d.dueDate);
+    const picked = await pickDate(t('review.dueDate'), d.dueDate);
     if (picked) edit('dueDate', picked, 'dueDate');
   }
 
   function chooseCategory() {
     sheet.show({
-      title: 'Category',
+      title: t('review.category'),
       content: (
         <View style={st.chips}>
-          {(Object.keys(CATEGORY_LABEL) as Category[]).map((c) => (
+          {CATEGORIES.map((c) => (
             <Pressable
               key={c}
               accessibilityRole="button"
@@ -87,7 +84,7 @@ export default function Review() {
                 sheet.hide();
               }}
               style={[st.chip, c === d.category && st.chipOn]}>
-              <T style={{ fontFamily: F.medium, fontSize: 14, color: c === d.category ? C.bg : C.fg }}>{CATEGORY_LABEL[c]}</T>
+              <T style={{ fontFamily: F.medium, fontSize: 14, color: c === d.category ? C.bg : C.fg }}>{categoryLabel(c)}</T>
             </Pressable>
           ))}
         </View>
@@ -114,7 +111,7 @@ export default function Review() {
     if (existing) {
       const updated: Bill = { ...existing, ...d, payee: d.payee.trim(), amountMinor: toMinor(amountText), currency: d.currency.trim().toUpperCase() || homeCurrency() };
       saveBill(await scheduleReminder(updated));
-      toast('Changes saved');
+      toast(t('review.saved'));
       return goBack();
     }
     const bill: Bill = {
@@ -137,10 +134,10 @@ export default function Review() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
         <View style={st.header}>
-          <IconButton label={existing ? 'Close without saving' : 'Retake photo'} onPress={() => (existing ? goBack() : openScan(true))}>
+          <IconButton label={existing ? t('review.closeWithoutSaving') : t('review.retake')} onPress={() => (existing ? goBack() : openScan(true))}>
             <Icon name={existing ? 'close' : 'back'} />
           </IconButton>
-          <T style={st.headerTitle}>{existing ? 'EDIT BILL' : 'CHECK DETAILS'}</T>
+          <T style={st.headerTitle}>{existing ? t('review.titleEdit') : t('review.titleCheck')}</T>
           <View style={{ width: 44 }} />
         </View>
 
@@ -154,27 +151,27 @@ export default function Review() {
           {d.imageUri ? <Image source={{ uri: d.imageUri }} style={st.thumb} contentFit="cover" /> : <View style={[st.thumb, { backgroundColor: C.paper }]} />}
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <TextInput value={d.payee} onChangeText={(v) => edit('payee', v, 'payee')} placeholder="Who to pay" placeholderTextColor={C.dim} style={st.payee} accessibilityLabel="Payee" />
+              <TextInput value={d.payee} onChangeText={(v) => edit('payee', v, 'payee')} placeholder={t('review.payeePlaceholder')} placeholderTextColor={C.dim} style={st.payee} accessibilityLabel={t('review.payee')} />
               <SourceTag source={d.sources.payee} />
             </View>
             <TextInput
               value={d.description ?? ''}
               onChangeText={(v) => edit('description', v || null)}
-              placeholder="What it's for"
+              placeholder={t('review.descriptionPlaceholder')}
               placeholderTextColor={C.barMuted}
               style={st.description}
-              accessibilityLabel="What the bill is for"
+              accessibilityLabel={t('review.description')}
             />
           </View>
         </View>
 
         <View style={st.amountBlock}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Eyebrow>Amount</Eyebrow>
+            <Eyebrow>{t('review.amount')}</Eyebrow>
             <SourceTag source={d.sources.amount} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10, marginTop: 6 }}>
-            <TextInput value={d.currency} onChangeText={(v) => edit('currency', v.toUpperCase(), 'currency')} autoCapitalize="characters" maxLength={3} style={st.ccy} accessibilityLabel="Currency" />
+            <TextInput value={d.currency} onChangeText={(v) => edit('currency', v.toUpperCase(), 'currency')} autoCapitalize="characters" maxLength={3} style={st.ccy} accessibilityLabel={t('review.currency')} />
             <TextInput
               value={amountText}
               onChangeText={(v) => {
@@ -185,7 +182,7 @@ export default function Review() {
               placeholderTextColor="#3a3a3a"
               keyboardType="decimal-pad"
               style={st.amount}
-              accessibilityLabel="Amount"
+              accessibilityLabel={t('review.amount')}
             />
           </View>
         </View>
@@ -194,26 +191,26 @@ export default function Review() {
           <View style={st.discount}>
             <T style={{ fontFamily: F.monoMedium, fontSize: 13, color: C.accent }}>−{discount.percent}%</T>
             <T style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: C.muted }}>
-              Early-payment discount: pay <T style={{ fontSize: 13.5, color: C.fg }}>{formatMoney(discount.payMinor, d.currency)}</T> by {longDate(discount.until)} and save {formatMoney(discount.savingMinor, d.currency)}. The reminder aims for this date.
+              {t('review.discount', { amount: formatMoney(discount.payMinor, d.currency), date: longDate(discount.until), saving: formatMoney(discount.savingMinor, d.currency) })}
             </T>
-            <Pressable accessibilityRole="button" accessibilityLabel="Ignore the discount" hitSlop={10} onPress={() => edit('discount', null)}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('review.ignoreDiscount')} hitSlop={10} onPress={() => edit('discount', null)}>
               <Icon name="close" color={C.dim} size={14} />
             </Pressable>
           </View>
         )}
 
-        <Pressable onPress={chooseDueDate} style={st.field} accessibilityRole="button" accessibilityLabel="Change due date">
-          <T style={st.label}>Due</T>
+        <Pressable onPress={chooseDueDate} style={st.field} accessibilityRole="button" accessibilityLabel={t('review.changeDueDate')}>
+          <T style={st.label}>{t('review.due')}</T>
           <View style={st.fieldRight}>
             <T style={{ fontSize: 14, color: d.dueDate ? C.fg : C.accent }}>
-              {d.dueDate ? `${longDate(d.dueDate)}${daysBetween(todayIso(), d.dueDate) >= 0 ? '' : ' · overdue'}` : 'Add due date'}
+              {d.dueDate ? `${longDate(d.dueDate)}${daysBetween(todayIso(), d.dueDate) >= 0 ? '' : ` · ${t('review.overdue')}`}` : t('review.addDueDate')}
             </T>
             <SourceTag source={d.sources.dueDate} />
           </View>
         </Pressable>
-        <Pressable onPress={chooseCategory} style={st.field} accessibilityRole="button" accessibilityLabel="Change category">
-          <T style={st.label}>Category</T>
-          <T style={{ fontSize: 14 }}>{CATEGORY_LABEL[d.category]}</T>
+        <Pressable onPress={chooseCategory} style={st.field} accessibilityRole="button" accessibilityLabel={t('review.changeCategory')}>
+          <T style={st.label}>{t('review.category')}</T>
+          <T style={{ fontSize: 14 }}>{categoryLabel(d.category)}</T>
         </Pressable>
         <View style={st.field}>
           <T style={st.label}>IBAN</T>
@@ -223,20 +220,20 @@ export default function Review() {
           </View>
         </View>
         <View style={st.field}>
-          <T style={st.label}>Reference</T>
+          <T style={st.label}>{t('review.reference')}</T>
           <View style={st.fieldRight}>
-            <TextInput value={d.payment.reference ?? ''} onChangeText={(v) => editPayment('reference', v)} placeholder="—" placeholderTextColor={C.dim} style={st.monoInput} multiline accessibilityLabel="Payment reference" />
+            <TextInput value={d.payment.reference ?? ''} onChangeText={(v) => editPayment('reference', v)} placeholder="—" placeholderTextColor={C.dim} style={st.monoInput} multiline accessibilityLabel={t('review.reference')} />
             <SourceTag source={d.sources.reference} />
           </View>
         </View>
 
-        <Eyebrow style={{ marginTop: 26, marginBottom: 12 }}>When to pay</Eyebrow>
+        <Eyebrow style={{ marginTop: 26, marginBottom: 12 }}>{t('review.whenToPay')}</Eyebrow>
         <View style={st.segment}>
           {PAY_STYLES.map((p) => {
             const on = p.key === style;
             return (
               <Pressable key={p.key} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => edit('payStyle', p.key)} style={[st.segItem, on && st.chipOn]}>
-                <T style={{ fontFamily: F.medium, fontSize: 13.5, color: on ? C.bg : C.fg }}>{p.label}</T>
+                <T style={{ fontFamily: F.medium, fontSize: 13.5, color: on ? C.bg : C.fg }}>{payStyleLabel(p.key)}</T>
               </Pressable>
             );
           })}
@@ -248,7 +245,7 @@ export default function Review() {
               const on = o.days === d.remindDaysBefore;
               return (
                 <Pressable key={o.days} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => edit('remindDaysBefore', o.days)} style={[st.chip, on && st.chipOn]}>
-                  <T style={{ fontFamily: F.medium, fontSize: 14, color: on ? C.bg : C.fg }}>{o.label}</T>
+                  <T style={{ fontFamily: F.medium, fontSize: 14, color: on ? C.bg : C.fg }}>{leadLabel(o.days)}</T>
                 </Pressable>
               );
             })}
@@ -257,14 +254,14 @@ export default function Review() {
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
           <Icon name="bell" color={C.accent} />
           <T style={{ flex: 1, fontSize: 13.5, lineHeight: 20, color: C.muted }}>
-            {reminder.when && <T style={{ fontSize: 13.5, color: C.fg }}>{reminder.when} at {formatHour(getSettings().remindHour)}. </T>}
+            {reminder.when && <T style={{ fontSize: 13.5, color: C.fg }}>{t('review.reminderAt', { date: reminder.when, time: formatHour(getSettings().remindHour) })} </T>}
             {reminder.why}
           </T>
         </View>
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button title={existing ? 'Save changes' : 'Save bill'} onPress={save} loading={saving} disabled={!valid} />
+        <Button title={existing ? t('review.saveChanges') : t('review.saveBill')} onPress={save} loading={saving} disabled={!valid} />
       </View>
     </KeyboardAvoidingView>
   );

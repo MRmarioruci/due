@@ -4,11 +4,13 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { describePay } from '@/lib/plan';
-import { countryByCode, currencyFor } from '@/lib/regions';
+import { currencyFor } from '@/lib/regions';
+import { currentLang, LANGUAGES, t } from '@/i18n/core';
+import { countryName, payStyleDetail, payStyleLabel } from '@/i18n/labels';
 import { PAY_STYLES } from '@/lib/reminder-plan';
 import { remindersAvailable, setupNotifications } from '@/lib/reminders';
 import { deviceRegion, getSettings, updateSettings, useSettings } from '@/lib/settings';
-import { chooseCountry, chooseCurrency, choosePay, countryFromLocation, setCountry } from '@/ui/choosers';
+import { chooseCountry, chooseCurrency, chooseLanguageSheet, choosePay, countryFromLocation, setCountry } from '@/ui/choosers';
 import { Button, Eyebrow, Icon, T } from '@/ui/kit';
 import { Animated, enterFade, enterRow } from '@/ui/motion';
 import { toast } from '@/ui/overlay';
@@ -40,12 +42,12 @@ export default function Onboarding() {
       const code = await countryFromLocation();
       if (code) {
         setCountry(code);
-        toast(`Found you in ${countryByCode(code)?.name ?? code}`);
+        toast(t('onb.foundYou', { country: countryName(code) ?? code }));
       } else {
-        toast('Couldn’t get your location. Pick your country instead.');
+        toast(t('onb.noLocation'));
       }
     } catch {
-      toast('Couldn’t get your location. Pick your country instead.');
+      toast(t('onb.noLocation'));
     } finally {
       setLocating(false);
     }
@@ -66,44 +68,45 @@ export default function Onboarding() {
               <T style={st.logoText}>due</T>
               <View style={st.logoDot} />
             </View>
-            <T style={st.title}>Every bill, paid at the right time.</T>
-            {[
-              ['Scan', 'Take a photo or import a PDF. The payment code and due date are read for you.'],
-              ['Remind', 'A nudge a few days before each bill is due, never on a weekend.'],
-              ['Pay', 'Show the payment QR to your banking app when it’s time.'],
-            ].map(([h, t], i) => (
-              <Animated.View key={h} entering={enterRow(i + 1)} style={st.point}>
-                <T style={st.pointHead}>{h}</T>
-                <T style={st.pointText}>{t}</T>
+            <T style={st.title}>{t('onb.headline')}</T>
+            {(['scan', 'remind', 'pay'] as const).map((k, i) => (
+              <Animated.View key={k} entering={enterRow(i + 1)} style={st.point}>
+                <T style={st.pointHead}>{t(`onb.${k}`)}</T>
+                <T style={st.pointText}>{t(`onb.${k}.text`)}</T>
               </Animated.View>
             ))}
+            <Pressable accessibilityRole="button" onPress={() => chooseLanguageSheet()} style={{ alignSelf: 'flex-start', paddingVertical: 8, marginTop: 4 }}>
+              <T style={{ fontSize: 14, color: C.muted }}>
+                {t('settings.language')}: <T style={{ fontSize: 14, color: C.fg }}>{LANGUAGES.find((l) => l.code === currentLang())?.name}</T> ›
+              </T>
+            </Pressable>
           </View>
         )}
 
         {step === 'region' && (
           <View style={st.body}>
-            <Eyebrow>Step 1 of 4</Eyebrow>
-            <T style={st.title}>Where do you live?</T>
-            <T style={st.text}>It sets your currency and helps read dates on your bills. Bills from anywhere still work.</T>
+            <Eyebrow>{t('onb.step', { n: 1, total: 4 })}</Eyebrow>
+            <T style={st.title}>{t('choose.whereLive')}</T>
+            <T style={st.text}>{t('onb.regionText')}</T>
             <View style={st.card}>
               <Pressable accessibilityRole="button" onPress={() => chooseCountry()} style={st.cardRow}>
-                <T style={st.cardLabel}>Country</T>
-                <T style={st.cardValue}>{countryByCode(country)?.name ?? 'Choose'}</T>
+                <T style={st.cardLabel}>{t('settings.country')}</T>
+                <T style={st.cardValue}>{countryName(country) ?? t('onb.choose')}</T>
               </Pressable>
               <Pressable accessibilityRole="button" onPress={() => chooseCurrency()} style={[st.cardRow, { borderBottomWidth: 0 }]}>
-                <T style={st.cardLabel}>Currency</T>
+                <T style={st.cardLabel}>{t('settings.currency')}</T>
                 <T style={st.cardValue}>{currency}</T>
               </Pressable>
             </View>
-            <Button title="Use my location" kind="secondary" loading={locating} onPress={useLocation} icon={<Icon name="pin" size={16} />} />
+            <Button title={t('onb.useLocation')} kind="secondary" loading={locating} onPress={useLocation} icon={<Icon name="pin" size={16} />} />
           </View>
         )}
 
         {step === 'style' && (
           <View style={st.body}>
-            <Eyebrow>Step 2 of 4</Eyebrow>
-            <T style={st.title}>When do you like to pay?</T>
-            <T style={st.text}>Sets when reminders come. You can change it per bill, too.</T>
+            <Eyebrow>{t('onb.step', { n: 2, total: 4 })}</Eyebrow>
+            <T style={st.title}>{t('settings.whenPay')}</T>
+            <T style={st.text}>{t('onb.styleText')}</T>
             <View style={{ gap: 8, marginTop: 8 }}>
               {PAY_STYLES.map((p, i) => {
                 const on = s.payStyle === p.key;
@@ -111,10 +114,10 @@ export default function Onboarding() {
                   <Animated.View key={p.key} entering={enterRow(i)}>
                     <Pressable accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => updateSettings({ payStyle: p.key })} style={[st.option, on && st.optionOn]}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <T style={{ fontFamily: F.semibold, fontSize: 16 }}>{p.label}</T>
-                        {p.key === 'last' && <T style={st.badge}>RECOMMENDED</T>}
+                        <T style={{ fontFamily: F.semibold, fontSize: 16 }}>{payStyleLabel(p.key)}</T>
+                        {p.key === 'last' && <T style={st.badge}>{t('onb.recommended')}</T>}
                       </View>
-                      <T style={{ fontSize: 13.5, lineHeight: 19, color: C.muted }}>{p.detail}</T>
+                      <T style={{ fontSize: 13.5, lineHeight: 19, color: C.muted }}>{payStyleDetail(p.key)}</T>
                     </Pressable>
                   </Animated.View>
                 );
@@ -125,13 +128,13 @@ export default function Onboarding() {
 
         {step === 'pay' && (
           <View style={st.body}>
-            <Eyebrow>Step 3 of 4</Eyebrow>
-            <T style={st.title}>When do you get paid?</T>
-            <T style={st.text}>due then shows which bills fall before payday and which can wait for it. You can skip this.</T>
+            <Eyebrow>{t('onb.step', { n: 3, total: 4 })}</Eyebrow>
+            <T style={st.title}>{t('onb.payTitle')}</T>
+            <T style={st.text}>{t('onb.payText')}</T>
             <View style={st.card}>
               <Pressable accessibilityRole="button" onPress={() => choosePay()} style={[st.cardRow, { borderBottomWidth: 0 }]}>
-                <T style={st.cardLabel}>Payday</T>
-                <T style={st.cardValue}>{s.pay ? describePay(s.pay) : 'Choose'}</T>
+                <T style={st.cardLabel}>{t('settings.payday')}</T>
+                <T style={st.cardValue}>{s.pay ? describePay(s.pay) : t('onb.choose')}</T>
               </Pressable>
             </View>
           </View>
@@ -139,37 +142,35 @@ export default function Onboarding() {
 
         {step === 'reminders' && (
           <View style={st.body}>
-            <Eyebrow>Step 4 of 4</Eyebrow>
-            <T style={st.title}>Get a nudge before bills are due.</T>
+            <Eyebrow>{t('onb.step', { n: 4, total: 4 })}</Eyebrow>
+            <T style={st.title}>{t('onb.remindTitle')}</T>
             <T style={st.text}>
-              {remindersAvailable
-                ? 'One notification per bill, a few days ahead, at 09:00. You can change both in Settings.'
-                : 'Reminders need the installed app; they don’t run in Expo Go on Android. Everything else works.'}
+              {remindersAvailable ? t('onb.remindText') : t('onb.remindExpoGo')}
             </T>
           </View>
         )}
       </Animated.View>
 
       <View style={{ gap: 10 }}>
-        {step === 'welcome' && <Button title="Get started" onPress={next} />}
-        {step === 'region' && <Button title="Continue" onPress={() => { if (country) setCountry(country); updateSettings({ currency }); next(); }} />}
-        {step === 'style' && <Button title="Continue" onPress={next} />}
+        {step === 'welcome' && <Button title={t('onb.start')} onPress={next} />}
+        {step === 'region' && <Button title={t('common.continue')} onPress={() => { if (country) setCountry(country); updateSettings({ currency }); next(); }} />}
+        {step === 'style' && <Button title={t('common.continue')} onPress={next} />}
         {step === 'pay' && (
           <>
-            <Button title="Continue" onPress={next} />
-            {!s.pay && <Button title="Skip for now" kind="secondary" onPress={next} />}
+            <Button title={t('common.continue')} onPress={next} />
+            {!s.pay && <Button title={t('onb.skip')} kind="secondary" onPress={next} />}
           </>
         )}
         {step === 'reminders' && (
           <>
             <Button
-              title={remindersAvailable ? 'Turn on reminders' : 'Finish'}
+              title={remindersAvailable ? t('onb.turnOn') : t('onb.finish')}
               onPress={async () => {
                 if (remindersAvailable) await setupNotifications();
                 finish();
               }}
             />
-            {remindersAvailable && <Button title="Not now" kind="secondary" onPress={finish} />}
+            {remindersAvailable && <Button title={t('onb.notNow')} kind="secondary" onPress={finish} />}
           </>
         )}
       </View>

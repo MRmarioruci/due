@@ -12,6 +12,7 @@ import { daysBetween, formatHour, longDate, shortDay, todayIso } from '@/lib/dat
 import { activeDiscount, withSwissAmount } from '@/lib/discount';
 import { formatAmount, formatMoney } from '@/lib/money';
 import { goBack } from '@/lib/nav';
+import { locale, t } from '@/i18n/core';
 import { armPayCheck } from '@/lib/pay-check';
 import { buildEpc, buildSwissQr } from '@/lib/payment-codes';
 import { paydayAdvice } from '@/lib/plan';
@@ -71,9 +72,9 @@ export default function BillScreen() {
         file.create({ overwrite: true });
         file.write(base64, { encoding: 'base64' });
         armPayCheck(bill!.id);
-        await Sharing.shareAsync(file.uri, { mimeType: 'image/png', dialogTitle: `Pay ${bill!.payee}` });
+        await Sharing.shareAsync(file.uri, { mimeType: 'image/png', dialogTitle: t('bill.shareTitle', { payee: bill!.payee }) });
       } catch (e) {
-        toast(`Couldn’t share the QR code: ${(e as Error).message}`);
+        toast(t('bill.shareFailed', { error: (e as Error).message }));
       }
     });
   }
@@ -91,16 +92,16 @@ export default function BillScreen() {
     sheet.show({
       title: b.payee,
       actions: [
-        { label: 'Edit details', kind: 'secondary', onPress: () => router.push({ pathname: '/review', params: { id: b.id } }) },
+        { label: t('bill.edit'), kind: 'secondary', onPress: () => router.push({ pathname: '/review', params: { id: b.id } }) },
         {
-          label: 'Delete bill',
+          label: t('bill.delete'),
           kind: 'secondary',
           onPress: async () => {
-            const sure = await sheet.confirm({ title: `Delete ${b.payee}?`, message: 'Its reminders are cancelled too. This can’t be undone.', confirm: 'Delete', destructive: true });
+            const sure = await sheet.confirm({ title: t('bill.deleteTitle', { payee: b.payee }), message: t('bill.deleteText'), confirm: t('bill.deleteConfirm'), destructive: true });
             if (!sure) return;
             await markPaid(b); // cancels its notifications
             deleteBill(b.id);
-            toast('Bill deleted');
+            toast(t('bill.deleted'));
             goBack();
           },
         },
@@ -110,20 +111,20 @@ export default function BillScreen() {
 
   const rows: { label: string; value: string; mono?: boolean }[] = [
     bill.payment.iban && { label: 'IBAN', value: groupIban(bill.payment.iban), mono: true },
-    bill.payment.reference && { label: 'Reference', value: bill.payment.reference, mono: true },
-    bill.payment.accountNumber && { label: 'Account no.', value: bill.payment.accountNumber, mono: true },
-    bill.payment.message && { label: 'Message', value: bill.payment.message },
+    bill.payment.reference && { label: t('review.reference'), value: bill.payment.reference, mono: true },
+    bill.payment.accountNumber && { label: t('bill.accountNo'), value: bill.payment.accountNumber, mono: true },
+    bill.payment.message && { label: t('bill.message'), value: bill.payment.message },
   ].filter(Boolean) as { label: string; value: string; mono?: boolean }[];
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: 130 }}>
         <View style={st.header}>
-          <IconButton label="Back to bills" onPress={() => goBack()}>
+          <IconButton label={t('common.backToBills')} onPress={() => goBack()}>
             <Icon name="back" />
           </IconButton>
           <T style={st.headerTitle} numberOfLines={1}>{bill.payee}</T>
-          <IconButton label="More" onPress={more}>
+          <IconButton label={t('common.more')} onPress={more}>
             <Icon name="more" />
           </IconButton>
         </View>
@@ -132,10 +133,10 @@ export default function BillScreen() {
           <Amount currency={bill.currency} value={formatAmount(discount?.payMinor ?? bill.paidAmountMinor ?? bill.amountMinor, bill.currency)} size={48} />
           <T style={st.sub}>
             {paid
-              ? `Paid ${new Date(bill.paidAt!).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
+              ? t('bill.paidOn', { date: new Date(bill.paidAt!).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }) })
               : bill.dueDate
-                ? `Due ${shortDay(bill.dueDate)} · ${days! < 0 ? `${-days!} days late` : days === 0 ? 'today' : `${days} ${days === 1 ? 'day' : 'days'} left`}`
-                : 'No due date'}
+                ? `${t('bill.dueOn', { date: shortDay(bill.dueDate) })} · ${days! < 0 ? t('bill.daysLate', { n: -days! }) : days === 0 ? t('bill.today') : t('bill.daysLeft', { n: days! })}`
+                : t('home.noDueDate')}
           </T>
         </View>
 
@@ -143,13 +144,14 @@ export default function BillScreen() {
           <Animated.View entering={enterFade(80)} style={st.discount}>
             <T style={st.discountBadge}>−{discount.percent}%</T>
             <T style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: C.muted }}>
-              <T style={{ fontSize: 13.5, color: C.fg }}>Pay by {shortDay(discount.until)} and save {formatMoney(discount.savingMinor, bill.currency)}.</T>{' '}
-              Full amount {formatAmount(bill.amountMinor, bill.currency)} after that.{code ? ' The QR code already has the discount.' : ''}
+              <T style={{ fontSize: 13.5, color: C.fg }}>{t('bill.discountHead', { date: shortDay(discount.until), saving: formatMoney(discount.savingMinor, bill.currency) })}</T>{' '}
+              {t('bill.discountAfter', { amount: formatAmount(bill.amountMinor, bill.currency) })}
+              {code ? ` ${t('bill.discountInQr')}` : ''}
             </T>
           </Animated.View>
         )}
         {paid && bill.paidAmountMinor != null && bill.amountMinor != null && bill.paidAmountMinor < bill.amountMinor && (
-          <T style={{ marginTop: 10, fontSize: 13.5, color: C.muted }}>Saved {formatMoney(bill.amountMinor - bill.paidAmountMinor, bill.currency)} with the early-payment discount.</T>
+          <T style={{ marginTop: 10, fontSize: 13.5, color: C.muted }}>{t('bill.savedWithDiscount', { saving: formatMoney(bill.amountMinor - bill.paidAmountMinor, bill.currency) })}</T>
         )}
 
         {!paid && bill.dueDate && <Timeline bill={bill} today={today} />}
@@ -170,22 +172,22 @@ export default function BillScreen() {
               logoMargin={0}
               getRef={(r) => (qrRef.current = r)}
             />
-            <Eyebrow>Scan with your banking app</Eyebrow>
+            <Eyebrow>{t('bill.scanWithBank')}</Eyebrow>
             {!paid && (
               <Pressable accessibilityRole="button" onPress={shareQr} style={st.shareBtn}>
                 <Icon name="share" size={16} />
-                <T style={{ fontFamily: F.medium, fontSize: 14 }}>Share QR to your bank app</T>
+                <T style={{ fontFamily: F.medium, fontSize: 14 }}>{t('bill.shareQr')}</T>
               </Pressable>
             )}
           </Animated.View>
         ) : (
           bill.payment.payUrl && (
-            <Button title="Open payment page" kind="secondary" style={{ marginTop: 24 }} onPress={() => { armPayCheck(bill.id); Linking.openURL(bill.payment.payUrl!); }} />
+            <Button title={t('bill.openPaymentPage')} kind="secondary" style={{ marginTop: 24 }} onPress={() => { armPayCheck(bill.id); Linking.openURL(bill.payment.payUrl!); }} />
           )
         )}
 
         {bill.payMethod === 'direct_debit' && (
-          <T style={{ marginTop: 18, color: C.muted, fontSize: 13.5, lineHeight: 20 }}>This one is debited automatically. Just make sure the money is in the account by the due date.</T>
+          <T style={{ marginTop: 18, color: C.muted, fontSize: 13.5, lineHeight: 20 }}>{t('bill.directDebit')}</T>
         )}
 
         <View style={{ marginTop: 18, borderTopWidth: rows.length ? 1 : 0, borderTopColor: C.line }}>
@@ -193,14 +195,14 @@ export default function BillScreen() {
             <View key={r.label} style={st.row}>
               <T style={st.rowLabel}>{r.label}</T>
               <T style={[st.rowValue, r.mono && { fontFamily: F.mono, fontSize: 12 }]} selectable>{r.value}</T>
-              <Pressable accessibilityRole="button" accessibilityLabel={`Copy ${r.label}`} onPress={() => copy(r.label, r.value)} style={st.copy}>
+              <Pressable accessibilityRole="button" accessibilityLabel={t('bill.copy', { label: r.label })} onPress={() => copy(r.label, r.value)} style={st.copy}>
                 <Icon name={copied === r.label ? 'check' : 'copy'} color={copied === r.label ? C.accent : C.muted} size={16} />
               </Pressable>
             </View>
           ))}
           {bill.dueDate && (
             <View style={st.row}>
-              <T style={st.rowLabel}>Due</T>
+              <T style={st.rowLabel}>{t('review.due')}</T>
               <T style={st.rowValue}>{longDate(bill.dueDate)}</T>
             </View>
           )}
@@ -209,26 +211,26 @@ export default function BillScreen() {
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
         {paid ? (
-          <Button title="Mark as unpaid" kind="secondary" style={{ flex: 1 }} onPress={() => markOpen(bill)} />
+          <Button title={t('bill.markUnpaid')} kind="secondary" style={{ flex: 1 }} onPress={() => markOpen(bill)} />
         ) : (
           <>
             <Button
-              title="Snooze"
+              title={t('bill.snooze')}
               kind="secondary"
               style={{ flex: 1 }}
               onPress={async () => {
                 await snooze(bill);
                 Haptics.selectionAsync();
-                toast(`Snoozed until tomorrow, ${formatHour(getSettings().remindHour)}`);
+                toast(t('bill.snoozed', { time: formatHour(getSettings().remindHour) }));
               }}
             />
             <Button
-              title="Mark as paid"
+              title={t('bill.markPaid')}
               style={{ flex: 2 }}
               onPress={async () => {
                 await markPaid(bill);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                toast(`${bill.payee} marked paid`);
+                toast(t('bill.markedPaid', { payee: bill.payee }));
                 goBack();
               }}
             />
@@ -245,9 +247,9 @@ function Timeline({ bill, today }: { bill: Bill; today: string }) {
   const span = Math.max(1, daysBetween(start, bill.dueDate!));
   const pos = (iso: string) => `${Math.min(100, Math.max(0, (daysBetween(start, iso) / span) * 100))}%` as const;
   const remind = bill.remindAt ? bill.remindAt.slice(0, 10) : null;
-  const fmt = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase();
+  const fmt = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString(locale(), { day: 'numeric', month: 'short' }).toUpperCase();
   return (
-    <View style={{ marginTop: 22 }} accessibilityLabel="Timeline from bill date to due date">
+    <View style={{ marginTop: 22 }} accessibilityLabel={t('bill.timeline')}>
       <View style={{ height: 22 }}>
         <View style={[st.line, { left: 0, right: 0, backgroundColor: C.border }]} />
         <View style={[st.line, { left: 0, width: pos(today), backgroundColor: C.fg }]} />
@@ -262,7 +264,7 @@ function Timeline({ bill, today }: { bill: Bill; today: string }) {
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
         <T style={st.tl}>{fmt(start)}</T>
-        <T style={[st.tl, { color: C.fg }]}>TODAY</T>
+        <T style={[st.tl, { color: C.fg }]}>{t('common.todayCaps')}</T>
         <T style={st.tl}>{fmt(bill.dueDate!)}</T>
       </View>
     </View>

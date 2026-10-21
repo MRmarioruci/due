@@ -7,6 +7,10 @@ Scan a bill, get reminded before it's due, pay it from the QR code when the time
 - **Pay**: the bill screen shows a QR code your banking app can scan: the original QR-bill or GiroCode, or a GiroCode built from printed SEPA details.
 - **Stats**: what you paid per week/month/year, how often on time, how many days before the due date, and by category.
 
+## Languages
+
+English, German, French, Italian, Spanish, Portuguese, Dutch and Polish. The app follows the phone's language unless one is picked in Settings → Region → Language. Texts live in `src/i18n/<lang>.ts`; English (`en.ts`) is the source, and the tests check every language has every text with the same placeholders. Plural forms use `_one` / `_other` (Polish adds `_few` / `_many`).
+
 Design: [canvas](https://claude.ai/artifact/X5vyGPve69UzXvytz2rqzR).
 
 ## Run it on your Android phone

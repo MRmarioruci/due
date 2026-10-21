@@ -1,3 +1,5 @@
+import { locale, t } from '../i18n/core';
+
 /** Dates are stored as local calendar days ("YYYY-MM-DD"); these helpers never go through UTC. */
 
 export function todayIso(now = new Date()): string {
@@ -37,22 +39,22 @@ export function reminderMoment(dueDate: string, daysBefore: number, hour = 9, no
   return d.getTime() > now.getTime() ? d : null;
 }
 
-/** "Thu 29 Oct" in the device locale. */
+/** "Thu 29 Oct" in the app's language. */
 export function shortDay(d: Date | string): string {
   const date = typeof d === 'string' ? fromIso(d) : d;
-  return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  return date.toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 export function longDate(iso: string): string {
-  return fromIso(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return fromIso(iso).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function relativeDays(dueDate: string, today = todayIso()): string {
   const n = daysBetween(today, dueDate);
-  if (n < 0) return n === -1 ? '1 DAY LATE' : `${-n} DAYS LATE`;
-  if (n === 0) return 'TODAY';
-  if (n === 1) return 'TOMORROW';
-  return `${n} DAYS`;
+  if (n < 0) return t('when.daysLate', { n: -n });
+  if (n === 0) return t('when.today');
+  if (n === 1) return t('when.tomorrow');
+  return t('when.days', { n });
 }
 
 /** 9 -> "09:00". */

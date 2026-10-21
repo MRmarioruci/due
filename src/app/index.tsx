@@ -8,11 +8,13 @@ import { activeDiscount } from '@/lib/discount';
 import { formatAmount } from '@/lib/money';
 import { openScan } from '@/lib/nav';
 import { planAroundPayday } from '@/lib/plan';
-import { CADENCE_LABEL, expectedBills, findSeries, type Series } from '@/lib/recurring';
+import { expectedBills, findSeries, type Series } from '@/lib/recurring';
+import { cadenceLabel, categoryLabel } from '@/i18n/labels';
+import { locale, t } from '@/i18n/core';
 import { seedSampleBills } from '@/lib/seed';
 import { homeCurrency, useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
-import { CATEGORY_LABEL, type Bill } from '@/lib/types';
+import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
 import { Animated, enterFade, enterRow, GrowBar, moveRow, useCountUp } from '@/ui/motion';
 import { C, F, GUTTER } from '@/ui/theme';
@@ -47,12 +49,12 @@ export default function Bills() {
 
   const groups: { title: string; items: Bill[] }[] =
     tab === 'paid'
-      ? [{ title: 'Paid', items: paid }]
+      ? [{ title: t('home.paid'), items: paid }]
       : [
-          { title: 'Overdue', items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) < 0) },
-          { title: 'This week', items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0 && daysBetween(today, b.dueDate) < 7) },
-          { title: 'Later', items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 7) },
-          { title: 'No due date', items: open.filter((b) => !b.dueDate) },
+          { title: t('home.overdue'), items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) < 0) },
+          { title: t('home.thisWeek'), items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0 && daysBetween(today, b.dueDate) < 7) },
+          { title: t('home.later'), items: open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 7) },
+          { title: t('home.noDueDate'), items: open.filter((b) => !b.dueDate) },
         ];
 
   if (!settings.onboarded) return <Redirect href="/onboarding" />;
@@ -67,45 +69,45 @@ export default function Bills() {
             <View style={st.logoDot} />
           </Pressable>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <IconButton label="Stats" onPress={() => router.push('/stats')}>
+            <IconButton label={t('common.stats')} onPress={() => router.push('/stats')}>
               <Icon name="stats" color={C.muted} />
             </IconButton>
-            <IconButton label="Settings" onPress={() => router.push('/settings')}>
+            <IconButton label={t('common.settings')} onPress={() => router.push('/settings')}>
               <Icon name="settings" color={C.muted} />
             </IconButton>
           </View>
         </View>
 
         <View style={{ marginTop: 22 }}>
-          <Eyebrow>Next {HORIZON} days</Eyebrow>
+          <Eyebrow>{t('home.nextDays', { n: HORIZON })}</Eyebrow>
           <View style={{ marginTop: 8 }}>
             <Amount currency={ccy} value={formatAmount(totalShown, ccy)} />
           </View>
           <T style={st.sub}>
             {open.length === 0
-              ? 'Nothing to pay. Scan a bill when one arrives.'
-              : `${open.length} ${open.length === 1 ? 'bill' : 'bills'} open${next?.dueDate ? ` · next due ${shortDay(next.dueDate)}` : ''}${otherCcy ? ' · plus other currencies' : ''}`}
+              ? t('home.empty')
+              : [t('home.open', { n: open.length }), next?.dueDate && t('home.nextDue', { date: shortDay(next.dueDate) }), otherCcy && t('home.otherCurrencies')].filter(Boolean).join(' · ')}
           </T>
         </View>
 
         {plan ? (
           <Animated.View entering={enterFade(150)} style={st.plan}>
             <View style={st.planCol}>
-              <Eyebrow>Before payday</Eyebrow>
+              <Eyebrow>{t('home.beforePayday')}</Eyebrow>
               <T style={st.planAmount}>{formatAmount(plan.beforeMinor, ccy)}</T>
-              <T style={st.planSub}>{plan.before.length ? `${plan.before.length} ${plan.before.length === 1 ? 'bill' : 'bills'} from what’s in the account` : 'Nothing until payday'}</T>
+              <T style={st.planSub}>{plan.before.length ? t('home.beforeCount', { n: plan.before.length }) : t('home.nothingUntilPayday')}</T>
             </View>
             <View style={[st.planCol, st.planRight]}>
-              <Eyebrow>After · {shortDay(plan.payday).toUpperCase()}</Eyebrow>
+              <Eyebrow>{t('home.afterPayday', { date: shortDay(plan.payday).toUpperCase() })}</Eyebrow>
               <T style={st.planAmount}>{formatAmount(plan.afterMinor, ccy)}</T>
-              <T style={st.planSub}>{plan.after.length} {plan.after.length === 1 ? 'bill waits' : 'bills wait'} for your salary</T>
+              <T style={st.planSub}>{t('home.afterCount', { n: plan.after.length })}</T>
             </View>
           </Animated.View>
         ) : (
           open.length > 0 &&
           !settings.pay && (
             <Pressable accessibilityRole="link" onPress={() => router.push('/settings')} style={{ marginTop: 14, alignSelf: 'flex-start', paddingVertical: 6 }}>
-              <T style={{ fontSize: 13.5, color: C.muted }}>Set your payday to plan around it →</T>
+              <T style={{ fontSize: 13.5, color: C.muted }}>{t('home.setPayday')}</T>
             </Pressable>
           )
         )}
@@ -118,7 +120,7 @@ export default function Bills() {
             return (
               <Pressable key={k} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setTab(k)} style={[st.tab, on && st.tabOn]}>
                 <View style={st.tabInner}>
-                  <T style={[st.tabText, { color: on ? C.fg : C.dim }]}>{k === 'open' ? 'Upcoming' : 'Paid'}</T>
+                  <T style={[st.tabText, { color: on ? C.fg : C.dim }]}>{k === 'open' ? t('home.upcoming') : t('home.paid')}</T>
                   <T style={[st.tabCount, on && { color: C.muted }]}>{k === 'open' ? open.length : paid.length}</T>
                 </View>
               </Pressable>
@@ -128,7 +130,7 @@ export default function Bills() {
 
         {tab === 'open' && expected.length > 0 && (
           <View>
-            <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>Expected</Eyebrow>
+            <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>{t('home.expected')}</Eyebrow>
             {expected.map((s, idx) => (
               <Animated.View key={s.key} entering={enterRow(idx)} layout={moveRow}>
                 <ExpectedRow series={s} />
@@ -152,7 +154,7 @@ export default function Bills() {
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button onPress={() => openScan()} title="Scan a bill" icon={<Icon name="scan" color={C.bg} size={20} />} />
+        <Button onPress={() => openScan()} title={t('home.scan')} icon={<Icon name="scan" color={C.bg} size={20} />} />
       </View>
     </View>
   );
@@ -163,8 +165,8 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
   const urgent = bill.status === 'open' && days != null && days <= 3;
   const discount = activeDiscount(bill, today);
   const sub = discount
-    ? `${discount.percent}% off until ${shortDay(discount.until)}`
-    : [bill.description ?? CATEGORY_LABEL[bill.category], bill.dueDate && `due ${shortDay(bill.dueDate)}`].filter(Boolean).join(' · ');
+    ? t('row.discount', { pct: discount.percent, date: shortDay(discount.until) })
+    : [bill.description ?? categoryLabel(bill.category), bill.dueDate && t('row.due', { date: shortDay(bill.dueDate) })].filter(Boolean).join(' · ');
   // A plain Pressable, laid out like ExpectedRow: wrapping it in <Link asChild> merged styles and broke the row layout.
   return (
     <Pressable
@@ -184,7 +186,7 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
           {formatAmount(discount?.payMinor ?? (bill.status === 'paid' ? bill.paidAmountMinor : null) ?? bill.amountMinor, bill.currency)}
         </T>
         <T style={[st.rowDays, { color: urgent ? C.accent : C.dim }]}>
-          {bill.status === 'paid' ? 'PAID' : bill.dueDate ? relativeDays(bill.dueDate, today) : '—'}
+          {bill.status === 'paid' ? t('row.paid') : bill.dueDate ? relativeDays(bill.dueDate, today) : '—'}
         </T>
       </View>
     </Pressable>
@@ -193,9 +195,9 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
 
 /** A bill that should come soon (or should have come) from a biller who bills regularly. */
 function ExpectedRow({ series: s }: { series: Series }) {
-  const when = s.late ? `Should have arrived by ${shortDay(s.expectedArrival)}` : `${CADENCE_LABEL[s.cadence]} · due around ${shortDay(s.nextDue)}`;
+  const when = s.late ? t('expected.late', { date: shortDay(s.expectedArrival) }) : t('expected.around', { cadence: cadenceLabel(s.cadence), date: shortDay(s.nextDue) });
   return (
-    <View style={st.row} accessibilityLabel={`${s.payee}, expected: ${when}`}>
+    <View style={st.row} accessibilityLabel={t('expected.a11y', { payee: s.payee, when })}>
       <View style={[st.mono, { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.barMuted }]}>
         <T style={[st.monoText, { color: C.dim }]}>{s.payee.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}</T>
       </View>
@@ -205,7 +207,7 @@ function ExpectedRow({ series: s }: { series: Series }) {
       </View>
       <View style={{ alignItems: 'flex-end', gap: 5 }}>
         <T style={[st.rowAmount, { color: C.muted }]}>≈ {formatAmount(s.amountMinor, s.currency)}</T>
-        <T style={[st.rowDays, { color: s.late ? C.accent : C.dim }]}>{s.late ? 'NOT ARRIVED' : 'EXPECTED'}</T>
+        <T style={[st.rowDays, { color: s.late ? C.accent : C.dim }]}>{s.late ? t('expected.notArrived') : t('expected.tag')}</T>
       </View>
     </View>
   );
@@ -220,7 +222,7 @@ function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today:
   const mid = fromIso(today);
   mid.setDate(mid.getDate() + HORIZON / 2);
   return (
-    <View style={st.runway} accessibilityLabel={`Due dates over the next ${HORIZON} days`}>
+    <View style={st.runway} accessibilityLabel={t('runway.a11y', { n: HORIZON })}>
       <View style={{ height: 64 }}>
         <View style={st.ticks}>
           {Array.from({ length: HORIZON + 1 }, (_, i) => (
@@ -229,8 +231,8 @@ function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today:
         </View>
         <View style={[st.bar, { left: 0, width: 6, height: 6, marginLeft: 0, backgroundColor: C.accent }]} />
         {paydayAt != null && paydayAt <= HORIZON && (
-          <View style={[st.payday, { left: `${(paydayAt / HORIZON) * 100}%` }]} accessibilityLabel="Payday">
-            <T style={st.paydayLabel}>PAY</T>
+          <View style={[st.payday, { left: `${(paydayAt / HORIZON) * 100}%` }]} accessibilityLabel={t('runway.payday')}>
+            <T style={st.paydayLabel}>{t('runway.pay')}</T>
           </View>
         )}
         {expected
@@ -250,9 +252,9 @@ function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today:
         })}
       </View>
       <View style={st.runwayLabels}>
-        <T style={[st.runwayLabel, { color: C.fg }]}>TODAY</T>
-        <T style={st.runwayLabel}>{mid.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}</T>
-        <T style={st.runwayLabel}>{end.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase()}</T>
+        <T style={[st.runwayLabel, { color: C.fg }]}>{t('common.todayCaps')}</T>
+        <T style={st.runwayLabel}>{mid.toLocaleDateString(locale(), { day: 'numeric', month: 'short' }).toUpperCase()}</T>
+        <T style={st.runwayLabel}>{end.toLocaleDateString(locale(), { day: 'numeric', month: 'short' }).toUpperCase()}</T>
       </View>
     </View>
   );

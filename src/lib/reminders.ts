@@ -5,7 +5,8 @@ import { Platform } from 'react-native';
 import { shortDay } from './dates';
 import { activeDiscount } from './discount';
 import { Notifications } from './notifications-module';
-import { mainReminder, PAY_STYLES, planDigest, planReminders } from './reminder-plan';
+import { mainReminder, planDigest, planReminders } from './reminder-plan';
+import { t } from '@/i18n/core';
 import { getSettings, updateSettings } from './settings';
 import { getBill, getBills, saveBill } from './store';
 import type { Bill } from './types';
@@ -29,13 +30,13 @@ export async function setupNotifications(): Promise<boolean> {
   if (!Notifications) return false;
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHANNEL, {
-      name: 'Bill reminders',
+      name: t('notify.channel'),
       importance: Notifications.AndroidImportance.HIGH,
     });
   }
   await Notifications.setNotificationCategoryAsync(CATEGORY, [
-    { identifier: 'tomorrow', buttonTitle: 'Tomorrow', options: { opensAppToForeground: false } },
-    { identifier: 'paid', buttonTitle: 'Paid', options: { opensAppToForeground: false } },
+    { identifier: 'tomorrow', buttonTitle: t('notify.actionTomorrow'), options: { opensAppToForeground: false } },
+    { identifier: 'paid', buttonTitle: t('notify.actionPaid'), options: { opensAppToForeground: false } },
   ]);
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
@@ -61,7 +62,7 @@ export async function scheduleReminder(bill: Bill, snoozedTo?: Date): Promise<Bi
   const ids: { kind: string; id: string; at: Date }[] = [];
   for (const r of plan) {
     const id = await Notifications.scheduleNotificationAsync({
-      content: { title: r.title, body: r.kind === 'main' ? `${r.body} Tap to open the QR code.` : r.body, data: { billId: bill.id }, categoryIdentifier: CATEGORY },
+      content: { title: r.title, body: r.kind === 'main' ? `${r.body} ${t('notify.openQr')}` : r.body, data: { billId: bill.id }, categoryIdentifier: CATEGORY },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: r.at, channelId: CHANNEL },
     });
     ids.push({ kind: r.kind, id, at: r.at });
@@ -137,19 +138,18 @@ export function listenForResponses(): () => void {
 
 /** When the bill's reminder goes off and why, for the review screen. */
 export function describeReminder(bill: Bill): { when: string | null; why: string } {
-  if (!remindersAvailable) return { when: null, why: 'Reminders don’t run in Expo Go on Android. They work in the installed app.' };
-  if (!bill.dueDate) return { when: null, why: 'Add a due date to get a reminder.' };
+  if (!remindersAvailable) return { when: null, why: t('remind.expoGo') };
+  if (!bill.dueDate) return { when: null, why: t('remind.noDate') };
   const s = getSettings();
   const m = mainReminder(bill, { remindHour: s.remindHour, extraNudges: s.extraNudges, payStyle: s.payStyle });
-  if (!m) return { when: null, why: 'The due date has passed. Pay it as soon as you can.' };
+  if (!m) return { when: null, why: t('remind.passed') };
   const style = bill.payStyle ?? s.payStyle;
   const why =
-    activeDiscount(bill) ? 'Before the early-payment discount runs out.'
-    : style === 'early' ? 'You pay bills right away.'
-    : style === 'midway' ? 'Halfway to the due date.'
-    : m.getDay() === 5 && bill.remindDaysBefore < 3 ? 'Weekend reminders move to the Friday before.'
-    : 'Enough time for a bank transfer to arrive.';
+    activeDiscount(bill) ? t('remind.why.discount')
+    : style === 'early' ? t('remind.why.early')
+    : style === 'midway' ? t('remind.why.midway')
+    : m.getDay() === 5 && bill.remindDaysBefore < 3 ? t('remind.why.weekend')
+    : t('remind.why.transfer');
   return { when: shortDay(m), why };
 }
 
-export const payStyleLabel = (style: Bill['payStyle']) => PAY_STYLES.find((p) => p.key === style)?.label ?? '';

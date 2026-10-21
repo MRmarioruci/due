@@ -4,6 +4,7 @@ import Animated, { FadeIn, FadeInDown, FadeOut, FadeOutDown, SlideInDown, SlideO
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, T } from './kit';
+import { t } from '@/i18n/core';
 import { C, F, GUTTER } from './theme';
 
 /**
@@ -48,7 +49,7 @@ export const sheet = {
         onDismiss: () => finish(false),
         actions: [
           { label: o.confirm, kind: o.destructive ? 'destructive' : 'primary', onPress: () => finish(true) },
-          { label: 'Cancel', kind: 'secondary' },
+          { label: t('common.cancel'), kind: 'secondary' },
         ],
       });
     });
@@ -76,7 +77,7 @@ export function toast(text: string) {
 /** Mount once, above everything, in the root layout. */
 export function OverlayHost() {
   const state = useSyncExternalStore(subscribe, () => current);
-  const t = useSyncExternalStore(subscribe, () => toastText);
+  const shownToast = useSyncExternalStore(subscribe, () => toastText);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -90,18 +91,18 @@ export function OverlayHost() {
 
   return (
     <>
-      {t && (
-        <Animated.View key={t.id} entering={FadeInDown.duration(220)} exiting={FadeOutDown.duration(200)} pointerEvents="none" style={[st.toastWrap, { bottom: insets.bottom + 96 }]}>
+      {shownToast && (
+        <Animated.View key={shownToast.id} entering={FadeInDown.duration(220)} exiting={FadeOutDown.duration(200)} pointerEvents="none" style={[st.toastWrap, { bottom: insets.bottom + 96 }]}>
           <View style={st.toast}>
             <View style={st.toastDot} />
-            <T style={{ fontSize: 14, flexShrink: 1 }}>{t.text}</T>
+            <T style={{ fontSize: 14, flexShrink: 1 }}>{shownToast.text}</T>
           </View>
         </Animated.View>
       )}
       {state && (
         <View style={StyleSheet.absoluteFill}>
           <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
-            <Pressable accessibilityLabel="Close" style={[StyleSheet.absoluteFill, st.backdrop]} onPress={() => sheet.hide()} />
+            <Pressable accessibilityLabel={t('common.close')} style={[StyleSheet.absoluteFill, st.backdrop]} onPress={() => sheet.hide()} />
           </Animated.View>
           <Animated.View entering={SlideInDown.duration(260)} exiting={SlideOutDown.duration(200)} style={[st.panel, { paddingBottom: insets.bottom + 20 }]}>
             <View style={st.grabber} />

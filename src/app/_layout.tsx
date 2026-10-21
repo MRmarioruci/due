@@ -4,7 +4,9 @@ import { DarkTheme, router, Stack, ThemeProvider, usePathname } from 'expo-route
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
+import { View } from 'react-native';
 
+import '@/i18n';
 import { LockGate } from '@/lib/lock';
 import { usePayCheck } from '@/lib/pay-check';
 import { listenForResponses, scheduleDigest, setupNotifications } from '@/lib/reminders';
@@ -57,7 +59,7 @@ export default function RootLayout() {
   }, [bills, weeklyDigest, remindHour]);
 
   // The permission prompt waits for onboarding, which asks for it with an explanation first.
-  const { onboarded } = useSettings();
+  const { onboarded, language } = useSettings();
   useEffect(() => {
     if (onboarded) setupNotifications();
   }, [onboarded]);
@@ -69,9 +71,12 @@ export default function RootLayout() {
     <ThemeProvider value={theme}>
       <StatusBar style="light" />
       <LockGate>
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'fade_from_bottom' }}>
-          <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
-        </Stack>
+        {/* Remounts when the language changes, so every screen redraws in it. */}
+        <View key={language ?? 'phone'} style={{ flex: 1 }}>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'fade_from_bottom' }}>
+            <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
+          </Stack>
+        </View>
         <OverlayHost />
       </LockGate>
     </ThemeProvider>

@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { setPendingDraft } from '@/lib/draft';
 import { buildDraft } from '@/lib/extract';
+import { t } from '@/i18n/core';
 import { goBack, takeScanRequest } from '@/lib/nav';
 import { decodePaymentCode, type DecodedCode } from '@/lib/payment-codes';
 import { Button, Icon, IconButton, T } from '@/ui/kit';
@@ -93,7 +94,7 @@ function ScanCamera() {
     if (doc.mimeType !== 'application/pdf') return finish(doc.uri);
     setCaptured({ uri: doc.uri, pdfName: doc.name });
     read(async () => {
-      if ((doc.size ?? 0) > 15_000_000) throw new Error('That PDF is over 15 MB. Try a smaller export of the bill.');
+      if ((doc.size ?? 0) > 15_000_000) throw new Error(t('scan.pdfTooBig'));
       const base64 = await new File(doc.uri).base64();
       return buildDraft({ decoded: null, file: { base64, mimeType: 'application/pdf' }, imageUri: null });
     });
@@ -114,16 +115,16 @@ function ScanCamera() {
   if (!permission.granted) {
     return (
       <View style={[st.root, { padding: GUTTER, paddingTop: insets.top + 12, justifyContent: 'space-between', paddingBottom: insets.bottom + 16 }]}>
-        <IconButton label="Close" onPress={() => goBack()}>
+        <IconButton label={t('common.close')} onPress={() => goBack()}>
           <Icon name="close" />
         </IconButton>
         <View style={{ gap: 12 }}>
-          <T style={{ fontFamily: F.semibold, fontSize: 24, letterSpacing: -0.6 }}>Camera access</T>
-          <T style={{ color: C.muted, lineHeight: 22 }}>due reads the QR code and the details straight from a photo of your bill. The photo stays on your phone, apart from the scan itself.</T>
+          <T style={{ fontFamily: F.semibold, fontSize: 24, letterSpacing: -0.6 }}>{t('scan.cameraTitle')}</T>
+          <T style={{ color: C.muted, lineHeight: 22 }}>{t('scan.cameraText')}</T>
         </View>
         <View style={{ gap: 10 }}>
-          <Button title="Allow camera" onPress={requestPermission} />
-          <Button title="Choose a photo instead" kind="secondary" onPress={pick} />
+          <Button title={t('scan.allowCamera')} onPress={requestPermission} />
+          <Button title={t('scan.choosePhoto')} kind="secondary" onPress={pick} />
         </View>
       </View>
     );
@@ -153,11 +154,11 @@ function ScanCamera() {
         ))}
 
       <View style={[st.top, { top: insets.top + 12 }]}>
-        <IconButton label="Close" onPress={() => goBack()} style={st.glass}>
+        <IconButton label={t('common.close')} onPress={() => goBack()} style={st.glass}>
           <Icon name="close" />
         </IconButton>
-        <T style={st.title}>SCAN BILL</T>
-        <IconButton label={torch ? 'Turn off flash' : 'Turn on flash'} onPress={() => setTorch((t) => !t)} style={[st.glass, torch && { borderColor: C.accent }]}>
+        <T style={st.title}>{t('scan.title')}</T>
+        <IconButton label={torch ? t('scan.flashOff') : t('scan.flashOn')} onPress={() => setTorch((on) => !on)} style={[st.glass, torch && { borderColor: C.accent }]}>
           <Icon name="flash" color={torch ? C.accent : C.fg} />
         </IconButton>
       </View>
@@ -168,16 +169,16 @@ function ScanCamera() {
           <View style={st.reading}>
             {busy ? <ActivityIndicator color={C.fg} /> : <Icon name="close" color={C.accent} />}
             <View style={{ flex: 1, gap: 4 }}>
-              <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{busy ? 'Reading your bill' : 'Couldn’t read the bill'}</T>
+              <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{busy ? t('scan.reading') : t('scan.readFailed')}</T>
               <T style={{ fontSize: 13, color: C.muted, lineHeight: 18 }} numberOfLines={3}>
-                {busy ? (decoded ? 'QR code read. Now finding the due date and details.' : 'Finding the amount, due date and payment details.') : error}
+                {busy ? (decoded ? t('scan.readingWithQr') : t('scan.readingNoQr')) : error}
               </T>
             </View>
           </View>
           {!busy && (
             <View style={{ flexDirection: 'row', gap: 8, alignSelf: 'stretch', paddingHorizontal: GUTTER }}>
-              <Button title="Retake" kind="secondary" style={{ flex: 1 }} onPress={() => { setCaptured(null); setError(null); }} />
-              <Button title="Fill in by hand" style={{ flex: 1 }} onPress={() => { setPendingDraft(null); router.replace('/review'); }} />
+              <Button title={t('scan.retake')} kind="secondary" style={{ flex: 1 }} onPress={() => { setCaptured(null); setError(null); }} />
+              <Button title={t('scan.fillByHand')} style={{ flex: 1 }} onPress={() => { setPendingDraft(null); router.replace('/review'); }} />
             </View>
           )}
         </View>
@@ -186,25 +187,25 @@ function ScanCamera() {
         <View style={st.status}>
           <View style={[st.dot, { backgroundColor: decoded ? C.accent : C.dim }]} />
           <T style={st.statusText}>
-            {busy ? 'READING DETAILS' : decoded ? `PAYMENT CODE FOUND · ${decoded.payee?.toUpperCase() ?? ''}`.slice(0, 40) : 'LOOKING FOR A PAYMENT CODE'}
+            {busy ? t('scan.statusReading') : decoded ? `${t('scan.statusFound')} · ${decoded.payee?.toUpperCase() ?? ''}`.slice(0, 40) : t('scan.statusLooking')}
           </T>
         </View>
         <T style={st.hint}>
-          {error ?? (decoded ? 'Now take a photo so the due date can be read too.' : 'Fit the whole bill in view. No QR code? Just take the photo.')}
+          {error ?? (decoded ? t('scan.hintAfterQr') : t('scan.hint'))}
         </T>
         <View style={st.controls}>
-          <IconButton label="Choose from photos" onPress={pick} style={{ width: 52, height: 52, borderColor: C.border }}>
+          <IconButton label={t('scan.fromPhotos')} onPress={pick} style={{ width: 52, height: 52, borderColor: C.border }}>
             <Icon name="photo" size={20} />
           </IconButton>
-          <Pressable accessibilityRole="button" accessibilityLabel="Take photo" onPress={shoot} disabled={busy} style={st.shutter}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('scan.takePhoto')} onPress={shoot} disabled={busy} style={st.shutter}>
             {busy ? <ActivityIndicator color={C.fg} /> : <View style={st.shutterInner} />}
           </Pressable>
-          <IconButton label="Import a PDF or image" onPress={importDocument} style={{ width: 52, height: 52, borderColor: C.border }}>
+          <IconButton label={t('scan.importDoc')} onPress={importDocument} style={{ width: 52, height: 52, borderColor: C.border }}>
             <T style={{ fontFamily: F.mono, fontSize: 11, letterSpacing: 0.6 }}>PDF</T>
           </IconButton>
         </View>
         <Pressable accessibilityRole="button" onPress={() => { setPendingDraft(null); router.replace('/review'); }} hitSlop={8} style={{ paddingVertical: 6 }}>
-          <T style={{ fontSize: 13.5, color: C.muted, textDecorationLine: 'underline' }}>Enter by hand</T>
+          <T style={{ fontSize: 13.5, color: C.muted, textDecorationLine: 'underline' }}>{t('scan.enterByHand')}</T>
         </Pressable>
       </View>
       )}

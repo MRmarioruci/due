@@ -97,15 +97,4 @@ export const emptyPayment = (): Payment => ({
   payUrl: null,
 });
 
-export const CATEGORY_LABEL: Record<Category, string> = {
-  insurance: 'Insurance',
-  telecom: 'Telecom',
-  utilities: 'Utilities',
-  housing: 'Housing',
-  taxes: 'Taxes',
-  fees: 'Fees',
-  health: 'Health',
-  transport: 'Transport',
-  shopping: 'Shopping',
-  other: 'Other',
-};
+export const CATEGORIES: Category[] = ['insurance', 'telecom', 'utilities', 'housing', 'taxes', 'fees', 'health', 'transport', 'shopping', 'other'];

@@ -3,15 +3,14 @@ import type { Bill } from './types';
 
 export type Cadence = 'monthly' | 'bimonthly' | 'quarterly' | 'halfyearly' | 'yearly';
 
-const CADENCES: { cadence: Cadence; months: number; min: number; max: number; label: string }[] = [
-  { cadence: 'monthly', months: 1, min: 25, max: 36, label: 'Monthly' },
-  { cadence: 'bimonthly', months: 2, min: 55, max: 66, label: 'Every 2 months' },
-  { cadence: 'quarterly', months: 3, min: 80, max: 105, label: 'Quarterly' },
-  { cadence: 'halfyearly', months: 6, min: 165, max: 200, label: 'Twice a year' },
-  { cadence: 'yearly', months: 12, min: 340, max: 390, label: 'Yearly' },
+const CADENCES: { cadence: Cadence; months: number; min: number; max: number }[] = [
+  { cadence: 'monthly', months: 1, min: 25, max: 36 },
+  { cadence: 'bimonthly', months: 2, min: 55, max: 66 },
+  { cadence: 'quarterly', months: 3, min: 80, max: 105 },
+  { cadence: 'halfyearly', months: 6, min: 165, max: 200 },
+  { cadence: 'yearly', months: 12, min: 340, max: 390 },
 ];
 
-export const CADENCE_LABEL = Object.fromEntries(CADENCES.map((c) => [c.cadence, c.label])) as Record<Cadence, string>;
 
 export type Series = {
   key: string;

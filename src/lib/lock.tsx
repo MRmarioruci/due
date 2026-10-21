@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AppState, StyleSheet, View } from 'react-native';
 
 import { getSettings, useSettings } from './settings';
+import { t } from '@/i18n/core';
 import { Button, T } from '@/ui/kit';
 import { C, F } from '@/ui/theme';
 
@@ -20,8 +21,8 @@ export async function phoneHasLock(): Promise<boolean> {
   return (await LocalAuthentication.getEnrolledLevelAsync()) !== LocalAuthentication.SecurityLevel.NONE;
 }
 
-export async function authenticate(prompt = 'Unlock due'): Promise<boolean> {
-  const r = await LocalAuthentication.authenticateAsync({ promptMessage: prompt });
+export async function authenticate(prompt?: string): Promise<boolean> {
+  const r = await LocalAuthentication.authenticateAsync({ promptMessage: prompt ?? t('lock.prompt') });
   return r.success;
 }
 
@@ -70,8 +71,8 @@ export function LockGate({ children }: { children: ReactNode }) {
             <T style={st.logoText}>due</T>
             <View style={st.logoDot} />
           </View>
-          <T style={{ color: C.muted, fontSize: 14 }}>Locked</T>
-          <Button title="Unlock" onPress={unlock} style={{ alignSelf: 'stretch', marginTop: 24 }} />
+          <T style={{ color: C.muted, fontSize: 14 }}>{t('lock.locked')}</T>
+          <Button title={t('lock.unlock')} onPress={unlock} style={{ alignSelf: 'stretch', marginTop: 24 }} />
         </View>
       )}
     </View>

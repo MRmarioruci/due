@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { todayIso } from '@/lib/dates';
-import { describePay, type PaySchedule } from '@/lib/plan';
-import { countryByCode, COUNTRIES, CURRENCIES, currencyFor } from '@/lib/regions';
+import { describePay, weekdayName, type PaySchedule } from '@/lib/plan';
+import { COUNTRIES, CURRENCIES, currencyFor } from '@/lib/regions';
 import { getSettings, updateSettings } from '@/lib/settings';
+import { chooseLanguage, deviceLang, LANGUAGES, locale, syncLanguage, t } from '@/i18n';
+import { countryName } from '@/i18n/labels';
 
 import { pickDate } from './calendar';
 import { Icon, T } from './kit';
@@ -14,7 +16,6 @@ import { C, F } from './theme';
 
 /** Sheets for picking settings, shared by onboarding and the settings screen. */
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 /** A list of choices with a check on the current one. */
 export function Options<K extends string | number>({ options, selected }: { options: { key: K; label: string; detail?: string; onPress: () => void }[]; selected: K | null }) {
@@ -46,15 +47,15 @@ export function choosePay(onDone?: () => void) {
   const set = (pay: PaySchedule | null) => {
     updateSettings({ pay });
     sheet.hide();
-    toast(pay ? `Payday: ${describePay(pay).toLowerCase()}` : 'Payday cleared');
+    toast(pay ? t('choose.paydaySet', { schedule: describePay(pay) }) : t('choose.paydayCleared'));
     onDone?.();
   };
 
   const chooseMonthDay = () => {
     const current = cur?.every === 'month' ? cur.day : null;
     sheet.show({
-      title: 'Which day of the month?',
-      message: 'Weekend paydays count as the Friday before. Pick 31 for the last day of the month.',
+      title: t('choose.monthDay'),
+      message: t('choose.monthDayNote'),
       content: (
         <View style={st.dayGrid}>
           {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
@@ -72,27 +73,27 @@ export function choosePay(onDone?: () => void) {
   const chooseWeekday = () => {
     const current = cur?.every === 'week' ? cur.weekday : null;
     sheet.show({
-      title: 'Which day of the week?',
-      content: <Options selected={current} options={WEEKDAYS.map((w, i) => ({ key: i + 1, label: w, onPress: () => set({ every: 'week', weekday: i + 1 }) }))} />,
+      title: t('choose.weekday'),
+      content: <Options selected={current} options={[1, 2, 3, 4, 5, 6, 7].map((wd) => ({ key: wd, label: weekdayName(wd), onPress: () => set({ every: 'week', weekday: wd }) }))} />,
     });
   };
 
   const chooseFortnight = async () => {
-    const picked = await pickDate('When is your next payday?', cur?.every === '2weeks' ? cur.next : todayIso());
+    const picked = await pickDate(t('choose.nextPayday'), cur?.every === '2weeks' ? cur.next : todayIso());
     if (picked) set({ every: '2weeks', next: picked });
   };
 
   sheet.show({
-    title: 'How often are you paid?',
+    title: t('choose.howOften'),
     content: (
       <Options
         selected={cur?.every ?? 'none'}
         options={[
-          { key: 'month', label: 'Every month', onPress: chooseMonthDay },
-          { key: '2weeks', label: 'Every other week', onPress: chooseFortnight },
-          { key: 'week', label: 'Every week', onPress: chooseWeekday },
-          { key: 'day', label: 'Every day', onPress: () => set({ every: 'day' }) },
-          { key: 'none', label: 'Don’t plan around payday', onPress: () => set(null) },
+          { key: 'month', label: t('choose.everyMonth'), onPress: chooseMonthDay },
+          { key: '2weeks', label: t('choose.everyOtherWeek'), onPress: chooseFortnight },
+          { key: 'week', label: t('choose.everyWeek'), onPress: chooseWeekday },
+          { key: 'day', label: t('pay.everyDay'), onPress: () => set({ every: 'day' }) },
+          { key: 'none', label: t('choose.noPayday'), onPress: () => set(null) },
         ]}
       />
     ),
@@ -112,22 +113,24 @@ export async function countryFromLocation(): Promise<string | null> {
 export function setCountry(code: string) {
   const currency = getSettings().currency ?? currencyFor(code);
   updateSettings({ country: code, ...(currency ? { currency } : {}) });
+  syncLanguage();
 }
 
 export function chooseCountry(onDone?: () => void) {
   sheet.show({
-    title: 'Where do you live?',
-    message: 'Sets your currency and helps read dates on bills.',
+    title: t('choose.whereLive'),
+    message: t('choose.whereLiveNote'),
     content: (
       <SearchList
-        placeholder="Search countries"
-        items={COUNTRIES.map((c) => ({ key: c.code, label: c.name, detail: c.currency }))}
+        placeholder={t('choose.searchCountries')}
+        items={COUNTRIES.map((c) => ({ key: c.code, label: countryName(c.code) ?? c.name, detail: c.currency })).sort((a, b) => a.label.localeCompare(b.label, locale()))}
         selected={getSettings().country}
         onPick={(code) => {
           // A new country brings its own currency.
           updateSettings({ country: code, currency: currencyFor(code) ?? getSettings().currency });
           sheet.hide();
-          toast(`${countryByCode(code)?.name}, ${currencyFor(code)}`);
+          syncLanguage();
+          toast(`${countryName(code)}, ${currencyFor(code)}`);
           onDone?.();
         }}
       />
@@ -137,11 +140,11 @@ export function chooseCountry(onDone?: () => void) {
 
 export function chooseCurrency(onDone?: () => void) {
   sheet.show({
-    title: 'Currency',
-    message: 'Totals and new bills use it. Bills in other currencies are kept as they are.',
+    title: t('choose.currency'),
+    message: t('choose.currencyNote'),
     content: (
       <SearchList
-        placeholder="Search currencies"
+        placeholder={t('choose.searchCurrencies')}
         items={CURRENCIES.map((c) => ({ key: c, label: c }))}
         selected={getSettings().currency}
         onPick={(c) => {
@@ -153,6 +156,24 @@ export function chooseCurrency(onDone?: () => void) {
     ),
   });
 }
+
+/** `reopen` runs after the switch, e.g. to return to Settings once the screens have redrawn. */
+export function chooseLanguageSheet(reopen?: () => void) {
+  const cur = getSettings().language;
+  sheet.show({
+    title: t('settings.language'),
+    content: (
+      <Options
+        selected={cur ?? 'phone'}
+        options={[
+          { key: 'phone', label: t('settings.phoneLanguage'), detail: LANGUAGES.find((l) => l.code === deviceLang())?.name, onPress: () => { sheet.hide(); chooseLanguage(null); if (reopen) setTimeout(reopen, 80); } },
+          ...LANGUAGES.map((l) => ({ key: l.code, label: l.name, onPress: () => { sheet.hide(); chooseLanguage(l.code); if (reopen) setTimeout(reopen, 80); } })),
+        ]}
+      />
+    ),
+  });
+}
+
 
 function SearchList({ items, selected, placeholder, onPick }: { items: { key: string; label: string; detail?: string }[]; selected: string | null; placeholder: string; onPick: (key: string) => void }) {
   const [q, setQ] = useState('');

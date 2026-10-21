@@ -1,5 +1,6 @@
 import { daysBetween, toIso } from './dates';
 import type { Bill, Category } from './types';
+import { locale } from '../i18n/core';
 
 export type Period = 'week' | 'month' | 'year';
 
@@ -38,8 +39,8 @@ function shift(period: Period, d: Date, n: number): Date {
 
 function label(period: Period, d: Date): string {
   if (period === 'year') return String(d.getFullYear());
-  if (period === 'month') return d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'numeric' });
+  if (period === 'month') return d.toLocaleDateString(locale(), { month: 'short' }).toUpperCase();
+  return d.toLocaleDateString(locale(), { day: 'numeric', month: 'numeric' });
 }
 
 /** Paid bills bucketed by when they were paid. Only bills in the most common currency are summed. */

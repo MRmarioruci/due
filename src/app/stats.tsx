@@ -5,21 +5,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { todayIso } from '@/lib/dates';
 import { formatAmount } from '@/lib/money';
 import { goBack } from '@/lib/nav';
-import { CADENCE_LABEL, findSeries, monthlyFixedCosts } from '@/lib/recurring';
+import { findSeries, monthlyFixedCosts } from '@/lib/recurring';
+import { t } from '@/i18n/core';
+import { cadenceLabel, categoryLabel } from '@/i18n/labels';
 import { homeCurrency } from '@/lib/settings';
 import { computeStats, type Period } from '@/lib/stats';
 import { useBills } from '@/lib/store';
-import { CATEGORY_LABEL } from '@/lib/types';
 import { Amount, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
 import { Animated, enterRow, GrowBar, useCountUp } from '@/ui/motion';
 import { C, F, GUTTER } from '@/ui/theme';
 
 const CHART_H = 150;
 
-const PERIODS: { key: Period; label: string; current: string; prev: string }[] = [
-  { key: 'week', label: 'Week', current: 'Paid this week', prev: 'last week' },
-  { key: 'month', label: 'Month', current: 'Paid this month', prev: 'last month' },
-  { key: 'year', label: 'Year', current: 'Paid this year', prev: 'last year' },
+const PERIODS: { key: Period; label: () => string; current: () => string; prev: () => string }[] = [
+  { key: 'week', label: () => t('stats.week'), current: () => t('stats.paidThisWeek'), prev: () => t('stats.lastWeek') },
+  { key: 'month', label: () => t('stats.month'), current: () => t('stats.paidThisMonth'), prev: () => t('stats.lastMonth') },
+  { key: 'year', label: () => t('stats.year'), current: () => t('stats.paidThisYear'), prev: () => t('stats.lastYear') },
 ];
 
 export default function StatsScreen() {
@@ -40,18 +41,18 @@ export default function StatsScreen() {
   const shownV = useCountUp(v);
   const sub =
     sel != null && sel !== n - 1
-      ? 'Tap the last bar to go back'
+      ? t('stats.tapLastBar')
       : prev > 0
-        ? `${v >= prev ? '+' : '−'}${Math.abs(Math.round(((v - prev) / prev) * 100))}% vs ${p.prev}`
-        : `Nothing paid ${p.prev}`;
+        ? t('stats.change', { change: `${v >= prev ? '+' : '−'}${Math.abs(Math.round(((v - prev) / prev) * 100))}%`, period: p.prev() })
+        : t('stats.nothingPaid', { period: p.prev() });
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + 40 }}>
       <View style={st.header}>
-        <IconButton label="Back to bills" onPress={() => goBack()}>
+        <IconButton label={t('common.backToBills')} onPress={() => goBack()}>
           <Icon name="back" />
         </IconButton>
-        <T style={{ fontFamily: F.semibold, fontSize: 15 }}>Stats</T>
+        <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{t('common.stats')}</T>
         <View style={{ width: 44 }} />
       </View>
 
@@ -60,14 +61,14 @@ export default function StatsScreen() {
           const on = x.key === period;
           return (
             <Pressable key={x.key} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => { setPeriod(x.key); setSel(null); }} style={[st.segItem, on && { backgroundColor: C.fg }]}>
-              <T style={{ fontFamily: F.medium, fontSize: 13.5, color: on ? C.bg : C.muted }}>{x.label}</T>
+              <T style={{ fontFamily: F.medium, fontSize: 13.5, color: on ? C.bg : C.muted }}>{x.label()}</T>
             </Pressable>
           );
         })}
       </View>
 
       <View style={{ marginTop: 22 }}>
-        <Eyebrow>{sel != null && sel !== n - 1 ? `Paid · ${s.buckets[i].label}` : p.current}</Eyebrow>
+        <Eyebrow>{sel != null && sel !== n - 1 ? t('stats.paidIn', { period: s.buckets[i].label }) : p.current()}</Eyebrow>
         <View style={{ marginTop: 8 }}>
           <Amount currency={s.currency} value={formatAmount(shownV, s.currency)} size={44} />
         </View>
@@ -96,40 +97,40 @@ export default function StatsScreen() {
       <View style={st.tiles}>
         <View style={st.tile}>
           <T style={st.tileValue}>{s.paidCount ? `${s.onTime}/${s.paidCount}` : '—'}</T>
-          <T style={st.tileLabel}>Paid on time</T>
+          <T style={st.tileLabel}>{t('stats.onTime')}</T>
         </View>
         <View style={[st.tile, st.tileBorder]}>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
             <T style={st.tileValue}>{s.avgDaysEarly != null ? s.avgDaysEarly.toFixed(1) : '—'}</T>
-            {s.avgDaysEarly != null && <T style={st.tileUnit}>days</T>}
+            {s.avgDaysEarly != null && <T style={st.tileUnit}>{t('stats.days')}</T>}
           </View>
-          <T style={st.tileLabel}>Paid before due</T>
+          <T style={st.tileLabel}>{t('stats.beforeDue')}</T>
         </View>
         <View style={[st.tile, st.tileBorder]}>
           <T style={st.tileValue}>{s.paidCount}</T>
-          <T style={st.tileLabel}>Bills paid</T>
+          <T style={st.tileLabel}>{t('stats.billsPaid')}</T>
         </View>
       </View>
 
       {s.savedMinor > 0 && (
         <T style={{ marginTop: 14, fontSize: 13.5, color: C.muted }}>
-          <T style={{ fontSize: 13.5, color: C.accent }}>{s.currency} {formatAmount(s.savedMinor, s.currency)}</T> saved with early-payment discounts
+          <T style={{ fontSize: 13.5, color: C.accent }}>{s.currency} {formatAmount(s.savedMinor, s.currency)}</T> {t('stats.savedDiscounts')}
         </T>
       )}
 
       {series.length > 0 && (
         <View style={{ marginTop: 28 }}>
-          <Eyebrow style={{ marginBottom: 8 }}>Fixed costs</Eyebrow>
+          <Eyebrow style={{ marginBottom: 8 }}>{t('stats.fixedCosts')}</Eyebrow>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
             <T style={{ fontFamily: F.semibold, fontSize: 22, letterSpacing: -0.6, fontVariant: ['tabular-nums'] }}>
               {s.currency} {formatAmount(monthlyFixedCosts(series, s.currency), s.currency)}
             </T>
-            <T style={{ fontSize: 13, color: C.dim }}>per month</T>
+            <T style={{ fontSize: 13, color: C.dim }}>{t('stats.perMonth')}</T>
           </View>
           {series.map((x, idx) => (
             <Animated.View key={x.key} entering={enterRow(idx)} style={st.seriesRow}>
               <T style={{ flex: 1, fontSize: 13.5 }} numberOfLines={1}>{x.payee}</T>
-              <T style={{ fontSize: 12.5, color: C.dim }}>{CADENCE_LABEL[x.cadence]}</T>
+              <T style={{ fontSize: 12.5, color: C.dim }}>{cadenceLabel(x.cadence)}</T>
               <T style={{ width: 84, textAlign: 'right', fontSize: 13.5, color: C.muted, fontVariant: ['tabular-nums'] }}>{formatAmount(x.amountMinor, x.currency)}</T>
             </Animated.View>
           ))}
@@ -138,11 +139,11 @@ export default function StatsScreen() {
 
       {s.categories.length > 0 && (
         <View style={{ marginTop: 28 }}>
-          <Eyebrow style={{ marginBottom: 8 }}>By category</Eyebrow>
+          <Eyebrow style={{ marginBottom: 8 }}>{t('stats.byCategory')}</Eyebrow>
           {s.categories.map((c, idx) => (
             <Animated.View key={c.category} entering={enterRow(idx)} style={{ paddingVertical: 12, gap: 8 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <T style={{ fontSize: 13.5 }}>{CATEGORY_LABEL[c.category]}</T>
+                <T style={{ fontSize: 13.5 }}>{categoryLabel(c.category)}</T>
                 <T style={{ fontSize: 13.5, color: C.muted, fontVariant: ['tabular-nums'] }}>{formatAmount(c.minor, s.currency)}</T>
               </View>
               <View style={{ height: 4, backgroundColor: '#161616' }}>

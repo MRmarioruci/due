@@ -1,6 +1,7 @@
 import { addDaysIso, daysBetween, fromIso, toIso } from './dates';
 import { activeDiscount, targetDate } from './discount';
 import type { Bill } from './types';
+import { locale, t } from '../i18n/core';
 
 /** How often pay arrives. `weekday` is 1 = Monday … 7 = Sunday. */
 export type PaySchedule =
@@ -9,20 +10,22 @@ export type PaySchedule =
   | { every: '2weeks'; next: string } // any one payday; the rest follow every 14 days
   | { every: 'month'; day: number };
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+/** Weekday name in the app's language; 1 = Monday. (1 Jan 2024 was a Monday.) */
+export const weekdayName = (weekday: number) => new Date(2024, 0, weekday).toLocaleDateString(locale(), { weekday: 'long' });
+/** English ordinals for "25th"; other languages phrase the day without one. */
 const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 /** "Every Friday", "25th of every month", … */
 export function describePay(p: PaySchedule): string {
   switch (p.every) {
     case 'day':
-      return 'Every day';
+      return t('pay.everyDay');
     case 'week':
-      return `Every ${WEEKDAYS[p.weekday - 1]}`;
+      return t('pay.everyWeekday', { weekday: weekdayName(p.weekday) });
     case '2weeks':
-      return `Every other ${WEEKDAYS[(fromIso(p.next).getDay() + 6) % 7]}`;
+      return t('pay.everyOtherWeekday', { weekday: weekdayName(((fromIso(p.next).getDay() + 6) % 7) + 1) });
     case 'month':
-      return `${ordinal(p.day)} of every month`;
+      return t('pay.monthly', { day: p.day, nth: ordinal(p.day) });
   }
 }
 
@@ -84,8 +87,8 @@ export function paydayAdvice(bill: Bill, payday: PaySchedule, today: string): st
   const deadline = targetDate(bill, today);
   if (!deadline) return null;
   const day = nextPayday(payday, today);
-  const when = fromIso(day).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  const when = fromIso(day).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
   return daysBetween(deadline, day) > 0
-    ? `Due before payday (${when}), so it comes out of what's in the account now.`
-    : `Due after payday (${when}). It can wait for your salary.`;
+    ? t('pay.adviceBefore', { date: when })
+    : t('pay.adviceAfter', { date: when });
 }

@@ -5,6 +5,7 @@ import { formatMoney } from './money';
 import { markPaid } from './reminders';
 import { getBill } from './store';
 import { sheet, toast } from '@/ui/overlay';
+import { t } from '@/i18n/core';
 
 /**
  * After the user shares the QR code or copies payment details, they usually switch to their banking app.
@@ -31,17 +32,17 @@ export function usePayCheck() {
       const bill = getBill(a.billId);
       if (!bill || bill.status === 'paid') return;
       sheet.show({
-        title: `Did you pay ${bill.payee}?`,
+        title: t('paycheck.title', { payee: bill.payee }),
         message: formatMoney(bill.amountMinor, bill.currency),
         actions: [
           {
-            label: 'Yes, mark paid',
+            label: t('paycheck.yes'),
             onPress: async () => {
               await markPaid(bill);
-              toast(`${bill.payee} marked paid`);
+              toast(t('bill.markedPaid', { payee: bill.payee }));
             },
           },
-          { label: 'Not yet', kind: 'secondary' },
+          { label: t('paycheck.notYet'), kind: 'secondary' },
         ],
       });
     });

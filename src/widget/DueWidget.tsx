@@ -1,5 +1,7 @@
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
+import { t } from '@/i18n/core';
+
 import type { WidgetData } from './data';
 
 // Widget fonts are the files in assets/fonts, referenced by file name (see the plugin config in app.json).
@@ -19,7 +21,7 @@ export function DueWidget({ data }: { data: WidgetData }) {
           <TextWidget text="due" style={{ fontSize: 17, fontFamily: 'Archivo-SemiBold', color: FG }} />
           <FlexWidget style={{ width: 5, height: 5, backgroundColor: ACCENT, marginBottom: 4 }} />
         </FlexWidget>
-        <TextWidget text={`${data.count} OPEN · 30 DAYS`} style={{ fontSize: 10, fontFamily: 'JetBrainsMono-Regular', color: DIM, letterSpacing: 0.05 }} />
+        <TextWidget text={t('widget.open', { n: data.count })} style={{ fontSize: 10, fontFamily: 'JetBrainsMono-Regular', color: DIM, letterSpacing: 0.05 }} />
       </FlexWidget>
 
       <FlexWidget style={{ flexDirection: 'row', alignItems: 'flex-end', flexGap: 6 }}>
@@ -33,7 +35,7 @@ export function DueWidget({ data }: { data: WidgetData }) {
           <TextWidget text={data.next.when} style={{ fontSize: 11, fontFamily: 'JetBrainsMono-Regular', color: data.next.urgent ? ACCENT : DIM }} />
         </FlexWidget>
       ) : (
-        <TextWidget text="Nothing to pay" style={{ fontSize: 13, fontFamily: 'Archivo-Regular', color: DIM }} />
+        <TextWidget text={t('widget.nothing')} style={{ fontSize: 13, fontFamily: 'Archivo-Regular', color: DIM }} />
       )}
     </FlexWidget>
   );

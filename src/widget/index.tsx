@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 
 import { todayIso } from '@/lib/dates';
+import { syncLanguage } from '@/i18n';
 import { homeCurrency } from '@/lib/settings';
 import { getBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
@@ -29,6 +30,7 @@ function render(bills: Bill[]) {
 
 /** Runs headless when Android adds, refreshes (every 30 min) or resizes the widget. */
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
+  syncLanguage();
   if (props.widgetAction === 'WIDGET_ADDED' || props.widgetAction === 'WIDGET_UPDATE' || props.widgetAction === 'WIDGET_RESIZED') {
     props.renderWidget(render(getBills()));
   }

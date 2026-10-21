@@ -6,18 +6,18 @@ import { formatHour } from '@/lib/dates';
 import { authenticate, phoneHasLock } from '@/lib/lock';
 import { goBack } from '@/lib/nav';
 import { describePay } from '@/lib/plan';
-import { countryByCode } from '@/lib/regions';
 import { PAY_STYLES } from '@/lib/reminder-plan';
+import { deviceLang, LANGUAGES, t } from '@/i18n';
+import { countryName, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { remindersAvailable, rescheduleAll } from '@/lib/reminders';
 import { seedSampleBills } from '@/lib/seed';
 import { deviceRegion, getSettings, homeCurrency, updateSettings, useSettings } from '@/lib/settings';
-import { chooseCountry, chooseCurrency, choosePay, Options } from '@/ui/choosers';
+import { chooseCountry, chooseCurrency, chooseLanguageSheet, choosePay, Options } from '@/ui/choosers';
 import { Eyebrow, Icon, IconButton, T } from '@/ui/kit';
 import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER } from '@/ui/theme';
 
 const LEADS = [0, 1, 3, 7];
-const leadLabel = (d: number) => (d === 0 ? 'On the due date' : d === 7 ? '1 week before' : `${d} ${d === 1 ? 'day' : 'days'} before`);
 const HOURS = [7, 8, 9, 12, 18, 20];
 
 export default function SettingsScreen() {
@@ -27,44 +27,45 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + 40 }}>
       <View style={st.header}>
-        <IconButton label="Back" onPress={goBack}>
+        <IconButton label={t('common.back')} onPress={goBack}>
           <Icon name="back" />
         </IconButton>
-        <T style={{ fontFamily: F.semibold, fontSize: 15 }}>Settings</T>
+        <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{t('common.settings')}</T>
         <View style={{ width: 44 }} />
       </View>
 
-      <Section title="Region">
-        <Row label="Country" value={countryByCode(s.country ?? deviceRegion().country)?.name ?? 'Not set'} onPress={() => chooseCountry()} />
-        <Row label="Currency" value={homeCurrency()} onPress={() => chooseCurrency()} />
+      <Section title={t('settings.region')}>
+        <Row label={t('settings.language')} value={s.language ? LANGUAGES.find((l) => l.code === s.language)?.name : `${t('settings.phoneLanguage')} · ${LANGUAGES.find((l) => l.code === deviceLang())?.name}`} onPress={() => chooseLanguageSheet(() => router.push('/settings'))} />
+        <Row label={t('settings.country')} value={countryName(s.country ?? deviceRegion().country) ?? t('settings.notSet')} onPress={() => chooseCountry()} />
+        <Row label={t('settings.currency')} value={homeCurrency()} onPress={() => chooseCurrency()} />
       </Section>
 
-      <Section title="Pay" note="Pay bills sets when reminders come. Payday splits your bills into what's due before it and what can wait.">
-        <Row label="Pay bills" value={PAY_STYLES.find((p) => p.key === s.payStyle)?.label} onPress={choosePayStyle} />
-        <Row label="Payday" value={s.pay ? describePay(s.pay) : 'Not set'} onPress={() => choosePay()} />
+      <Section title={t('settings.pay')} note={t('settings.payNote')}>
+        <Row label={t('settings.payBills')} value={payStyleLabel(s.payStyle)} onPress={choosePayStyle} />
+        <Row label={t('settings.payday')} value={s.pay ? describePay(s.pay) : t('settings.notSet')} onPress={() => choosePay()} />
       </Section>
 
-      <Section title="Reminders" note={remindersAvailable ? null : 'Reminders don’t run in Expo Go on Android. They work in the development build.'}>
-        <Row label="Remind me" value={leadLabel(s.remindDaysBefore)} onPress={chooseLead} />
-        <Row label="At" value={formatHour(s.remindHour)} onPress={chooseHour} />
+      <Section title={t('settings.reminders')} note={remindersAvailable ? null : t('remind.expoGo')}>
+        <Row label={t('settings.remindMe')} value={leadLabel(s.remindDaysBefore)} onPress={chooseLead} />
+        <Row label={t('settings.at')} value={formatHour(s.remindHour)} onPress={chooseHour} />
         <ToggleRow
-          label="Last call and overdue nudges"
+          label={t('settings.nudges')}
           value={s.extraNudges}
           onChange={(v) => {
             updateSettings({ extraNudges: v });
             rescheduleAll();
           }}
         />
-        <ToggleRow label="Monday summary" value={s.weeklyDigest} onChange={(v) => updateSettings({ weeklyDigest: v })} />
+        <ToggleRow label={t('settings.digest')} value={s.weeklyDigest} onChange={(v) => updateSettings({ weeklyDigest: v })} />
       </Section>
 
-      <Section title="Security" note="Uses your phone’s own unlock: fingerprint, face, PIN or pattern. Asked when you open due and after a minute away.">
-        <ToggleRow label="Lock with phone unlock" value={s.appLock} onChange={toggleLock} />
+      <Section title={t('settings.security')} note={t('settings.lockNote')}>
+        <ToggleRow label={t('settings.lock')} value={s.appLock} onChange={toggleLock} />
       </Section>
 
-      <Section title="General">
+      <Section title={t('settings.general')}>
         <Row
-          label="Run setup again"
+          label={t('settings.rerunSetup')}
           onPress={() => {
             updateSettings({ onboarded: false });
             router.replace('/onboarding');
@@ -73,12 +74,12 @@ export default function SettingsScreen() {
       </Section>
 
       {__DEV__ && (
-        <Section title="Development">
+        <Section title={t('settings.development')}>
           <Row
-            label="Load sample bills"
+            label={t('settings.sampleBills')}
             onPress={() => {
               seedSampleBills();
-              toast('Sample bills loaded');
+              toast(t('settings.sampleLoaded'));
               goBack();
             }}
           />
@@ -92,19 +93,19 @@ export default function SettingsScreen() {
 
 function choosePayStyle() {
   sheet.show({
-    title: 'When do you like to pay?',
-    message: 'The default for bills. You can change it per bill.',
+    title: t('settings.whenPay'),
+    message: t('settings.whenPayNote'),
     content: (
       <Options
         selected={getSettings().payStyle}
         options={PAY_STYLES.map((p) => ({
           key: p.key,
-          label: p.label,
+          label: payStyleLabel(p.key),
           onPress: () => {
             updateSettings({ payStyle: p.key });
             rescheduleAll();
             sheet.hide();
-            toast(`Paying bills: ${p.label.toLowerCase()}`);
+            toast(t('settings.payStyleSet', { style: payStyleLabel(p.key) }));
           },
         }))}
       />
@@ -114,8 +115,8 @@ function choosePayStyle() {
 
 function chooseLead() {
   sheet.show({
-    title: 'Remind me',
-    message: 'The default for new bills. You can change it per bill.',
+    title: t('settings.remindMe'),
+    message: t('settings.remindMeNote'),
     content: (
       <Options
         selected={getSettings().remindDaysBefore}
@@ -134,7 +135,7 @@ function chooseLead() {
 
 function chooseHour() {
   sheet.show({
-    title: 'Reminder time',
+    title: t('settings.reminderTime'),
     content: (
       <Options
         selected={getSettings().remindHour}
@@ -155,12 +156,12 @@ function chooseHour() {
 /** Turning the lock on or off both need the phone's unlock, so no one else can change it. */
 async function toggleLock(on: boolean) {
   if (on && !(await phoneHasLock())) {
-    sheet.show({ title: 'Your phone has no screen lock', message: 'Set a PIN, pattern, fingerprint or face in your phone’s security settings first.', actions: [{ label: 'OK' }] });
+    sheet.show({ title: t('settings.noLockTitle'), message: t('settings.noLockText'), actions: [{ label: t('common.ok') }] });
     return;
   }
-  if (!(await authenticate(on ? 'Turn on the app lock' : 'Turn off the app lock'))) return;
+  if (!(await authenticate(on ? t('settings.lockOnPrompt') : t('settings.lockOffPrompt')))) return;
   updateSettings({ appLock: on });
-  toast(on ? 'App lock is on' : 'App lock is off');
+  toast(on ? t('settings.lockOn') : t('settings.lockOff'));
 }
 
 /* ---------- building blocks ---------- */
