@@ -1,0 +1,32 @@
+{
+  "name": "due-video",
+  "version": "1.0.0",
+  "description": "due product film, rendered from code with Remotion.",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@remotion/cli": "4.0.537",
+    "@remotion/google-fonts": "4.0.537",
+    "@remotion/media": "4.0.537",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.537"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config-flat": "4.0.537",
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "eslint": "10.12.0",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "lint": "eslint src && tsc",
+    "render": "remotion render src/index.ts Film16x9 out/due-16x9.mp4",
+    "render:vertical": "remotion render src/index.ts Film9x16 out/due-9x16.mp4",
+    "render:all": "npm run render && npm run render:vertical"
+  },
+  "allowScripts": {
+    "esbuild": false
+  }
+}
