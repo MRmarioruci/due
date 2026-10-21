@@ -177,41 +177,46 @@ export default function Bills() {
           </Animated.View>
         )}
 
-        <View style={{ marginTop: 22 }}>
-          <Eyebrow>{t('home.nextDays', { n: HORIZON })}</Eyebrow>
-          <View style={{ marginTop: 8 }}>
-            <Amount currency={ccy} value={formatAmount(totalShown, ccy)} />
+        {/* While searching, only the results: the totals, plan and runway step aside. */}
+        {!searching && (
+          <>
+          <View style={{ marginTop: 22 }}>
+            <Eyebrow>{t('home.nextDays', { n: HORIZON })}</Eyebrow>
+            <View style={{ marginTop: 8 }}>
+              <Amount currency={ccy} value={formatAmount(totalShown, ccy)} />
+            </View>
+            <T style={st.sub}>
+              {open.length === 0
+                ? t('home.empty')
+                : [t('home.open', { n: open.length }), next?.dueDate && t('home.nextDue', { date: shortDay(next.dueDate) }), otherCcy && t('home.otherCurrencies')].filter(Boolean).join(' · ')}
+            </T>
           </View>
-          <T style={st.sub}>
-            {open.length === 0
-              ? t('home.empty')
-              : [t('home.open', { n: open.length }), next?.dueDate && t('home.nextDue', { date: shortDay(next.dueDate) }), otherCcy && t('home.otherCurrencies')].filter(Boolean).join(' · ')}
-          </T>
-        </View>
 
-        {plan ? (
-          <Animated.View entering={enterFade(150)} style={st.plan}>
-            <View style={st.planCol}>
-              <Eyebrow>{t('home.beforePayday')}</Eyebrow>
-              <T style={st.planAmount}>{formatAmount(plan.beforeMinor, ccy)}</T>
-              <T style={st.planSub}>{plan.before.length ? t('home.beforeCount', { n: plan.before.length }) : t('home.nothingUntilPayday')}</T>
-            </View>
-            <View style={[st.planCol, st.planRight]}>
-              <Eyebrow>{t('home.afterPayday', { date: shortDay(plan.payday).toUpperCase() })}</Eyebrow>
-              <T style={st.planAmount}>{formatAmount(plan.afterMinor, ccy)}</T>
-              <T style={st.planSub}>{t('home.afterCount', { n: plan.after.length })}</T>
-            </View>
-          </Animated.View>
-        ) : (
-          open.length > 0 &&
-          !settings.pay && (
-            <Pressable accessibilityRole="link" onPress={() => router.push('/settings')} style={{ marginTop: 14, alignSelf: 'flex-start', paddingVertical: 6 }}>
-              <T style={{ fontSize: 13.5, color: C.muted }}>{t('home.setPayday')}</T>
-            </Pressable>
-          )
+          {plan ? (
+            <Animated.View entering={enterFade(150)} style={st.plan}>
+              <View style={st.planCol}>
+                <Eyebrow>{t('home.beforePayday')}</Eyebrow>
+                <T style={st.planAmount}>{formatAmount(plan.beforeMinor, ccy)}</T>
+                <T style={st.planSub}>{plan.before.length ? t('home.beforeCount', { n: plan.before.length }) : t('home.nothingUntilPayday')}</T>
+              </View>
+              <View style={[st.planCol, st.planRight]}>
+                <Eyebrow>{t('home.afterPayday', { date: shortDay(plan.payday).toUpperCase() })}</Eyebrow>
+                <T style={st.planAmount}>{formatAmount(plan.afterMinor, ccy)}</T>
+                <T style={st.planSub}>{t('home.afterCount', { n: plan.after.length })}</T>
+              </View>
+            </Animated.View>
+          ) : (
+            open.length > 0 &&
+            !settings.pay && (
+              <Pressable accessibilityRole="link" onPress={() => router.push('/settings')} style={{ marginTop: 14, alignSelf: 'flex-start', paddingVertical: 6 }}>
+                <T style={{ fontSize: 13.5, color: C.muted }}>{t('home.setPayday')}</T>
+              </Pressable>
+            )
+          )}
+
+          <Runway bills={window} today={today} ccy={ccy} payday={plan?.payday ?? null} expected={expected} />
+          </>
         )}
-
-        <Runway bills={window} today={today} ccy={ccy} payday={plan?.payday ?? null} expected={expected} />
 
         <View style={st.tabs}>
           {(['open', 'paid'] as const).map((k) => {
