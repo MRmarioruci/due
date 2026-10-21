@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mainReminder, planDigest, planReminders } from './reminder-plan';
+import { currentMain, mainReminder, planDigest, planReminders, snoozeOptions, withinBudget } from './reminder-plan';
 import { emptyPayment, type Bill } from './types';
 
 const bill = (over: Partial<Bill> = {}): Bill => ({
@@ -86,5 +86,41 @@ describe('pay styles', () => {
   });
   it('uses the default style when the bill has none', () => {
     expect(day(mainReminder(b, { ...prefs, payStyle: 'early' }, now)!)).toBe('10/21 9h');
+  });
+});
+
+describe('currentMain', () => {
+  const prefs = { remindHour: 9, extraNudges: true };
+  it('follows a snooze, then the planned time, and does not re-plan one that went off', () => {
+    expect(day(currentMain(bill({ snoozedUntil: new Date(2026, 9, 22, 9).toISOString() }), prefs, now)!)).toBe('10/22 9h');
+    expect(day(currentMain(bill({ remindAt: new Date(2026, 9, 30, 9).toISOString() }), prefs, now)!)).toBe('10/30 9h');
+    expect(currentMain(bill({ remindAt: new Date(2026, 9, 19, 9).toISOString() }), prefs, now)).toBeNull();
+    expect(day(currentMain(bill(), prefs, now)!)).toBe('10/30 9h');
+  });
+  it('ignores a snooze that has passed', () => {
+    expect(currentMain(bill({ snoozedUntil: new Date(2026, 9, 19, 9).toISOString(), remindAt: new Date(2026, 9, 19, 9).toISOString() }), prefs, now)).toBeNull();
+  });
+});
+
+describe('withinBudget', () => {
+  const r = (kind: 'main' | 'tomorrow' | 'overdue', d: number) => ({ kind, at: new Date(2026, 10, d, 9) });
+  it('keeps everything under the cap', () => {
+    expect(withinBudget([r('main', 3), r('main', 1)], 5).map((x) => x.at.getDate())).toEqual([1, 3]);
+  });
+  it('keeps the soonest, main reminders first', () => {
+    const picked = withinBudget([r('main', 1), r('tomorrow', 2), r('overdue', 4), r('main', 3), r('main', 10), r('overdue', 11)], 3);
+    expect(picked.map((x) => `${x.kind}${x.at.getDate()}`)).toEqual(['main1', 'main3', 'main10']);
+    expect(withinBudget([r('main', 1), r('tomorrow', 2), r('main', 3), r('overdue', 12)], 3).map((x) => `${x.kind}${x.at.getDate()}`)).toEqual(['main1', 'tomorrow2', 'main3']);
+  });
+});
+
+describe('snoozeOptions', () => {
+  const keys = (o: { key: string; at: Date }[]) => o.map((x) => `${x.key} ${day(x.at)}`);
+  it('offers later today, tomorrow, in 3 days and payday, with exact times', () => {
+    expect(keys(snoozeOptions(bill(), 9, '2026-10-25', now))).toEqual(['later 10/20 15h', 'tomorrow 10/21 9h', 'days3 10/23 9h', 'payday 10/25 9h']);
+  });
+  it('leaves out what is past the due date, but keeps tomorrow', () => {
+    expect(keys(snoozeOptions(bill({ dueDate: '2026-10-21' }), 9, '2026-10-25', now))).toEqual(['later 10/20 15h', 'tomorrow 10/21 9h']);
+    expect(keys(snoozeOptions(bill({ dueDate: '2026-10-20' }), 9, null, new Date(2026, 9, 20, 19)))).toEqual(['tomorrow 10/21 9h']);
   });
 });

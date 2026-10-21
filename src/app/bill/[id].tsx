@@ -8,7 +8,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { daysBetween, formatHour, longDate, shortDay, todayIso } from '@/lib/dates';
+import { daysBetween, formatWhen, longDate, shortDay, todayIso } from '@/lib/dates';
 import { activeDiscount, withSwissAmount } from '@/lib/discount';
 import { formatAmount, formatMoney } from '@/lib/money';
 import { goBack } from '@/lib/nav';
@@ -16,7 +16,10 @@ import { locale, t } from '@/i18n/core';
 import { exportBillPdf } from '@/lib/bill-pdf';
 import { armPayCheck } from '@/lib/pay-check';
 import { buildEpc, buildSwissQr } from '@/lib/payment-codes';
-import { paydayAdvice } from '@/lib/plan';
+import { nextPayday, paydayAdvice } from '@/lib/plan';
+import { snoozeOptions } from '@/lib/reminder-plan';
+import { pickDate } from '@/ui/calendar';
+import { Options } from '@/ui/choosers';
 import { markOpen, markPaid, snooze } from '@/lib/reminders';
 import { getSettings, useSettings } from '@/lib/settings';
 import { useBill, useBills } from '@/lib/store';
@@ -71,6 +74,8 @@ export default function BillScreen() {
   const advice = settings.pay && settings.pay.every !== 'day' ? paydayAdvice(bill, settings.pay, today) : null;
   const paid = bill.status === 'paid';
   const change = priceChange(bill, bills);
+  const snoozed = !!bill.snoozedUntil && new Date(bill.snoozedUntil) > new Date();
+  const nextReminder = snoozed ? new Date(bill.snoozedUntil!) : bill.remindAt && new Date(bill.remindAt) > new Date() ? new Date(bill.remindAt) : null;
 
   /** Most Swiss banking apps can read a QR code from an image, so share it as a PNG. */
   function shareQr() {
@@ -99,6 +104,44 @@ export default function BillScreen() {
     } finally {
       setPdfBusy(false);
     }
+  }
+
+  /** "Remind me later": exact times to choose from, or any day on the calendar. */
+  function remindLater() {
+    const b = bill!;
+    const { remindHour, pay } = getSettings();
+    const payday = pay && pay.every !== 'day' ? nextPayday(pay, today) : null;
+    const done = async (at: Date) => {
+      sheet.hide();
+      await snooze(b, at);
+      Haptics.selectionAsync();
+      toast(t('bill.snoozed', { when: formatWhen(at) }));
+    };
+    sheet.show({
+      title: t('snooze.title'),
+      message: b.dueDate ? t('snooze.due', { date: shortDay(b.dueDate) }) : undefined,
+      content: (
+        <Options
+          selected={null}
+          options={[
+            ...snoozeOptions(b, remindHour, payday).map((o) => ({ key: o.key, label: t(`snooze.${o.key}`), detail: formatWhen(o.at), onPress: () => done(o.at) })),
+            {
+              key: 'pick',
+              label: t('snooze.pick'),
+              onPress: async () => {
+                sheet.hide();
+                const day = await pickDate(t('snooze.title'), null);
+                if (!day) return;
+                const at = new Date(day + 'T00:00:00');
+                at.setHours(remindHour, 0, 0, 0);
+                if (at <= new Date()) at.setTime(Date.now() + 60 * 60_000);
+                done(at);
+              },
+            },
+          ]}
+        />
+      ),
+    });
   }
 
   async function copy(label: string, value: string) {
@@ -190,6 +233,15 @@ export default function BillScreen() {
         )}
 
         {!paid && bill.dueDate && <Timeline bill={bill} today={today} />}
+        {!paid && nextReminder && (
+          <Pressable accessibilityRole="button" onPress={remindLater} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, alignSelf: 'flex-start' }}>
+            <Icon name="bell" size={14} color={C.accent} />
+            <T style={{ fontSize: 13.5, color: C.muted }}>
+              {t(snoozed ? 'bill.reminderSnoozed' : 'bill.reminderAt', { when: formatWhen(nextReminder) })}{' '}
+              <T style={{ fontSize: 13.5, color: C.fg, textDecorationLine: 'underline' }}>{t('bill.reminderChange')}</T>
+            </T>
+          </Pressable>
+        )}
         {advice && <T style={{ marginTop: 16, fontSize: 13.5, lineHeight: 19, color: C.muted }}>{advice}</T>}
 
         {code && (
@@ -263,16 +315,7 @@ export default function BillScreen() {
           <Button title={t('bill.markUnpaid')} kind="secondary" style={{ flex: 1 }} onPress={() => markOpen(bill)} />
         ) : (
           <>
-            <Button
-              title={t('bill.snooze')}
-              kind="secondary"
-              style={{ flex: 1 }}
-              onPress={async () => {
-                await snooze(bill);
-                Haptics.selectionAsync();
-                toast(t('bill.snoozed', { time: formatHour(getSettings().remindHour) }));
-              }}
-            />
+            <Button title={t('bill.snooze')} kind="secondary" style={{ flex: 1 }} onPress={remindLater} />
             <Button
               title={t('bill.markPaid')}
               style={{ flex: 2 }}

@@ -11,7 +11,7 @@ import { formatMoney } from '@/lib/money';
 import { goBack, openScan } from '@/lib/nav';
 import { toMinor } from '@/lib/payment-codes';
 import { PAY_STYLES } from '@/lib/reminder-plan';
-import { describeReminder, scheduleReminder } from '@/lib/reminders';
+import { describeReminder, replan, syncReminders } from '@/lib/reminders';
 import { payeeKey } from '@/lib/recurring';
 import { getSettings, homeCurrency, updateSettings } from '@/lib/settings';
 import { getBill, newId, saveBill, useBills } from '@/lib/store';
@@ -50,7 +50,7 @@ const blankDraft = (): BillDraft => ({
 
 /** The editable part of a saved bill. */
 function toDraft(b: Bill): BillDraft {
-  const { id: _id, status: _s, paidAt: _p, paidAmountMinor: _pa, createdAt: _c, remindAt: _r, reminderId: _ri, extraReminderIds: _e, ...draft } = b;
+  const { id: _id, status: _s, paidAt: _p, paidAmountMinor: _pa, createdAt: _c, remindAt: _r, snoozedUntil: _sn, reminderId: _ri, extraReminderIds: _e, ...draft } = b;
   return draft;
 }
 
@@ -131,7 +131,8 @@ export default function Review() {
     }
     if (existing) {
       const updated: Bill = { ...existing, ...d, payee: d.payee.trim(), amountMinor: toMinor(amountText), currency: d.currency.trim().toUpperCase() || homeCurrency() };
-      saveBill(await scheduleReminder(updated));
+      saveBill(replan(updated));
+      syncReminders();
       toast(t('review.saved'));
       return goBack();
     }
@@ -147,7 +148,8 @@ export default function Review() {
       remindAt: null,
       reminderId: null,
     };
-    saveBill(await scheduleReminder(keepOriginals(bill)));
+    saveBill(keepOriginals(bill));
+    syncReminders();
     if (chased && !keepChased) await removeBill(chased);
     router.dismissTo('/');
   }

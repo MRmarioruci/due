@@ -76,7 +76,10 @@ export type Bill = {
   payStyle?: import('./reminder-plan').PayStyle | null;
   /** Days before the due date to remind ("just in time" style); 0 = on the due date. */
   remindDaysBefore: number;
-  remindAt: string | null; // ISO timestamp of the scheduled reminder
+  /** ISO timestamp of the main reminder once planned; kept after it goes off, so it isn't planned again. */
+  remindAt: string | null;
+  /** "Remind me later": the main reminder moves here (ISO timestamp). */
+  snoozedUntil?: string | null;
   reminderId: string | null;
   /** The "last call" and "overdue" nudges scheduled alongside the main reminder. */
   extraReminderIds?: string[];
@@ -89,7 +92,7 @@ export type Bill = {
 export type SourcedField = 'payee' | 'amount' | 'currency' | 'dueDate' | 'iban' | 'reference';
 
 /** What a scan produces before the user confirms it. */
-export type BillDraft = Omit<Bill, 'id' | 'status' | 'paidAt' | 'paidAmountMinor' | 'createdAt' | 'remindAt' | 'reminderId' | 'extraReminderIds'>;
+export type BillDraft = Omit<Bill, 'id' | 'status' | 'paidAt' | 'paidAmountMinor' | 'createdAt' | 'remindAt' | 'snoozedUntil' | 'reminderId' | 'extraReminderIds'>;
 
 export const emptyPayment = (): Payment => ({
   standard: null,

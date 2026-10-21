@@ -5,12 +5,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import * as SystemUI from 'expo-system-ui';
-import { Appearance, useColorScheme, View } from 'react-native';
+import { Appearance, AppState, useColorScheme, View } from 'react-native';
 
 import '@/i18n';
 import { LockGate } from '@/lib/lock';
 import { usePayCheck } from '@/lib/pay-check';
-import { listenForResponses, scheduleDigest, setupNotifications } from '@/lib/reminders';
+import { listenForResponses, scheduleDigest, setupNotifications, syncReminders } from '@/lib/reminders';
 import { getSettings, useSettings, type Settings } from '@/lib/settings';
 import { recategorizeOthers, useBills } from '@/lib/store';
 import { pickCategory } from '@/lib/categorize';
@@ -57,11 +57,20 @@ export default function RootLayout() {
   const { weeklyDigest, remindHour } = useSettings();
   useEffect(() => {
     const t = setTimeout(() => {
+      syncReminders();
       scheduleDigest(bills);
       updateWidget(bills);
     }, 1500);
     return () => clearTimeout(t);
   }, [bills, weeklyDigest, remindHour]);
+
+  // Back in the app: the scheduling window moves on, so bills further out get their reminders.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') syncReminders();
+    });
+    return () => sub.remove();
+  }, []);
 
   // The permission prompt waits for onboarding, which asks for it with an explanation first.
   const { onboarded, language, theme: themeMode } = useSettings();

@@ -56,16 +56,30 @@ const at = (iso: string, hour: number) => {
 };
 
 /**
+ * The main reminder as it stands: a snooze wins; else the one already planned (null once it has gone
+ * off, so opening the app doesn't plan it again); else a fresh plan. Edits and setting changes clear
+ * `remindAt` to re-plan.
+ */
+export function currentMain(bill: Pick<Bill, 'snoozedUntil' | 'remindAt'> & Bill, prefs: Prefs, now = new Date()): Date | null {
+  if (bill.snoozedUntil && new Date(bill.snoozedUntil) > now) return new Date(bill.snoozedUntil);
+  if (bill.remindAt) {
+    const planned = new Date(bill.remindAt);
+    return planned > now ? planned : null;
+  }
+  return mainReminder(bill, prefs, now);
+}
+
+/**
  * Every notification a bill should get: the main reminder (or a snoozed one), and with extra nudges on,
  * one the day before its deadline and one the day after it's due if it's still open then.
  */
-export function planReminders(bill: Bill, prefs: Prefs, now = new Date(), snoozedTo?: Date): PlannedReminder[] {
+export function planReminders(bill: Bill, prefs: Prefs, now = new Date()): PlannedReminder[] {
   if (bill.status !== 'open') return [];
   const target = targetDate(bill, todayIso(now));
   const title = `${bill.payee} · ${formatMoney(bill.amountMinor, bill.currency)}`;
   const out: PlannedReminder[] = [];
 
-  const main = snoozedTo ?? mainReminder(bill, prefs, now);
+  const main = currentMain(bill, prefs, now);
   if (main && main > now) out.push({ kind: 'main', at: main, title, body: describeDue(bill, main) });
 
   if (prefs.extraNudges && target) {
@@ -114,4 +128,52 @@ export function planDigest(bills: Bill[], hour: number, now = new Date()): { at:
     title: t('notify.digestTitle', { n: week.length, total: formatMoney(total, ccy) }),
     body: names.join(' · ') + (week.length > 3 ? ` · ${t('notify.more', { n: week.length - 3 })}` : ''),
   };
+}
+
+/** Phones cap scheduled notifications: iOS keeps only 64, Android refuses alarms past 500. */
+export const NOTIFICATION_CAP = { ios: 60, android: 300 } as const;
+
+/**
+ * Which planned notifications get scheduled now: the soonest `cap`, keeping each bill's main
+ * reminder ahead of other bills' extra nudges. The rest are scheduled as the window moves on.
+ */
+export function withinBudget<T extends { kind: PlannedReminder['kind']; at: Date }>(planned: T[], cap: number): T[] {
+  const sorted = [...planned].sort((a, b) => a.at.getTime() - b.at.getTime());
+  if (sorted.length <= cap) return sorted;
+  const mains = sorted.filter((r) => r.kind === 'main').slice(0, cap);
+  const room = cap - mains.length;
+  const lastMain = mains[mains.length - 1]?.at.getTime() ?? Infinity;
+  const extras = sorted.filter((r) => r.kind !== 'main' && r.at.getTime() <= lastMain).slice(0, room);
+  return [...mains, ...extras].sort((a, b) => a.at.getTime() - b.at.getTime());
+}
+
+export type SnoozeOption = { key: 'later' | 'tomorrow' | 'days3' | 'payday'; at: Date };
+
+/**
+ * "Remind me later" choices with exact times: later today (3 hours on, until 21:00), tomorrow, in
+ * 3 days and on payday, at the usual reminder hour. Options past the bill's deadline are left out.
+ */
+export function snoozeOptions(bill: Bill, hour: number, payday: string | null, now = new Date()): SnoozeOption[] {
+  const target = targetDate(bill, todayIso(now));
+  const deadline = target ? fromIso(target) : null;
+  deadline?.setHours(23, 59, 0, 0);
+  const dayAt = (days: number) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + days);
+    d.setHours(hour, 0, 0, 0);
+    return d;
+  };
+  const out: SnoozeOption[] = [];
+  const later = new Date(now.getTime() + 3 * 3600_000);
+  later.setMinutes(later.getMinutes() < 30 ? 30 : 60, 0, 0);
+  if (later.getHours() < 21 && later.getHours() >= 7 && todayIso(later) === todayIso(now)) out.push({ key: 'later', at: later });
+  out.push({ key: 'tomorrow', at: dayAt(1) });
+  out.push({ key: 'days3', at: dayAt(3) });
+  if (payday && daysBetween(todayIso(now), payday) > 1) {
+    const p = fromIso(payday);
+    p.setHours(hour, 0, 0, 0);
+    if (p.getTime() !== dayAt(3).getTime()) out.push({ key: 'payday', at: p });
+  }
+  // Tomorrow always stays, even when the bill is due today: better late than forgotten.
+  return out.filter((o) => o.key === 'tomorrow' || !deadline || o.at <= deadline).sort((a, b) => a.at.getTime() - b.at.getTime());
 }

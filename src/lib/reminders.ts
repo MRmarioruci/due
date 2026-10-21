@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 import { shortDay } from './dates';
 import { activeDiscount } from './discount';
 import { Notifications } from './notifications-module';
-import { mainReminder, planDigest, planReminders } from './reminder-plan';
+import { mainReminder, NOTIFICATION_CAP, planDigest, planReminders, withinBudget } from './reminder-plan';
 import { t } from '@/i18n/core';
 import { getSettings, updateSettings } from './settings';
 import { getBill, getBills, saveBill } from './store';
@@ -52,28 +52,91 @@ export async function cancelFor(bill: Bill) {
   }
 }
 
-/** Replaces the bill's notifications with a fresh plan. Returns the bill with reminder fields updated. */
-export async function scheduleReminder(bill: Bill, snoozedTo?: Date): Promise<Bill> {
-  const cleared = { ...bill, reminderId: null, remindAt: null, extraReminderIds: [] };
-  if (!Notifications) return cleared;
-  await cancelFor(bill);
-  const { remindHour, extraNudges, payStyle } = getSettings();
-  const plan = planReminders(bill, { remindHour, extraNudges, payStyle }, new Date(), snoozedTo);
-  const ids: { kind: string; id: string; at: Date }[] = [];
-  for (const r of plan) {
-    const id = await Notifications.scheduleNotificationAsync({
-      content: { title: r.title, body: r.kind === 'main' ? `${r.body} ${t('notify.openQr')}` : r.body, data: { billId: bill.id }, categoryIdentifier: CATEGORY },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: r.at, channelId: CHANNEL },
-    });
-    ids.push({ kind: r.kind, id, at: r.at });
+/**
+ * Brings the phone's scheduled notifications in line with the bills: plans every open bill, keeps the
+ * soonest within the phone's limit, cancels what's no longer wanted and schedules what's missing.
+ * Runs after every change to the bills and when the app comes back to the foreground (which also
+ * moves the window on, so bills further out get theirs in time).
+ */
+let running: Promise<void> | null = null;
+let again = false;
+export function syncReminders(): Promise<void> {
+  if (running) {
+    again = true;
+    return running;
   }
-  const main = ids.find((x) => x.kind === 'main');
-  return {
-    ...cleared,
-    reminderId: main?.id ?? null,
-    remindAt: main?.at.toISOString() ?? null,
-    extraReminderIds: ids.filter((x) => x !== main).map((x) => x.id),
-  };
+  running = (async () => {
+    try {
+      do {
+        again = false;
+        await syncOnce();
+      } while (again);
+    } finally {
+      running = null;
+    }
+  })();
+  return running;
+}
+
+async function syncOnce() {
+  const N = Notifications;
+  if (!N) return;
+  const now = new Date();
+  const prefs = (({ remindHour, extraNudges, payStyle }) => ({ remindHour, extraNudges, payStyle }))(getSettings());
+  const open = getBills().filter((b) => b.status === 'open');
+
+  const planned = open.flatMap((bill) => planReminders(bill, prefs, now).map((r) => ({ ...r, bill, key: `${bill.id}|${r.kind}|${r.at.getTime()}` })));
+  const cap = Platform.OS === 'ios' ? NOTIFICATION_CAP.ios : NOTIFICATION_CAP.android;
+  const wanted = withinBudget(planned, cap);
+  const wantedKeys = new Set(wanted.map((r) => r.key));
+
+  // Bill notifications carry their key; the weekly summary has none and is left alone.
+  const scheduled = await N.getAllScheduledNotificationsAsync();
+  const have = new Map<string, string>();
+  for (const n of scheduled) {
+    const data = n.content.data as { billId?: string; key?: string } | undefined;
+    if (!data?.billId) continue;
+    if (data.key && wantedKeys.has(data.key) && !have.has(data.key)) have.set(data.key, n.identifier);
+    else await N.cancelScheduledNotificationAsync(n.identifier).catch(() => {});
+  }
+  for (const r of wanted) {
+    if (have.has(r.key)) continue;
+    const id = await N.scheduleNotificationAsync({
+      content: {
+        title: r.title,
+        body: r.kind === 'main' ? `${r.body} ${t('notify.openQr')}` : r.body,
+        data: { billId: r.bill.id, key: r.key },
+        categoryIdentifier: CATEGORY,
+      },
+      trigger: { type: N.SchedulableTriggerInputTypes.DATE, date: r.at, channelId: CHANNEL },
+    });
+    have.set(r.key, id);
+  }
+
+  // Record on each bill when its main reminder is (shown on the bill screen) and which ids are its.
+  for (const bill of open) {
+    const mine = wanted.filter((r) => r.bill.id === bill.id);
+    const main = planned.find((r) => r.bill.id === bill.id && r.kind === 'main');
+    const mainId = main && have.get(main.key);
+    const next = {
+      remindAt: main ? main.at.toISOString() : bill.remindAt && new Date(bill.remindAt) <= now ? bill.remindAt : null,
+      snoozedUntil: bill.snoozedUntil && new Date(bill.snoozedUntil) > now ? bill.snoozedUntil : null,
+      reminderId: mainId ?? null,
+      extraReminderIds: mine.filter((r) => r.kind !== 'main').map((r) => have.get(r.key)!),
+    };
+    const same =
+      next.remindAt === bill.remindAt &&
+      next.snoozedUntil === (bill.snoozedUntil ?? null) &&
+      next.reminderId === bill.reminderId &&
+      JSON.stringify(next.extraReminderIds) === JSON.stringify(bill.extraReminderIds ?? []);
+    const current = getBill(bill.id);
+    if (!same && current && current.status === 'open') saveBill({ ...current, ...next });
+  }
+}
+
+/** For saving an edited or new bill: forget the old plan so the next sync plans it afresh. */
+export function replan(bill: Bill): Bill {
+  return { ...bill, remindAt: null, snoozedUntil: null };
 }
 
 /** Replaces the Monday summary with one for the coming week. */
@@ -94,24 +157,30 @@ export async function scheduleDigest(bills: Bill[]) {
 export async function markPaid(bill: Bill) {
   await cancelFor(bill);
   const discount = activeDiscount(bill);
-  saveBill({ ...bill, status: 'paid', paidAt: new Date().toISOString(), paidAmountMinor: discount?.payMinor ?? null, reminderId: null, remindAt: null, extraReminderIds: [] });
+  saveBill({ ...bill, status: 'paid', paidAt: new Date().toISOString(), paidAmountMinor: discount?.payMinor ?? null, reminderId: null, remindAt: null, snoozedUntil: null, extraReminderIds: [] });
+  await syncReminders();
 }
 
 export async function markOpen(bill: Bill) {
-  saveBill(await scheduleReminder({ ...bill, status: 'open', paidAt: null, paidAmountMinor: null }));
+  saveBill(replan({ ...bill, status: 'open', paidAt: null, paidAmountMinor: null }));
+  await syncReminders();
 }
 
-/** Re-reminds tomorrow at the usual reminder time. */
-export async function snooze(bill: Bill) {
-  const t = new Date();
-  t.setDate(t.getDate() + 1);
-  t.setHours(getSettings().remindHour, 0, 0, 0);
-  saveBill(await scheduleReminder(bill, t));
+/** "Remind me later": the main reminder moves to `at` (tomorrow at the usual time when not given). */
+export async function snooze(bill: Bill, at?: Date) {
+  if (!at) {
+    at = new Date();
+    at.setDate(at.getDate() + 1);
+    at.setHours(getSettings().remindHour, 0, 0, 0);
+  }
+  saveBill({ ...bill, snoozedUntil: at.toISOString() });
+  await syncReminders();
 }
 
-/** Re-plans every open bill's reminder, e.g. after the reminder time changed. */
+/** Re-plans every open bill's reminder, e.g. after the reminder time or pay style changed. */
 export async function rescheduleAll() {
-  for (const b of getBills().filter((x) => x.status === 'open')) saveBill(await scheduleReminder(b));
+  for (const b of getBills().filter((x) => x.status === 'open')) saveBill({ ...b, remindAt: null });
+  await syncReminders();
 }
 
 /** Handles taps and the notification's action buttons. Call once from the root layout. */

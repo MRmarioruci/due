@@ -61,3 +61,12 @@ export function relativeDays(dueDate: string, today = todayIso()): string {
 export function formatHour(hour: number): string {
   return `${String(hour).padStart(2, '0')}:00`;
 }
+
+/** "Today, 15:30", "Tomorrow, 09:00" or "Fri 25 Oct, 09:00". */
+export function formatWhen(d: Date, now = new Date()): string {
+  const time = d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+  const days = daysBetween(todayIso(now), todayIso(d));
+  if (days === 0) return t('when.todayAt', { time });
+  if (days === 1) return t('when.tomorrowAt', { time });
+  return `${shortDay(d)}, ${time}`;
+}
