@@ -92,6 +92,14 @@
         {
           "locationWhenInUsePermission": "due uses your location once, to set your country and currency."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
     "experiments": {
