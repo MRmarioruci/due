@@ -77,7 +77,7 @@ export function Loading() {
   );
 }
 
-type IconName = 'back' | 'close' | 'scan' | 'stats' | 'settings' | 'copy' | 'bell' | 'flash' | 'photo' | 'more' | 'check' | 'share' | 'pin';
+type IconName = 'back' | 'close' | 'scan' | 'stats' | 'settings' | 'copy' | 'bell' | 'flash' | 'photo' | 'more' | 'check' | 'share' | 'pin' | 'download';
 
 export function Icon({ name, color = C.fg, size = 18 }: { name: IconName; color?: string; size?: number }) {
   const p = { stroke: color, strokeWidth: 1.7, fill: 'none' as const, strokeLinecap: 'square' as const };
@@ -111,6 +111,7 @@ export function Icon({ name, color = C.fg, size = 18 }: { name: IconName; color?
       {name === 'more' && <Path d="M5 12h.01M12 12h.01M19 12h.01" {...p} strokeWidth={3} />}
       {name === 'check' && <Path d="M5 12.5l4.5 4.5L19 7.5" {...p} />}
       {name === 'pin' && <Path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" {...p} strokeLinecap="butt" />}
+      {name === 'download' && <Path d="M12 3.5V15M7.5 10.5L12 15l4.5-4.5M5 19.5h14" {...p} />}
       {name === 'share' && <Path d="M12 15V3.5M7.5 8L12 3.5 16.5 8M5 12v8.5h14V12" {...p} />}
     </Svg>
   );

@@ -165,6 +165,17 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'bill.snooze': 'Później',
   'bill.snoozed': 'Przypomnienie jutro o {time}',
 
+  'pdf.download': 'Pobierz jako PDF',
+  'pdf.making': 'Tworzę PDF…',
+  'pdf.failed': 'Nie udało się utworzyć PDF: {error}',
+  'pdf.shareTitle': 'Rachunek {payee} (PDF)',
+  'pdf.address': 'Adres',
+  'pdf.issued': 'Data wystawienia',
+  'pdf.status': 'Status',
+  'pdf.open': 'Otwarty',
+  'pdf.original': 'Oryginalny rachunek',
+  'pdf.generated': 'Utworzono w due {date}',
+
   'paycheck.title': 'Czy zapłaciłeś {payee}?',
   'paycheck.yes': 'Tak, oznacz jako opłacony',
   'paycheck.notYet': 'Jeszcze nie',

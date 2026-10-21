@@ -151,6 +151,17 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'bill.snooze': 'Later',
   'bill.snoozed': 'Herinnering morgen om {time}',
 
+  'pdf.download': 'Downloaden als pdf',
+  'pdf.making': 'Pdf maken…',
+  'pdf.failed': 'Kon de pdf niet maken: {error}',
+  'pdf.shareTitle': 'Rekening {payee} (pdf)',
+  'pdf.address': 'Adres',
+  'pdf.issued': 'Factuurdatum',
+  'pdf.status': 'Status',
+  'pdf.open': 'Open',
+  'pdf.original': 'Originele rekening',
+  'pdf.generated': 'Gemaakt met due op {date}',
+
   'paycheck.title': 'Heb je {payee} betaald?',
   'paycheck.yes': 'Ja, markeren als betaald',
   'paycheck.notYet': 'Nog niet',

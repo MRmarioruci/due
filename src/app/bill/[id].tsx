@@ -13,6 +13,7 @@ import { activeDiscount, withSwissAmount } from '@/lib/discount';
 import { formatAmount, formatMoney } from '@/lib/money';
 import { goBack } from '@/lib/nav';
 import { locale, t } from '@/i18n/core';
+import { exportBillPdf } from '@/lib/bill-pdf';
 import { armPayCheck } from '@/lib/pay-check';
 import { buildEpc, buildSwissQr } from '@/lib/payment-codes';
 import { paydayAdvice } from '@/lib/plan';
@@ -53,6 +54,7 @@ export default function BillScreen() {
   const settings = useSettings();
   const insets = useSafeAreaInsets();
   const [copied, setCopied] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const qrRef = useRef<{ toDataURL: (cb: (base64: string) => void) => void } | null>(null);
 
   if (!bill) return <Loading />;
@@ -79,6 +81,20 @@ export default function BillScreen() {
     });
   }
 
+  /** The QR as a PNG for the PDF, when the bill has one on screen. */
+  const qrPng = () => new Promise<string | null>((resolve) => (qrRef.current ? qrRef.current.toDataURL((b) => resolve(b)) : resolve(null)));
+  async function downloadPdf() {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      await exportBillPdf(bill!, code ? await qrPng() : null);
+    } catch (e) {
+      toast(t('pdf.failed', { error: (e as Error).message }));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
   async function copy(label: string, value: string) {
     await Clipboard.setStringAsync(value.replace(/\s/g, label === 'IBAN' ? '' : ' '));
     armPayCheck(bill!.id);
@@ -93,6 +109,7 @@ export default function BillScreen() {
       title: b.payee,
       actions: [
         { label: t('bill.edit'), kind: 'secondary', onPress: () => router.push({ pathname: '/review', params: { id: b.id } }) },
+        { label: t('pdf.download'), kind: 'secondary', onPress: downloadPdf },
         {
           label: t('bill.delete'),
           kind: 'secondary',
@@ -207,6 +224,11 @@ export default function BillScreen() {
             </View>
           )}
         </View>
+
+        <Pressable accessibilityRole="button" onPress={downloadPdf} disabled={pdfBusy} style={[st.shareBtn, { alignSelf: 'flex-start', marginTop: 20, opacity: pdfBusy ? 0.6 : 1 }]}>
+          <Icon name="download" size={16} />
+          <T style={{ fontFamily: F.medium, fontSize: 14 }}>{pdfBusy ? t('pdf.making') : t('pdf.download')}</T>
+        </Pressable>
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>

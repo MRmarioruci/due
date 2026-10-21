@@ -159,6 +159,17 @@ export const en = {
   'bill.snooze': 'Snooze',
   'bill.snoozed': 'Snoozed until tomorrow, {time}',
 
+  'pdf.download': 'Download as PDF',
+  'pdf.making': 'Making PDF…',
+  'pdf.failed': 'Couldn’t make the PDF: {error}',
+  'pdf.shareTitle': '{payee} bill (PDF)',
+  'pdf.address': 'Address',
+  'pdf.issued': 'Bill date',
+  'pdf.status': 'Status',
+  'pdf.open': 'Open',
+  'pdf.original': 'Original bill',
+  'pdf.generated': 'Made with due on {date}',
+
   'paycheck.title': 'Did you pay {payee}?',
   'paycheck.yes': 'Yes, mark paid',
   'paycheck.notYet': 'Not yet',
