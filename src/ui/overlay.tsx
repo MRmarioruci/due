@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, T } from './kit';
 import { t } from '@/i18n/core';
-import { C, F, GUTTER } from './theme';
+import { C, F, GUTTER, themed } from './theme';
 
 /**
  * The app's own dialogs: a bottom sheet for choices and confirmations, and a short toast for
@@ -129,13 +129,13 @@ export function OverlayHost() {
   );
 }
 
-const st = StyleSheet.create({
-  backdrop: { backgroundColor: 'rgba(0,0,0,0.6)' },
-  panel: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#111', borderTopWidth: 1, borderColor: C.border, paddingHorizontal: GUTTER, paddingTop: 10 },
-  grabber: { alignSelf: 'center', width: 36, height: 4, backgroundColor: '#333', marginBottom: 18 },
+const st = themed(() => StyleSheet.create({
+  backdrop: { backgroundColor: C.backdrop },
+  panel: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: C.sheet, borderTopWidth: 1, borderColor: C.border, paddingHorizontal: GUTTER, paddingTop: 10 },
+  grabber: { alignSelf: 'center', width: 36, height: 4, backgroundColor: C.axis, marginBottom: 18 },
   title: { fontFamily: F.semibold, fontSize: 19, letterSpacing: -0.4 },
   message: { marginTop: 8, fontSize: 14, lineHeight: 21, color: C.muted },
   toastWrap: { position: 'absolute', left: GUTTER, right: GUTTER, alignItems: 'center' },
-  toast: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#161616', borderWidth: 1, borderColor: C.border },
+  toast: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: C.track, borderWidth: 1, borderColor: C.border },
   toastDot: { width: 6, height: 6, backgroundColor: C.accent },
-});
+}));

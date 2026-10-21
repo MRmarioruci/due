@@ -289,6 +289,10 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'choose.searchCurrencies': 'Szukaj walut',
 
   'settings.region': 'Region',
+  'settings.theme': 'Motyw',
+  'settings.theme.system': 'Jak w telefonie',
+  'settings.theme.light': 'Jasny',
+  'settings.theme.dark': 'Ciemny',
   'settings.language': 'Język',
   'settings.phoneLanguage': 'Język telefonu',
   'settings.country': 'Kraj',

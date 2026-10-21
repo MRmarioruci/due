@@ -20,7 +20,7 @@ import { categoryLabel, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { pickDate } from '@/ui/calendar';
 import { Button, Eyebrow, Icon, IconButton, SourceTag, T } from '@/ui/kit';
 import { sheet, toast } from '@/ui/overlay';
-import { C, F, GUTTER } from '@/ui/theme';
+import { C, F, GUTTER, themed } from '@/ui/theme';
 
 const REMIND_OPTIONS = [0, 1, 3, 7].map((days) => ({ days }));
 
@@ -179,7 +179,7 @@ export default function Review() {
                 setD((p) => ({ ...p, sources: { ...p.sources, amount: 'user' } }));
               }}
               placeholder="0.00"
-              placeholderTextColor="#3a3a3a"
+              placeholderTextColor={C.barMuted}
               keyboardType="decimal-pad"
               style={st.amount}
               accessibilityLabel={t('review.amount')}
@@ -267,7 +267,7 @@ export default function Review() {
   );
 }
 
-const st = StyleSheet.create({
+const st = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
   headerTitle: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.3, color: C.muted },
   warning: { marginTop: 16, borderWidth: 1, borderColor: C.border, padding: 12 },
@@ -288,5 +288,5 @@ const st = StyleSheet.create({
   description: { color: C.dim, fontSize: 13, padding: 0 },
   segment: { flexDirection: 'row', borderWidth: 1, borderColor: C.line, padding: 3 },
   segItem: { flex: 1, height: 42, alignItems: 'center', justifyContent: 'center' },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: 'rgba(10,10,10,0.94)' },
-});
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: C.footer },
+}));

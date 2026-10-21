@@ -12,7 +12,7 @@ import { countryName } from '@/i18n/labels';
 import { pickDate } from './calendar';
 import { Icon, T } from './kit';
 import { sheet, toast } from './overlay';
-import { C, F } from './theme';
+import { C, F, themed } from './theme';
 
 /** Sheets for picking settings, shared by onboarding and the settings screen. */
 
@@ -188,7 +188,7 @@ function SearchList({ items, selected, placeholder, onPick }: { items: { key: st
   );
 }
 
-const st = StyleSheet.create({
+const st = themed(() => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, minHeight: 52, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   label: { fontSize: 15, flexShrink: 1 },
   detail: { fontFamily: F.mono, fontSize: 12, color: C.dim },
@@ -197,4 +197,4 @@ const st = StyleSheet.create({
   dayCell: { width: `${100 / 7}%`, height: 46, alignItems: 'center', justifyContent: 'center' },
   dayInner: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   dayOn: { backgroundColor: C.fg },
-});
+}));

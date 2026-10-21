@@ -271,6 +271,10 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'choose.searchCurrencies': 'Valuta zoeken',
 
   'settings.region': 'Regio',
+  'settings.theme': 'Thema',
+  'settings.theme.system': 'Zoals de telefoon',
+  'settings.theme.light': 'Licht',
+  'settings.theme.dark': 'Donker',
   'settings.language': 'Taal',
   'settings.phoneLanguage': 'Taal van de telefoon',
   'settings.country': 'Land',

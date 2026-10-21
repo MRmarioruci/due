@@ -16,7 +16,7 @@ import { deviceRegion, getSettings, homeCurrency, updateSettings, useSettings } 
 import { chooseCountry, chooseCurrency, chooseLanguageSheet, choosePay, Options } from '@/ui/choosers';
 import { Eyebrow, Icon, IconButton, T } from '@/ui/kit';
 import { sheet, toast } from '@/ui/overlay';
-import { C, F, GUTTER } from '@/ui/theme';
+import { C, F, GUTTER, themed } from '@/ui/theme';
 
 const LEADS = [0, 1, 3, 7];
 const HOURS = [7, 8, 9, 12, 18, 20];
@@ -36,6 +36,7 @@ export default function SettingsScreen() {
       </View>
 
       <Section title={t('settings.region')}>
+        <Row label={t('settings.theme')} value={t(`settings.theme.${s.theme}`)} onPress={chooseTheme} />
         <Row label={t('settings.language')} value={s.language ? LANGUAGES.find((l) => l.code === s.language)?.name : `${t('settings.phoneLanguage')} · ${LANGUAGES.find((l) => l.code === deviceLang())?.name}`} onPress={() => chooseLanguageSheet(() => router.push('/settings'))} />
         <Row label={t('settings.country')} value={countryName(s.country ?? deviceRegion().country) ?? t('settings.notSet')} onPress={() => chooseCountry()} />
         <Row label={t('settings.currency')} value={homeCurrency()} onPress={() => chooseCurrency()} />
@@ -113,6 +114,27 @@ function choosePayStyle() {
             rescheduleAll();
             sheet.hide();
             toast(t('settings.payStyleSet', { style: payStyleLabel(p.key) }));
+          },
+        }))}
+      />
+    ),
+  });
+}
+
+function chooseTheme() {
+  sheet.show({
+    title: t('settings.theme'),
+    content: (
+      <Options
+        selected={getSettings().theme}
+        options={(['system', 'light', 'dark'] as const).map((m) => ({
+          key: m,
+          label: t(`settings.theme.${m}`),
+          onPress: () => {
+            sheet.hide();
+            // The screens remount in the new colours; come back here afterwards.
+            updateSettings({ theme: m });
+            setTimeout(() => router.push('/settings'), 80);
           },
         }))}
       />
@@ -210,10 +232,10 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
   );
 }
 
-const st = StyleSheet.create({
+const st = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, minHeight: 56, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   rowLabel: { fontSize: 15, flexShrink: 1 },
   rowValue: { fontSize: 14, color: C.muted, flexShrink: 1 },
   note: { marginTop: 10, fontSize: 13, lineHeight: 19, color: C.dim },
-});
+}));

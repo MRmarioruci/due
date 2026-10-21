@@ -24,7 +24,7 @@ import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
 import { Animated, enterFade } from '@/ui/motion';
 import { sheet, toast } from '@/ui/overlay';
-import { C, F, GUTTER } from '@/ui/theme';
+import { C, F, GUTTER, themed } from '@/ui/theme';
 
 /** due's mark in the middle of the payment code (the code's error correction leaves room for it). */
 const CENTER_MARK = '<svg viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg"><rect width="30" height="30" fill="#fff"/><rect x="3" y="3" width="24" height="24" fill="#0a0a0a"/><rect x="16.5" y="16.5" width="6" height="6" fill="#FF5A36"/></svg>';
@@ -293,7 +293,7 @@ function Timeline({ bill, today }: { bill: Bill; today: string }) {
   );
 }
 
-const st = StyleSheet.create({
+const st = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48, gap: 12 },
   headerTitle: { flex: 1, textAlign: 'center', fontFamily: F.semibold, fontSize: 15 },
   sub: { marginTop: 10, fontSize: 14, color: C.muted },
@@ -307,5 +307,5 @@ const st = StyleSheet.create({
   rowLabel: { width: 84, fontSize: 13, color: C.dim },
   rowValue: { flex: 1, fontSize: 14 },
   copy: { width: 44, height: 44, marginRight: -10, alignItems: 'center', justifyContent: 'center' },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', gap: 8, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: 'rgba(10,10,10,0.94)' },
-});
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', gap: 8, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: C.footer },
+}));

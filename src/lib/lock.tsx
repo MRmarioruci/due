@@ -5,7 +5,7 @@ import { AppState, StyleSheet, View } from 'react-native';
 import { getSettings, useSettings } from './settings';
 import { t } from '@/i18n/core';
 import { Button, T } from '@/ui/kit';
-import { C, F } from '@/ui/theme';
+import { C, F, themed } from '@/ui/theme';
 
 /**
  * The app lock uses the phone's own unlock: one system prompt that takes the fingerprint, face,
@@ -75,9 +75,9 @@ export function LockGate({ children }: { children: ReactNode }) {
   );
 }
 
-const st = StyleSheet.create({
+const st = themed(() => StyleSheet.create({
   cover: { backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 40 },
   logo: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
   logoText: { fontFamily: F.semibold, fontSize: 40, letterSpacing: -1.2, lineHeight: 44 },
   logoDot: { width: 10, height: 10, backgroundColor: C.accent, marginBottom: 9 },
-});
+}));

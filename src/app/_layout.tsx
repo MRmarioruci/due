@@ -1,20 +1,21 @@
 import { Archivo_400Regular, Archivo_500Medium, Archivo_600SemiBold, useFonts } from '@expo-google-fonts/archivo';
 import { JetBrainsMono_400Regular, JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono';
-import { DarkTheme, router, Stack, ThemeProvider, usePathname } from 'expo-router';
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import * as SystemUI from 'expo-system-ui';
+import { Appearance, useColorScheme, View } from 'react-native';
 
 import '@/i18n';
 import { LockGate } from '@/lib/lock';
 import { usePayCheck } from '@/lib/pay-check';
 import { listenForResponses, scheduleDigest, setupNotifications } from '@/lib/reminders';
-import { useSettings } from '@/lib/settings';
+import { getSettings, useSettings, type Settings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
 import { updateWidget } from '@/widget';
 import { OverlayHost } from '@/ui/overlay';
-import { C } from '@/ui/theme';
+import { applyTheme, C, currentTheme, type ThemeName } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,7 +25,10 @@ export const unstable_settings = { initialRouteName: 'index' };
 /** Screens that only make sense mid-flow; starting on one of them (e.g. after a reload) goes home instead. */
 const TRANSIENT = ['/scan', '/review'];
 
-const theme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: C.bg, card: C.bg, text: C.fg, border: C.line, primary: C.fg } };
+const resolveTheme = (mode: Settings['theme'], scheme: string | null | undefined): ThemeName => (mode === 'system' ? (scheme === 'light' ? 'light' : 'dark') : mode);
+
+// Apply the saved theme before anything draws.
+applyTheme(resolveTheme(getSettings().theme, Appearance.getColorScheme()));
 
 export default function RootLayout() {
   const [loaded, fontError] = useFonts({ Archivo_400Regular, Archivo_500Medium, Archivo_600SemiBold, JetBrainsMono_400Regular, JetBrainsMono_500Medium });
@@ -59,7 +63,16 @@ export default function RootLayout() {
   }, [bills, weeklyDigest, remindHour]);
 
   // The permission prompt waits for onboarding, which asks for it with an explanation first.
-  const { onboarded, language } = useSettings();
+  const { onboarded, language, theme: themeMode } = useSettings();
+
+  // Theme: the setting, or the phone's when it follows the system. Applied during render so the
+  // remounted screens below draw with the new palette straight away.
+  const scheme = useColorScheme();
+  const themeName = resolveTheme(themeMode, scheme);
+  applyTheme(themeName);
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(C.bg).catch(() => {});
+  }, [themeName]);
   useEffect(() => {
     if (onboarded) setupNotifications();
   }, [onboarded]);
@@ -67,12 +80,15 @@ export default function RootLayout() {
 
   if (!ready) return null;
 
+  const navTheme = currentTheme() === 'dark' ? DarkTheme : DefaultTheme;
+  const theme = { ...navTheme, colors: { ...navTheme.colors, background: C.bg, card: C.bg, text: C.fg, border: C.line, primary: C.fg } };
+
   return (
     <ThemeProvider value={theme}>
-      <StatusBar style="light" />
+      <StatusBar style={themeName === 'dark' ? 'light' : 'dark'} />
       <LockGate>
-        {/* Remounts when the language changes, so every screen redraws in it. */}
-        <View key={language ?? 'phone'} style={{ flex: 1 }}>
+        {/* Remounts when the language or theme changes, so every screen redraws in it. */}
+        <View key={`${language ?? 'phone'}-${themeName}`} style={{ flex: 1, backgroundColor: C.bg }}>
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'fade_from_bottom' }}>
             <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
           </Stack>

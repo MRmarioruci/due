@@ -13,7 +13,7 @@ import { computeStats, type Period } from '@/lib/stats';
 import { useBills } from '@/lib/store';
 import { Amount, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
 import { Animated, enterRow, GrowBar, useCountUp } from '@/ui/motion';
-import { C, F, GUTTER } from '@/ui/theme';
+import { C, F, GUTTER, themed } from '@/ui/theme';
 
 const CHART_H = 150;
 
@@ -146,7 +146,7 @@ export default function StatsScreen() {
                 <T style={{ fontSize: 13.5 }}>{categoryLabel(c.category)}</T>
                 <T style={{ fontSize: 13.5, color: C.muted, fontVariant: ['tabular-nums'] }}>{formatAmount(c.minor, s.currency)}</T>
               </View>
-              <View style={{ height: 4, backgroundColor: '#161616' }}>
+              <View style={{ height: 4, backgroundColor: C.track }}>
                 <GrowBar horizontal size={c.minor / catMax} delay={150 + idx * 60} style={{ height: 4, backgroundColor: C.muted }} />
               </View>
             </Animated.View>
@@ -157,11 +157,11 @@ export default function StatsScreen() {
   );
 }
 
-const st = StyleSheet.create({
+const st = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
   segment: { marginTop: 16, flexDirection: 'row', borderWidth: 1, borderColor: C.line, padding: 3 },
   segItem: { flex: 1, height: 38, alignItems: 'center', justifyContent: 'center' },
-  chart: { height: CHART_H, flexDirection: 'row', alignItems: 'flex-end', gap: 6, borderBottomWidth: 1, borderBottomColor: '#333' },
+  chart: { height: CHART_H, flexDirection: 'row', alignItems: 'flex-end', gap: 6, borderBottomWidth: 1, borderBottomColor: C.axis },
   barHit: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center' },
   barLabel: { flex: 1, textAlign: 'center', fontFamily: F.mono, fontSize: 10 },
   tiles: { marginTop: 28, flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line },
@@ -171,4 +171,4 @@ const st = StyleSheet.create({
   tileLabel: { fontSize: 12.5, lineHeight: 17, color: C.dim },
   seriesRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44, borderBottomWidth: 1, borderBottomColor: C.lineSoft },
   tileUnit: { fontSize: 13, color: C.dim },
-});
+}));

@@ -289,6 +289,10 @@ export const en = {
 
   // Settings
   'settings.region': 'Region',
+  'settings.theme': 'Theme',
+  'settings.theme.system': 'Same as phone',
+  'settings.theme.light': 'Light',
+  'settings.theme.dark': 'Dark',
   'settings.language': 'Language',
   'settings.phoneLanguage': 'Phone language',
   'settings.country': 'Country',

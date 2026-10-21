@@ -6,7 +6,7 @@ import { locale, t } from '@/i18n/core';
 
 import { Icon, T } from './kit';
 import { sheet } from './overlay';
-import { C, F } from './theme';
+import { C, F, themed } from './theme';
 
 /** Month grid, weeks starting Monday. */
 export function Calendar({ value, onChange }: { value: string | null; onChange: (iso: string) => void }) {
@@ -85,7 +85,7 @@ export function pickDate(title: string, value: string | null): Promise<string | 
   });
 }
 
-const st = StyleSheet.create({
+const st = themed(() => StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   nav: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.line },
   row: { flexDirection: 'row' },
@@ -94,4 +94,4 @@ const st = StyleSheet.create({
   day: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   today: { borderWidth: 1, borderColor: C.barMuted },
   selected: { backgroundColor: C.fg, borderColor: C.fg },
-});
+}));

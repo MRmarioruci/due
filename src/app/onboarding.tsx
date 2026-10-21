@@ -14,7 +14,7 @@ import { chooseCountry, chooseCurrency, chooseLanguageSheet, choosePay, countryF
 import { Button, Eyebrow, Icon, T } from '@/ui/kit';
 import { Animated, enterFade, enterRow } from '@/ui/motion';
 import { toast } from '@/ui/overlay';
-import { C, F, GUTTER } from '@/ui/theme';
+import { C, F, GUTTER, themed } from '@/ui/theme';
 
 type Step = 'welcome' | 'region' | 'style' | 'pay' | 'reminders';
 const STEPS: Step[] = ['welcome', 'region', 'style', 'pay', 'reminders'];
@@ -178,7 +178,7 @@ export default function Onboarding() {
   );
 }
 
-const st = StyleSheet.create({
+const st = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, paddingHorizontal: GUTTER },
   progress: { flexDirection: 'row', gap: 6 },
   tick: { flex: 1, height: 2, backgroundColor: C.border },
@@ -198,4 +198,4 @@ const st = StyleSheet.create({
   option: { borderWidth: 1, borderColor: C.line, padding: 16, gap: 6 },
   optionOn: { borderColor: C.fg, backgroundColor: C.surface },
   badge: { fontFamily: F.mono, fontSize: 10, letterSpacing: 0.8, color: C.accent },
-});
+}));

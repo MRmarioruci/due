@@ -17,7 +17,7 @@ import { useBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
 import { Animated, enterFade, enterRow, GrowBar, moveRow, useCountUp } from '@/ui/motion';
-import { C, F, GUTTER } from '@/ui/theme';
+import { C, F, GUTTER, themed } from '@/ui/theme';
 
 const HORIZON = 30;
 
@@ -226,7 +226,7 @@ function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today:
       <View style={{ height: 64 }}>
         <View style={st.ticks}>
           {Array.from({ length: HORIZON + 1 }, (_, i) => (
-            <View key={i} style={{ width: 1, height: i % 7 === 0 ? 8 : 4, backgroundColor: i % 7 === 0 ? C.barMuted : '#2a2a2a' }} />
+            <View key={i} style={{ width: 1, height: i % 7 === 0 ? 8 : 4, backgroundColor: i % 7 === 0 ? C.barMuted : C.tick }} />
           ))}
         </View>
         <View style={[st.bar, { left: 0, width: 6, height: 6, marginLeft: 0, backgroundColor: C.accent }]} />
@@ -260,7 +260,7 @@ function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today:
   );
 }
 
-const st = StyleSheet.create({
+const st = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 48 },
   logo: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
   logoText: { fontFamily: F.semibold, fontSize: 26, letterSpacing: -0.8, lineHeight: 28 },
@@ -291,5 +291,5 @@ const st = StyleSheet.create({
   rowSub: { fontSize: 13, lineHeight: 17, color: C.dim },
   rowAmount: { fontFamily: F.medium, fontSize: 15.5, fontVariant: ['tabular-nums'] },
   rowDays: { fontFamily: F.mono, fontSize: 11 },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: 'rgba(10,10,10,0.94)' },
-});
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: C.footer },
+}));

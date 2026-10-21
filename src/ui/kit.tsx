@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type PressableProps, type StyleProp, type TextProps, type TextStyle, type ViewStyle } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 
-import { C, F } from './theme';
+import { C, F, themed, type Palette } from './theme';
 
 export function T({ style, ...p }: TextProps) {
   return <Text {...p} style={[s.text, style]} />;
@@ -24,7 +24,7 @@ export function Amount({ currency, value, size = 52 }: { currency: string; value
   );
 }
 
-export function Button({ title, onPress, kind = 'primary', loading, disabled, style, icon }: {
+export function Button({ title, onPress, kind = 'primary', loading, disabled, style, icon, palette }: {
   title: string;
   onPress?: PressableProps['onPress'];
   kind?: 'primary' | 'secondary';
@@ -32,20 +32,23 @@ export function Button({ title, onPress, kind = 'primary', loading, disabled, st
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   icon?: ReactNode;
+  /** Fixed colours, e.g. the always-dark camera screen; defaults to the active theme. */
+  palette?: Palette;
 }) {
   const primary = kind === 'primary';
+  const P = palette ?? C;
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [s.button, primary ? s.buttonPrimary : s.buttonSecondary, (pressed || disabled) && { opacity: 0.7 }, style]}>
+      style={({ pressed }) => [s.button, primary ? { backgroundColor: P.fg } : { borderWidth: 1, borderColor: P.border }, (pressed || disabled) && { opacity: 0.7 }, style]}>
       {loading ? (
-        <ActivityIndicator color={primary ? C.bg : C.fg} />
+        <ActivityIndicator color={primary ? P.bg : P.fg} />
       ) : (
         <>
           {icon}
-          <Text style={[s.buttonText, { color: primary ? C.bg : C.fg }]}>{title}</Text>
+          <Text style={[s.buttonText, { color: primary ? P.bg : P.fg }]}>{title}</Text>
         </>
       )}
     </Pressable>
@@ -65,7 +68,7 @@ export function SourceTag({ source }: { source?: 'qr' | 'ai' | 'user' }) {
   if (!source || source === 'user') return null;
   const qr = source === 'qr';
   return (
-    <Text style={[s.tag, { color: qr ? C.accent : C.muted, borderColor: qr ? C.accent : '#333' }]}>{qr ? 'QR' : 'AI'}</Text>
+    <Text style={[s.tag, { color: qr ? C.accent : C.muted, borderColor: qr ? C.accent : C.axis }]}>{qr ? 'QR' : 'AI'}</Text>
   );
 }
 
@@ -117,7 +120,7 @@ export function Icon({ name, color = C.fg, size = 18 }: { name: IconName; color?
   );
 }
 
-export const s = StyleSheet.create({
+export const s = themed(() => StyleSheet.create({
   text: { color: C.fg, fontFamily: F.regular, fontSize: 15 },
   eyebrow: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: C.dim },
   amountRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
@@ -129,4 +132,4 @@ export const s = StyleSheet.create({
   buttonText: { fontFamily: F.semibold, fontSize: 15, letterSpacing: -0.15 },
   iconButton: { width: 44, height: 44, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   tag: { fontFamily: F.mono, fontSize: 9.5, letterSpacing: 0.8, borderWidth: 1, paddingHorizontal: 5, paddingVertical: 1.5 },
-});
+}));

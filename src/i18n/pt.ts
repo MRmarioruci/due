@@ -271,6 +271,10 @@ export const pt: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'choose.searchCurrencies': 'Pesquisar moedas',
 
   'settings.region': 'Região',
+  'settings.theme': 'Tema',
+  'settings.theme.system': 'Igual ao telemóvel',
+  'settings.theme.light': 'Claro',
+  'settings.theme.dark': 'Escuro',
   'settings.language': 'Idioma',
   'settings.phoneLanguage': 'Idioma do telemóvel',
   'settings.country': 'País',
