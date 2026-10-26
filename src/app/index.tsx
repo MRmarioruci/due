@@ -100,6 +100,7 @@ export default function Home() {
         <View>
           <Dial
             days={DIAL_DAYS}
+            start={today}
             points={dots}
             todayColor={focus ? C.fg : C.accent}
             label={t('home.dialA11y', { n: points.length })}>
