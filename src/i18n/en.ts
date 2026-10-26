@@ -464,6 +464,11 @@ export const en = {
   'kept.duplicates_other': "{amount}: {n} bills not saved twice",
   'kept.doubles_one': "{amount}: 1 bill not paid twice after a reminder",
   'kept.doubles_other': "{amount}: {n} bills not paid twice after a reminder",
+  'share.withSomeone': "Share with someone",
+  'share.howTo': "Let them scan this code with due, or send it as a message. Only the payment details go along, not the photo.",
+  'share.send': "Send as message",
+  'share.message': "{summary}\nOpen it in due: {link}",
+  'share.received': "Shared with you. Check the details and save it to get reminded.",
 } as const;
 
 type Full = keyof typeof en;

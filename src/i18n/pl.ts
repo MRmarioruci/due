@@ -474,4 +474,9 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'kept.duplicates_many': "{amount}: {n} rachunków nie zapisanych dwa razy",
   'kept.doubles_few': "{amount}: {n} rachunki nie zapłacone dwa razy po upomnieniu",
   'kept.doubles_many': "{amount}: {n} rachunków nie zapłaconych dwa razy po upomnieniu",
+  'share.withSomeone': "Udostępnij komuś",
+  'share.howTo': "Niech zeskanuje ten kod w due albo wyślij go w wiadomości. Przekazywane są tylko dane do płatności, bez zdjęcia.",
+  'share.send': "Wyślij w wiadomości",
+  'share.message': "{summary}\nOtwórz w due: {link}",
+  'share.received': "Udostępniono Ci. Sprawdź dane i zapisz, aby dostać przypomnienie.",
 };

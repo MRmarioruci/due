@@ -444,4 +444,9 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'kept.duplicates_other': "{amount}: {n} Rechnungen nicht doppelt gespeichert",
   'kept.doubles_one': "{amount}: 1 Rechnung nach einer Mahnung nicht doppelt bezahlt",
   'kept.doubles_other': "{amount}: {n} Rechnungen nach einer Mahnung nicht doppelt bezahlt",
+  'share.withSomeone': "Mit jemandem teilen",
+  'share.howTo': "Lass den Code mit due scannen oder schick ihn als Nachricht. Nur die Zahlungsdaten gehen mit, nicht das Foto.",
+  'share.send': "Als Nachricht senden",
+  'share.message': "{summary}\nIn due öffnen: {link}",
+  'share.received': "Mit dir geteilt. Prüf die Angaben und speichere sie, um erinnert zu werden.",
 };

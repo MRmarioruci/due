@@ -444,4 +444,9 @@ export const pt: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'kept.duplicates_other': "{amount}: {n} faturas não guardadas duas vezes",
   'kept.doubles_one': "{amount}: 1 fatura não paga duas vezes após um lembrete",
   'kept.doubles_other': "{amount}: {n} faturas não pagas duas vezes após um lembrete",
+  'share.withSomeone': "Partilhar com alguém",
+  'share.howTo': "Peça para lerem este código com o due ou envie-o por mensagem. Só seguem os dados de pagamento, não a foto.",
+  'share.send': "Enviar por mensagem",
+  'share.message': "{summary}\nAbrir no due: {link}",
+  'share.received': "Partilhada consigo. Verifique os dados e guarde-a para receber lembretes.",
 };

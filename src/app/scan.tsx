@@ -8,8 +8,10 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { setPendingDraft } from '@/lib/draft';
+import { getSettings } from '@/lib/settings';
 import { t } from '@/i18n/core';
 import { goBack, takeScanRequest } from '@/lib/nav';
+import { readShareLink } from '@/lib/bill-share';
 import { decodePaymentCode, type DecodedCode } from '@/lib/payment-codes';
 import { readPdf, readPhoto } from '@/lib/reading';
 import { Button, Icon, IconButton } from '@/ui/kit';
@@ -37,6 +39,14 @@ function ScanCamera() {
 
   function onBarcode(r: BarcodeScanningResult) {
     if (decoded || busy) return;
+    // A bill shown on someone else's phone (Share with someone): nothing to read, straight to checking it.
+    const shared = readShareLink(r.data, getSettings());
+    if (shared) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setPendingDraft({ draft: shared, warning: t('share.received') });
+      router.replace('/review');
+      return;
+    }
     const d = decodePaymentCode(r.data);
     if (d) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

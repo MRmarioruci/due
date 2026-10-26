@@ -444,4 +444,9 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'kept.duplicates_other': "{amount}: {n} λογαριασμοί δεν αποθηκεύτηκαν δύο φορές",
   'kept.doubles_one': "{amount}: 1 λογαριασμός δεν πληρώθηκε δύο φορές μετά από υπενθύμιση",
   'kept.doubles_other': "{amount}: {n} λογαριασμοί δεν πληρώθηκαν δύο φορές μετά από υπενθύμιση",
+  'share.withSomeone': "Κοινοποίηση σε κάποιον",
+  'share.howTo': "Ζήτα να σκανάρει αυτόν τον κωδικό με το due ή στείλ’ τον ως μήνυμα. Μεταφέρονται μόνο τα στοιχεία πληρωμής, όχι η φωτογραφία.",
+  'share.send': "Αποστολή ως μήνυμα",
+  'share.message': "{summary}\nΆνοιξέ το στο due: {link}",
+  'share.received': "Κοινοποιήθηκε σε σένα. Έλεγξε τα στοιχεία και αποθήκευσέ τον για υπενθυμίσεις.",
 };

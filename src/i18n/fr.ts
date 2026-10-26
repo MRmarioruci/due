@@ -444,4 +444,9 @@ export const fr: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'kept.duplicates_other': "{amount} : {n} factures non enregistrées deux fois",
   'kept.doubles_one': "{amount} : 1 facture non payée deux fois après un rappel",
   'kept.doubles_other': "{amount} : {n} factures non payées deux fois après un rappel",
+  'share.withSomeone': "Partager avec quelqu’un",
+  'share.howTo': "Faites scanner ce code avec due, ou envoyez-le par message. Seules les données de paiement sont transmises, pas la photo.",
+  'share.send': "Envoyer par message",
+  'share.message': "{summary}\nOuvrir dans due : {link}",
+  'share.received': "Partagée avec vous. Vérifiez les détails et enregistrez-la pour recevoir un rappel.",
 };

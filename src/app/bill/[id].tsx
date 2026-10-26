@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,6 +23,7 @@ import { Options } from '@/ui/choosers';
 import { markOpen, markPaid, snooze, unsnooze } from '@/lib/reminders';
 import { getSettings, useSettings } from '@/lib/settings';
 import { contractOf, nextReview } from '@/lib/contracts';
+import { shareLink } from '@/lib/bill-share';
 import { useBill, useBills } from '@/lib/store';
 import { priceChange } from '@/lib/price-change';
 import { PriceChangeLine } from '@/ui/price-change';
@@ -180,6 +181,7 @@ export default function BillScreen() {
       title: b.payee,
       actions: [
         { label: t('bill.edit'), kind: 'secondary', onPress: () => router.push({ pathname: '/review', params: { id: b.id } }) },
+        { label: t('share.withSomeone'), kind: 'secondary', onPress: () => setTimeout(() => shareWithSomeone(b), 80) },
         { label: t('pdf.download'), kind: 'secondary', onPress: downloadPdf },
         {
           label: t('bill.delete'),
@@ -365,6 +367,28 @@ export default function BillScreen() {
       </View>
     </View>
   );
+}
+
+/**
+ * Hands the bill to someone else's due: a QR code to scan with their due, or a link to send. Only what's
+ * needed to pay it goes along (no photo, no reminders).
+ */
+function shareWithSomeone(b: Bill) {
+  const link = shareLink(b);
+  const summary = [b.payee, b.amountMinor != null && `${b.currency} ${formatAmount(b.amountMinor, b.currency)}`, b.dueDate && t('bill.dueOn', { date: shortDay(b.dueDate) })].filter(Boolean).join(' · ');
+  sheet.show({
+    title: t('share.withSomeone'),
+    message: t('share.howTo'),
+    content: (
+      <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+        <QRCode value={link} size={250} ecl="L" quietZone={12} backgroundColor="#fff" color="#000" />
+      </View>
+    ),
+    actions: [
+      { label: t('share.send'), kind: 'primary', onPress: () => Share.share({ message: t('share.message', { summary, link }) }).catch(() => {}) },
+      { label: t('common.done'), kind: 'secondary' },
+    ],
+  });
 }
 
 /** One action for the bill: icon over a short label, all the same size. */

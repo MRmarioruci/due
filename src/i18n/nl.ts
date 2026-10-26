@@ -444,4 +444,9 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'kept.duplicates_other': "{amount}: {n} rekeningen niet dubbel bewaard",
   'kept.doubles_one': "{amount}: 1 rekening niet dubbel betaald na een aanmaning",
   'kept.doubles_other': "{amount}: {n} rekeningen niet dubbel betaald na een aanmaning",
+  'share.withSomeone': "Delen met iemand",
+  'share.howTo': "Laat deze code scannen met due, of stuur hem als bericht. Alleen de betaalgegevens gaan mee, niet de foto.",
+  'share.send': "Als bericht sturen",
+  'share.message': "{summary}\nOpen in due: {link}",
+  'share.received': "Met je gedeeld. Controleer de gegevens en bewaar hem om herinnerd te worden.",
 };

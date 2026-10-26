@@ -444,4 +444,9 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'kept.duplicates_other': "{amount}: {n} regninger ikke lagret to ganger",
   'kept.doubles_one': "{amount}: 1 regning ikke betalt to ganger etter en purring",
   'kept.doubles_other': "{amount}: {n} regninger ikke betalt to ganger etter en purring",
+  'share.withSomeone': "Del med noen",
+  'share.howTo': "La dem skanne koden med due, eller send den som melding. Bare betalingsopplysningene sendes, ikke bildet.",
+  'share.send': "Send som melding",
+  'share.message': "{summary}\nÅpne i due: {link}",
+  'share.received': "Delt med deg. Sjekk opplysningene og lagre for å få påminnelser.",
 };
