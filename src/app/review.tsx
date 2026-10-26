@@ -15,6 +15,7 @@ import { describeReminder, replan, syncReminders } from '@/lib/reminders';
 import { payeeKey } from '@/lib/recurring';
 import { getSettings, homeCurrency, updateSettings } from '@/lib/settings';
 import { getBill, newId, saveBill, useBills } from '@/lib/store';
+import { contractOf, nextReview } from '@/lib/contracts';
 import { findDuplicate } from '@/lib/duplicates';
 import { chasedBill } from '@/lib/dunning';
 import { priceChange } from '@/lib/price-change';
@@ -69,6 +70,8 @@ export default function Review() {
   // A payment reminder replaces the open bill it chases, so it isn't paid twice.
   const [keepChased, setKeepChased] = useState(false);
   const chased = existing ? null : chasedBill({ ...d, amountMinor: toMinor(amountText) }, bills);
+  const contract = contractOf(d.payee, getSettings().contracts);
+  const reviewBy = contract && nextReview(contract, todayIso());
   const change = priceChange({ ...d, id: existing?.id ?? '', createdAt: existing?.createdAt ?? new Date().toISOString(), amountMinor: toMinor(amountText) }, bills);
 
   /** Editing a field makes it the user's, so its QR/AI tag goes away. */
@@ -240,7 +243,7 @@ export default function Review() {
         )}
 
         {/* Beside a duplicate, the comparison is with a bill that's already saved. */}
-        {change && !duplicate && <PriceChangeLine change={change} currency={d.currency} />}
+        {change && !duplicate && <PriceChangeLine change={change} currency={d.currency} reviewBy={reviewBy} />}
 
         {d.dunning && (
           <View style={st.discount}>

@@ -8,7 +8,9 @@ import { activeDiscount } from '@/lib/discount';
 import { formatAmount } from '@/lib/money';
 import { openScan } from '@/lib/nav';
 import { planAroundPayday } from '@/lib/plan';
+import { dueForReview } from '@/lib/contracts';
 import { expectedBills, findSeries, type Series } from '@/lib/recurring';
+import { latestBillOf } from '@/lib/reminders';
 import { cadenceLabel, categoryLabel } from '@/i18n/labels';
 import { locale, t } from '@/i18n/core';
 import { seedSampleBills } from '@/lib/seed';
@@ -71,6 +73,7 @@ export default function Bills() {
   // Paid daily, there's no before/after payday to plan around.
   const plan = settings.pay && settings.pay.every !== 'day' && open.length ? planAroundPayday(open, settings.pay, ccy, today) : null;
   const expected = expectedBills(findSeries(bills, today), today);
+  const reviews = dueForReview(settings.contracts, today);
 
   // Sorted by due date: grouped by when they're due. By name or amount: one list.
   const pay = (b: Bill) => activeDiscount(b, today)?.payMinor ?? (b.status === 'paid' ? b.paidAmountMinor : null) ?? b.amountMinor ?? 0;
@@ -212,6 +215,27 @@ export default function Bills() {
                 <T style={{ fontSize: 13.5, color: C.muted }}>{t('home.setPayday')}</T>
               </Pressable>
             )
+          )}
+
+          {reviews.length > 0 && (
+            <Animated.View entering={enterFade(180)} style={st.reviews}>
+              <Eyebrow>{t('contract.homeTitle')}</Eyebrow>
+              {reviews.map((r) => (
+                <Pressable
+                  key={r.key}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    const latest = latestBillOf(r.contract.payee);
+                    if (latest) router.push({ pathname: '/bill/[id]', params: { id: latest.id } });
+                  }}
+                  style={st.reviewRow}>
+                  <T style={{ flex: 1, fontSize: 14 }} numberOfLines={1}>{r.contract.payee}</T>
+                  <T style={{ fontFamily: F.mono, fontSize: 11, color: r.daysLeft <= 7 ? C.accent : C.muted }}>
+                    {r.daysLeft === 0 ? t('bill.today') : t('bill.daysLeft', { n: r.daysLeft })}
+                  </T>
+                </Pressable>
+              ))}
+            </Animated.View>
           )}
 
           <Runway bills={window} today={today} ccy={ccy} payday={plan?.payday ?? null} expected={expected} />
@@ -424,6 +448,8 @@ const st = themed(() => StyleSheet.create({
   sub: { marginTop: 10, fontSize: 14, color: C.muted },
   runway: { marginTop: 26, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, paddingTop: 16, paddingBottom: 10 },
   ticks: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  reviews: { marginTop: 22, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 },
+  reviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
   plan: { marginTop: 22, flexDirection: 'row', borderTopWidth: 1, borderColor: C.line, paddingTop: 16 },
   planCol: { flex: 1, gap: 6 },
   planRight: { borderLeftWidth: 1, borderLeftColor: C.line, paddingLeft: 16 },

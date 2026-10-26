@@ -22,6 +22,7 @@ import { pickDate } from '@/ui/calendar';
 import { Options } from '@/ui/choosers';
 import { markOpen, markPaid, snooze, unsnooze } from '@/lib/reminders';
 import { getSettings, useSettings } from '@/lib/settings';
+import { contractOf, nextReview } from '@/lib/contracts';
 import { useBill, useBills } from '@/lib/store';
 import { priceChange } from '@/lib/price-change';
 import { PriceChangeLine } from '@/ui/price-change';
@@ -29,6 +30,7 @@ import { openOriginal, originalOf } from '@/lib/originals';
 import { removeBill } from '@/lib/remove';
 import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
+import { editContract } from '@/ui/contract';
 import { Animated, enterFade } from '@/ui/motion';
 import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER, themed } from '@/ui/theme';
@@ -74,6 +76,8 @@ export default function BillScreen() {
   const advice = settings.pay && settings.pay.every !== 'day' ? paydayAdvice(bill, settings.pay, today) : null;
   const paid = bill.status === 'paid';
   const change = priceChange(bill, bills);
+  const contract = contractOf(bill.payee, settings.contracts);
+  const reviewBy = contract && nextReview(contract, today);
   const snoozed = !!bill.snoozedUntil && new Date(bill.snoozedUntil) > new Date();
   const nextReminder = snoozed ? new Date(bill.snoozedUntil!) : bill.remindAt && new Date(bill.remindAt) > new Date() ? new Date(bill.remindAt) : null;
 
@@ -234,7 +238,7 @@ export default function BillScreen() {
             </T>
           </Animated.View>
         )}
-        {change && <PriceChangeLine change={change} currency={bill.currency} />}
+        {change && <PriceChangeLine change={change} currency={bill.currency} reviewBy={reviewBy} />}
 
         {discount && (
           <Animated.View entering={enterFade(80)} style={st.discount}>
@@ -326,6 +330,18 @@ export default function BillScreen() {
             </View>
           )}
         </View>
+
+        {/* Per biller: the date to review (switch or cancel) the contract by, with reminders before it. */}
+        <Eyebrow style={{ marginTop: 28, marginBottom: 6 }}>{t('contract.section')}</Eyebrow>
+        <Pressable accessibilityRole="button" onPress={() => editContract(bill.payee)} style={({ pressed }) => [st.row, { borderTopWidth: 1, borderTopColor: C.line }, pressed && { backgroundColor: C.surface }]}>
+          <T style={st.rowLabel}>{t('contract.reviewBy')}</T>
+          <T style={[st.rowValue, !reviewBy && { color: C.accent }]}>
+            {reviewBy ? `${longDate(reviewBy)}${contract!.yearly ? ` · ${t('contract.everyYear')}` : ''}` : t('contract.add')}
+          </T>
+          <View style={{ transform: [{ rotate: '180deg' }] }}>
+            <Icon name="back" size={14} color={C.dim} />
+          </View>
+        </Pressable>
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
