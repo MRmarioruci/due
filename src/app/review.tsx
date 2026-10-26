@@ -17,15 +17,16 @@ import { getSettings, homeCurrency, recordKept, updateSettings } from '@/lib/set
 import { getBill, newId, saveBill, useBills } from '@/lib/store';
 import { contractOf, nextReview } from '@/lib/contracts';
 import { findDuplicate } from '@/lib/duplicates';
-import { chasedBill } from '@/lib/dunning';
+import { alreadyPaid, chasedBill } from '@/lib/dunning';
 import { priceChange } from '@/lib/price-change';
 import { removeBill } from '@/lib/remove';
 import { PriceChangeLine } from '@/ui/price-change';
-import { keepOriginals } from '@/lib/originals';
+import { keepOriginals, proofOf } from '@/lib/originals';
 import { CATEGORIES, emptyPayment, type Bill, type BillDraft, type SourcedField } from '@/lib/types';
 import { t } from '@/i18n/core';
 import { categoryLabel, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { pickDate } from '@/ui/calendar';
+import { showProof } from '@/ui/proof';
 import { Button, Eyebrow, Icon, IconButton, SourceTag, T } from '@/ui/kit';
 import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER, themed } from '@/ui/theme';
@@ -70,6 +71,8 @@ export default function Review() {
   // A payment reminder replaces the open bill it chases, so it isn't paid twice.
   const [keepChased, setKeepChased] = useState(false);
   const chased = existing ? null : chasedBill({ ...d, amountMinor: toMinor(amountText) }, bills);
+  // A reminder for something already marked paid: the biller may not have the payment yet.
+  const paidEarlier = existing || chased ? null : alreadyPaid({ ...d, amountMinor: toMinor(amountText) }, bills);
   const contract = contractOf(d.payee, getSettings().contracts);
   const reviewBy = contract && nextReview(contract, todayIso());
   const change = priceChange({ ...d, id: existing?.id ?? '', createdAt: existing?.createdAt ?? new Date().toISOString(), amountMinor: toMinor(amountText) }, bills);
@@ -256,6 +259,16 @@ export default function Review() {
                 <T style={{ fontSize: 13.5, color: C.fg }}>{t(`dun.level${d.dunning.level}`)}.</T>
                 {d.dunning.feeMinor ? ` ${t('dun.fee', { fee: formatMoney(d.dunning.feeMinor, d.currency) })}` : ''}
               </T>
+              {paidEarlier && (
+                <T style={{ fontSize: 13, lineHeight: 18, color: C.fg }}>
+                  {t('proof.alreadyPaid', { amount: formatMoney(paidEarlier.paidAmountMinor ?? paidEarlier.amountMinor, paidEarlier.currency), date: longDate(paidEarlier.paidAt!.slice(0, 10)) })}
+                  {proofOf(paidEarlier) && (
+                    <T style={{ fontSize: 13, color: C.accent, textDecorationLine: 'underline' }} onPress={() => showProof(paidEarlier)}>
+                      {' '}{t('proof.show')}
+                    </T>
+                  )}
+                </T>
+              )}
               {chased && (
                 <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !keepChased }} onPress={() => setKeepChased((k) => !k)} hitSlop={6}>
                   <T style={{ fontSize: 13, lineHeight: 18, color: keepChased ? C.dim : C.fg }}>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chasedBill, looksLikeDunning } from './dunning';
+import { alreadyPaid, chasedBill, looksLikeDunning } from './dunning';
 import { priceChange } from './price-change';
 import { paidIn, paidYears, taxCsv, taxHtml, totalsByCategory } from './tax-export';
 import { emptyPayment, type Bill } from './types';
@@ -60,6 +60,13 @@ describe('dunning', () => {
     expect(chasedBill(reminder, open)?.id).toBe('a');
     expect(chasedBill({ ...reminder, dunning: null }, open)).toBeNull();
     expect(chasedBill({ ...reminder, amountMinor: 50000 }, open)).toBeNull();
+  });
+
+  it('notices a reminder for a bill already paid', () => {
+    const paid = [bill('b', 'KPT', 36400, '2025-10-01', { status: 'paid', paidAt: '2025-10-01T00:00:00Z', payment: { ...emptyPayment(), reference: '21 00000 00003 13947' } })];
+    const reminder = { payee: 'KPT', amountMinor: 38400, payment: { ...emptyPayment(), reference: '210000000003139 47' }, dunning: { level: 1 as const, feeMinor: 2000 } };
+    expect(alreadyPaid(reminder, paid)?.id).toBe('b');
+    expect(chasedBill(reminder, paid)).toBeNull();
   });
 });
 

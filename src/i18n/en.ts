@@ -469,6 +469,19 @@ export const en = {
   'share.send': "Send as message",
   'share.message': "{summary}\nOpen it in due: {link}",
   'share.received': "Shared with you. Check the details and save it to get reminded.",
+  'proof.title': "Proof of payment",
+  'proof.open': "Open it",
+  'proof.replace': "Replace it",
+  'proof.remove': "Remove it",
+  'proof.add': "Add proof of payment",
+  'proof.addText': "A screenshot or PDF of the bank’s confirmation. Kept on this phone, in case the biller says it wasn’t paid.",
+  'proof.screenshot': "Choose a screenshot",
+  'proof.file': "Choose a file",
+  'proof.failed': "That file couldn’t be kept.",
+  'proof.added': "Proof of payment added",
+  'proof.has': "Proof of payment",
+  'proof.alreadyPaid': "You marked {amount} from them as paid on {date}. If it’s the same bill, the payment may not have reached them yet.",
+  'proof.show': "Show proof of payment",
 } as const;
 
 type Full = keyof typeof en;

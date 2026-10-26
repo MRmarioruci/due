@@ -27,11 +27,12 @@ import { shareLink } from '@/lib/bill-share';
 import { useBill, useBills } from '@/lib/store';
 import { priceChange } from '@/lib/price-change';
 import { PriceChangeLine } from '@/ui/price-change';
-import { openOriginal, originalOf } from '@/lib/originals';
+import { openOriginal, originalOf, proofOf } from '@/lib/originals';
 import { removeBill } from '@/lib/remove';
 import type { Bill } from '@/lib/types';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
 import { editContract } from '@/ui/contract';
+import { editProof } from '@/ui/proof';
 import { Animated, enterFade } from '@/ui/motion';
 import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER, themed } from '@/ui/theme';
@@ -199,6 +200,7 @@ export default function BillScreen() {
   }
 
   const original = originalOf(bill);
+  const proof = paid ? proofOf(bill) : null;
 
   const rows: { label: string; value: string; mono?: boolean }[] = [
     bill.payment.iban && { label: 'IBAN', value: groupIban(bill.payment.iban), mono: true },
@@ -254,6 +256,13 @@ export default function BillScreen() {
         )}
         {paid && bill.paidAmountMinor != null && bill.amountMinor != null && bill.paidAmountMinor < bill.amountMinor && (
           <T style={{ marginTop: 10, fontSize: 13.5, color: C.muted }}>{t('bill.savedWithDiscount', { saving: formatMoney(bill.amountMinor - bill.paidAmountMinor, bill.currency) })}</T>
+        )}
+
+        {paid && (
+          <Pressable accessibilityRole="button" onPress={() => editProof(bill)} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, alignSelf: 'flex-start' }}>
+            <Icon name={proof ? 'check' : 'photo'} size={14} color={proof ? C.accent : C.muted} />
+            <T style={{ fontSize: 13.5, color: proof ? C.fg : C.muted, textDecorationLine: proof ? 'none' : 'underline' }}>{t(proof ? 'proof.has' : 'proof.add')}</T>
+          </Pressable>
         )}
 
         {!paid && bill.dueDate && <Timeline bill={bill} today={today} />}
