@@ -457,6 +457,8 @@ export const en = {
   'contract.notifyTitle_other': "{payee}: {n} days left to review the contract",
   'contract.notifyBody': "Switch or cancel by {date}.",
   'contract.notifyRise': "The last bill went up {pct}%.",
+  'missing.title': "{payee}: no bill yet",
+  'missing.body': "It usually arrives by {date}. Check your mail, spam or the biller’s website.",
 } as const;
 
 type Full = keyof typeof en;

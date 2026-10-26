@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { expectedBills, findSeries, monthlyFixedCosts, payeeKey } from './recurring';
+import { expectedBills, findSeries, monthlyFixedCosts, payeeKey, planMissingAlerts } from './recurring';
 import { emptyPayment, type Bill } from './types';
 
 const bill = (payee: string, minor: number, dueDate: string, issueDate: string | null = null): Bill => ({
@@ -52,5 +52,24 @@ describe('recurring bills', () => {
   it('ignores one-offs and irregular billers', () => {
     expect(findSeries([bill('Elektro Meier', 42800, '2026-10-01')], '2026-10-20')).toEqual([]);
     expect(findSeries([bill('X', 1, '2026-01-01'), bill('X', 1, '2026-01-12')], '2026-10-20')).toEqual([]);
+  });
+});
+
+describe('missing bills', () => {
+  const monthly = [bill('Swisscom', 6500, '2026-08-30', '2026-08-05'), bill('Swisscom', 6500, '2026-09-30', '2026-09-05')];
+
+  it('alert the morning a regular bill turns late', () => {
+    const [s] = findSeries(monthly, '2026-10-01');
+    expect(s.expectedArrival).toBe('2026-10-05');
+    const [alert] = planMissingAlerts([s], 9, new Date(2026, 9, 1, 12));
+    expect(alert.at).toEqual(new Date(2026, 9, 13, 9));
+    // On that day findSeries calls it late too.
+    expect(findSeries(monthly, '2026-10-13')[0].late).toBe(true);
+    expect(findSeries(monthly, '2026-10-12')[0].late).toBe(false);
+  });
+
+  it('skip alerts whose moment has passed', () => {
+    const [s] = findSeries(monthly, '2026-10-20');
+    expect(planMissingAlerts([s], 9, new Date(2026, 9, 20, 12))).toEqual([]);
   });
 });

@@ -437,4 +437,6 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyTitle_other': "{payee}: nog {n} dagen om het contract te herzien",
   'contract.notifyBody': "Overstappen of opzeggen vóór {date}.",
   'contract.notifyRise': "De laatste rekening is {pct}% gestegen.",
+  'missing.title': "{payee}: nog geen rekening",
+  'missing.body': "Die komt meestal vóór {date}. Kijk in je post, spam of op de website.",
 };

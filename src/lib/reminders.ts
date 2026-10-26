@@ -3,14 +3,15 @@ import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
 import { planReviewReminders, type Contract } from './contracts';
-import { longDate, shortDay } from './dates';
+import { longDate, shortDay, toIso } from './dates';
 import { activeDiscount } from './discount';
 import { Notifications } from './notifications-module';
 import { mainReminder, NOTIFICATION_CAP, planDigest, planReminders, withinBudget } from './reminder-plan';
 import { t } from '@/i18n/core';
 import { getSettings, updateSettings } from './settings';
 import { priceChange } from './price-change';
-import { payeeKey } from './recurring';
+import { findSeries, payeeKey, planMissingAlerts } from './recurring';
+import { openScan } from './nav';
 import { getBill, getBills, saveBill } from './store';
 import type { Bill } from './types';
 
@@ -95,7 +96,8 @@ async function syncOnce() {
 
   // Bill notifications carry their key; the weekly summary has none and is left alone.
   const scheduled = await N.getAllScheduledNotificationsAsync();
-  await syncReviews(scheduled, now);
+  await syncExtra(scheduled, 'review', reviewNotifications(now));
+  await syncExtra(scheduled, 'missing', missingNotifications(now));
   const have = new Map<string, string>();
   for (const n of scheduled) {
     const data = n.content.data as { billId?: string; key?: string } | undefined;
@@ -138,28 +140,59 @@ async function syncOnce() {
   }
 }
 
-/** Contract review reminders: keyed by biller and moment, so they're only replaced when they change. */
-async function syncReviews(scheduled: Awaited<ReturnType<NonNullable<typeof Notifications>['getAllScheduledNotificationsAsync']>>, now: Date) {
+type Scheduled = Awaited<ReturnType<NonNullable<typeof Notifications>['getAllScheduledNotificationsAsync']>>;
+type Extra = { key: string; at: Date; title: () => string; body: () => string; payee: string };
+
+/**
+ * Notifications that aren't about one bill (contract reviews, missing bills), tagged by `kind` and keyed
+ * by what and when, so they're only replaced when they change.
+ */
+async function syncExtra(scheduled: Scheduled, kind: 'review' | 'missing', wanted: Extra[]) {
   const N = Notifications!;
-  const { contracts, remindHour } = getSettings();
-  const wanted = new Map(planReviewReminders(contracts, remindHour, now).map((r) => [`review|${r.key}|${r.at.getTime()}`, r]));
+  const byKey = new Map(wanted.map((x) => [`${kind}|${x.key}|${x.at.getTime()}`, x]));
   const have = new Set<string>();
   for (const n of scheduled) {
-    const key = (n.content.data as { review?: string } | undefined)?.review;
+    const key = (n.content.data as Record<string, string> | undefined)?.[kind];
     if (!key) continue;
-    if (wanted.has(key) && !have.has(key)) have.add(key);
+    if (byKey.has(key) && !have.has(key)) have.add(key);
     else await N.cancelScheduledNotificationAsync(n.identifier).catch(() => {});
   }
-  for (const [key, r] of wanted) {
+  for (const [key, x] of byKey) {
     if (have.has(key)) continue;
-    const latest = latestBillOf(r.contract.payee);
-    const change = latest && priceChange(latest, getBills());
-    const body = [t('contract.notifyBody', { date: longDate(r.date) }), change && change.pct > 0 && t('contract.notifyRise', { pct: Math.round(change.pct) })].filter(Boolean).join(' ');
     await N.scheduleNotificationAsync({
-      content: { title: t('contract.notifyTitle', { payee: r.contract.payee, n: r.daysLeft }), body, data: { review: key, payee: r.contract.payee } },
-      trigger: { type: N.SchedulableTriggerInputTypes.DATE, date: r.at, channelId: CHANNEL },
+      content: { title: x.title(), body: x.body(), data: { [kind]: key, payee: x.payee } },
+      trigger: { type: N.SchedulableTriggerInputTypes.DATE, date: x.at, channelId: CHANNEL },
     });
   }
+}
+
+/** Contract review reminders, with the last price rise when there was one. */
+function reviewNotifications(now: Date): Extra[] {
+  const { contracts, remindHour } = getSettings();
+  return planReviewReminders(contracts, remindHour, now).map((r) => ({
+    key: r.key,
+    at: r.at,
+    payee: r.contract.payee,
+    title: () => t('contract.notifyTitle', { payee: r.contract.payee, n: r.daysLeft }),
+    body: () => {
+      const latest = latestBillOf(r.contract.payee);
+      const change = latest && priceChange(latest, getBills());
+      return [t('contract.notifyBody', { date: longDate(r.date) }), change && change.pct > 0 && t('contract.notifyRise', { pct: Math.round(change.pct) })].filter(Boolean).join(' ');
+    },
+  }));
+}
+
+/** A regular bill that hasn't come a week after it usually does (part of the extra nudges). */
+function missingNotifications(now: Date): Extra[] {
+  const { extraNudges, remindHour } = getSettings();
+  if (!extraNudges) return [];
+  return planMissingAlerts(findSeries(getBills(), toIso(now)), remindHour, now).map((m) => ({
+    key: m.series.key,
+    at: m.at,
+    payee: m.series.payee,
+    title: () => t('missing.title', { payee: m.series.payee }),
+    body: () => t('missing.body', { date: shortDay(m.series.expectedArrival) }),
+  }));
 }
 
 /** The biller's most recent bill, to open from a contract reminder. */
@@ -239,12 +272,14 @@ export function listenForResponses(): () => void {
   const N = Notifications;
   if (!N) return () => {};
   const handle = async (response: NotificationResponse) => {
-    const data = response.notification.request.content.data as { billId?: string; review?: string; payee?: string } | undefined;
+    const data = response.notification.request.content.data as { billId?: string; review?: string; missing?: string; payee?: string } | undefined;
     if (data?.review && data.payee) {
       const latest = latestBillOf(data.payee);
       if (latest) router.push({ pathname: '/bill/[id]', params: { id: latest.id } });
       return;
     }
+    // A missing bill: straight to scanning, for when it turns up.
+    if (data?.missing) return openScan();
     const billId = data?.billId;
     const bill = billId ? getBill(billId) : undefined;
     if (!bill) return;

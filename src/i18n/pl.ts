@@ -463,4 +463,6 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyRise': "Ostatni rachunek wzrósł o {pct}%.",
   'contract.notifyTitle_few': "{payee}: zostały {n} dni na przejrzenie umowy",
   'contract.notifyTitle_many': "{payee}: zostało {n} dni na przejrzenie umowy",
+  'missing.title': "{payee}: jeszcze brak rachunku",
+  'missing.body': "Zwykle przychodzi do {date}. Sprawdź pocztę, spam lub stronę wystawcy.",
 };

@@ -437,4 +437,6 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyTitle_other': "{payee}: mancano {n} giorni per rivedere il contratto",
   'contract.notifyBody': "Cambia o disdici entro il {date}.",
   'contract.notifyRise': "L’ultima fattura è aumentata del {pct}%.",
+  'missing.title': "{payee}: ancora nessuna fattura",
+  'missing.body': "Di solito arriva entro il {date}. Controlla la posta, lo spam o il sito dell’emittente.",
 };

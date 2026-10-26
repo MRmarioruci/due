@@ -437,4 +437,6 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyTitle_other': "{payee}: απομένουν {n} ημέρες για έλεγχο της σύμβασης",
   'contract.notifyBody': "Άλλαξε ή καταγγείλε έως {date}.",
   'contract.notifyRise': "Ο τελευταίος λογαριασμός αυξήθηκε κατά {pct}%.",
+  'missing.title': "{payee}: ακόμα κανένας λογαριασμός",
+  'missing.body': "Συνήθως έρχεται έως {date}. Έλεγξε το ταχυδρομείο, τα ανεπιθύμητα ή τον ιστότοπο.",
 };

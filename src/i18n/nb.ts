@@ -437,4 +437,6 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyTitle_other': "{payee}: {n} dager igjen til å gå gjennom avtalen",
   'contract.notifyBody': "Bytt eller si opp innen {date}.",
   'contract.notifyRise': "Den siste regningen gikk opp {pct} %.",
+  'missing.title': "{payee}: ingen regning ennå",
+  'missing.body': "Den kommer vanligvis innen {date}. Sjekk posten, søppelpost eller nettsiden.",
 };
