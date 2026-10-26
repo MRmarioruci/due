@@ -259,7 +259,6 @@ export const pt: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'stats.beforeDue': 'Pagas antes do vencimento',
   'stats.days': 'dias',
   'stats.billsPaid': 'Faturas pagas',
-  'stats.savedDiscounts': 'poupados com descontos de pronto pagamento',
   'stats.fixedCosts': 'Custos fixos',
   'stats.perMonth': 'por mês',
   'stats.byCategory': 'Por categoria',
@@ -439,4 +438,10 @@ export const pt: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyRise': "A última fatura subiu {pct}%.",
   'missing.title': "{payee}: ainda sem fatura",
   'missing.body': "Costuma chegar até {date}. Veja o correio, o spam ou o site da empresa.",
+  'kept.title': "Poupado em {year}",
+  'kept.discounts': "{amount} em descontos de pronto pagamento",
+  'kept.duplicates_one': "{amount}: 1 fatura não guardada duas vezes",
+  'kept.duplicates_other': "{amount}: {n} faturas não guardadas duas vezes",
+  'kept.doubles_one': "{amount}: 1 fatura não paga duas vezes após um lembrete",
+  'kept.doubles_other': "{amount}: {n} faturas não pagas duas vezes após um lembrete",
 };

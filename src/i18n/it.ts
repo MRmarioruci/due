@@ -259,7 +259,6 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'stats.beforeDue': 'Pagate prima della scadenza',
   'stats.days': 'giorni',
   'stats.billsPaid': 'Fatture pagate',
-  'stats.savedDiscounts': 'risparmiati con gli sconti',
   'stats.fixedCosts': 'Costi fissi',
   'stats.perMonth': 'al mese',
   'stats.byCategory': 'Per categoria',
@@ -439,4 +438,10 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyRise': "L’ultima fattura è aumentata del {pct}%.",
   'missing.title': "{payee}: ancora nessuna fattura",
   'missing.body': "Di solito arriva entro il {date}. Controlla la posta, lo spam o il sito dell’emittente.",
+  'kept.title': "Risparmiato nel {year}",
+  'kept.discounts': "{amount} grazie agli sconti per pagamento anticipato",
+  'kept.duplicates_one': "{amount}: 1 fattura non salvata due volte",
+  'kept.duplicates_other': "{amount}: {n} fatture non salvate due volte",
+  'kept.doubles_one': "{amount}: 1 fattura non pagata due volte dopo un sollecito",
+  'kept.doubles_other': "{amount}: {n} fatture non pagate due volte dopo un sollecito",
 };

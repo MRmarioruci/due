@@ -259,7 +259,6 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'stats.beforeDue': 'Vor Fälligkeit bezahlt',
   'stats.days': 'Tage',
   'stats.billsPaid': 'Bezahlte Rechnungen',
-  'stats.savedDiscounts': 'mit Skonto gespart',
   'stats.fixedCosts': 'Fixkosten',
   'stats.perMonth': 'pro Monat',
   'stats.byCategory': 'Nach Kategorie',
@@ -439,4 +438,10 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyRise': "Die letzte Rechnung ist um {pct} % gestiegen.",
   'missing.title': "{payee}: noch keine Rechnung",
   'missing.body': "Sie kommt sonst bis {date}. Schau in die Post, den Spam-Ordner oder auf die Website.",
+  'kept.title': "Gespart {year}",
+  'kept.discounts': "{amount} durch Skonto",
+  'kept.duplicates_one': "{amount}: 1 Rechnung nicht doppelt gespeichert",
+  'kept.duplicates_other': "{amount}: {n} Rechnungen nicht doppelt gespeichert",
+  'kept.doubles_one': "{amount}: 1 Rechnung nach einer Mahnung nicht doppelt bezahlt",
+  'kept.doubles_other': "{amount}: {n} Rechnungen nach einer Mahnung nicht doppelt bezahlt",
 };

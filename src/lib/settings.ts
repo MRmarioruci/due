@@ -3,6 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import { useSyncExternalStore } from 'react';
 
 import type { Contracts } from './contracts';
+import type { KeptEvent } from './kept';
 import type { PaySchedule } from './plan';
 import type { PayStyle } from './reminder-plan';
 import type { Category } from './types';
@@ -37,13 +38,15 @@ export type Settings = {
   weeklyDigest: boolean;
   /** Id of the scheduled weekly summary, so it can be replaced. */
   digestId: string | null;
+  /** Duplicates and double payments due stopped, for "money kept" in Stats. */
+  kept: KeptEvent[];
   /** When to review each biller's contract (payeeKey → contract). */
   contracts: Contracts;
   /** Ask for the phone's own unlock (fingerprint, face, PIN or pattern) when opening the app. */
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {} };
+const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {}, kept: [] };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
@@ -81,6 +84,11 @@ const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
 };
+
+/** Notes money due stopped from being paid (see Stats → kept). */
+export function recordKept(e: Omit<KeptEvent, 'at'>) {
+  if (e.minor > 0) updateSettings({ kept: [...snapshot.kept, { ...e, at: new Date().toISOString() }] });
+}
 
 export function useSettings(): Settings {
   return useSyncExternalStore(subscribe, () => snapshot);

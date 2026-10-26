@@ -259,7 +259,6 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'stats.beforeDue': 'Πληρωμένοι πριν από τη λήξη',
   'stats.days': 'ημέρες',
   'stats.billsPaid': 'Πληρωμένοι λογαριασμοί',
-  'stats.savedDiscounts': 'εξοικονόμηση με εκπτώσεις έγκαιρης πληρωμής',
   'stats.fixedCosts': 'Πάγια έξοδα',
   'stats.perMonth': 'τον μήνα',
   'stats.byCategory': 'Ανά κατηγορία',
@@ -439,4 +438,10 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyRise': "Ο τελευταίος λογαριασμός αυξήθηκε κατά {pct}%.",
   'missing.title': "{payee}: ακόμα κανένας λογαριασμός",
   'missing.body': "Συνήθως έρχεται έως {date}. Έλεγξε το ταχυδρομείο, τα ανεπιθύμητα ή τον ιστότοπο.",
+  'kept.title': "Εξοικονόμηση {year}",
+  'kept.discounts': "{amount} από εκπτώσεις έγκαιρης πληρωμής",
+  'kept.duplicates_one': "{amount}: 1 λογαριασμός δεν αποθηκεύτηκε δύο φορές",
+  'kept.duplicates_other': "{amount}: {n} λογαριασμοί δεν αποθηκεύτηκαν δύο φορές",
+  'kept.doubles_one': "{amount}: 1 λογαριασμός δεν πληρώθηκε δύο φορές μετά από υπενθύμιση",
+  'kept.doubles_other': "{amount}: {n} λογαριασμοί δεν πληρώθηκαν δύο φορές μετά από υπενθύμιση",
 };

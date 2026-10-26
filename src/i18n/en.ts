@@ -268,7 +268,6 @@ export const en = {
   'stats.beforeDue': 'Paid before due',
   'stats.days': 'days',
   'stats.billsPaid': 'Bills paid',
-  'stats.savedDiscounts': 'saved with early-payment discounts',
   'stats.fixedCosts': 'Fixed costs',
   'stats.perMonth': 'per month',
   'stats.byCategory': 'By category',
@@ -459,6 +458,12 @@ export const en = {
   'contract.notifyRise': "The last bill went up {pct}%.",
   'missing.title': "{payee}: no bill yet",
   'missing.body': "It usually arrives by {date}. Check your mail, spam or the biller’s website.",
+  'kept.title': "Kept in {year}",
+  'kept.discounts': "{amount} from early-payment discounts",
+  'kept.duplicates_one': "{amount}: 1 bill not saved twice",
+  'kept.duplicates_other': "{amount}: {n} bills not saved twice",
+  'kept.doubles_one': "{amount}: 1 bill not paid twice after a reminder",
+  'kept.doubles_other': "{amount}: {n} bills not paid twice after a reminder",
 } as const;
 
 type Full = keyof typeof en;

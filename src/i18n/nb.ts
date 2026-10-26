@@ -259,7 +259,6 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'stats.beforeDue': 'Betalt før forfall',
   'stats.days': 'dager',
   'stats.billsPaid': 'Betalte regninger',
-  'stats.savedDiscounts': 'spart med rabatt for tidlig betaling',
   'stats.fixedCosts': 'Faste utgifter',
   'stats.perMonth': 'per måned',
   'stats.byCategory': 'Etter kategori',
@@ -439,4 +438,10 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyRise': "Den siste regningen gikk opp {pct} %.",
   'missing.title': "{payee}: ingen regning ennå",
   'missing.body': "Den kommer vanligvis innen {date}. Sjekk posten, søppelpost eller nettsiden.",
+  'kept.title': "Spart i {year}",
+  'kept.discounts': "{amount} fra rabatt for tidlig betaling",
+  'kept.duplicates_one': "{amount}: 1 regning ikke lagret to ganger",
+  'kept.duplicates_other': "{amount}: {n} regninger ikke lagret to ganger",
+  'kept.doubles_one': "{amount}: 1 regning ikke betalt to ganger etter en purring",
+  'kept.doubles_other': "{amount}: {n} regninger ikke betalt to ganger etter en purring",
 };

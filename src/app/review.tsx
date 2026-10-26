@@ -13,7 +13,7 @@ import { toMinor } from '@/lib/payment-codes';
 import { PAY_STYLES } from '@/lib/reminder-plan';
 import { describeReminder, replan, syncReminders } from '@/lib/reminders';
 import { payeeKey } from '@/lib/recurring';
-import { getSettings, homeCurrency, updateSettings } from '@/lib/settings';
+import { getSettings, homeCurrency, recordKept, updateSettings } from '@/lib/settings';
 import { getBill, newId, saveBill, useBills } from '@/lib/store';
 import { contractOf, nextReview } from '@/lib/contracts';
 import { findDuplicate } from '@/lib/duplicates';
@@ -153,7 +153,10 @@ export default function Review() {
     };
     saveBill(keepOriginals(bill));
     syncReminders();
-    if (chased && !keepChased) await removeBill(chased);
+    if (chased && !keepChased) {
+      if (chased.amountMinor != null) recordKept({ kind: 'double', minor: chased.amountMinor, currency: chased.currency });
+      await removeBill(chased);
+    }
     router.dismissTo('/');
   }
 
@@ -335,7 +338,13 @@ export default function Review() {
         {duplicate ? (
           <>
             <T style={{ fontSize: 13.5, color: C.muted, textAlign: 'center', marginBottom: 12 }}>{t('dup.title')}</T>
-            <Button title={t('dup.show')} onPress={() => router.replace({ pathname: '/bill/[id]', params: { id: duplicate.id } })} />
+            <Button
+              title={t('dup.show')}
+              onPress={() => {
+                if (duplicate.amountMinor != null) recordKept({ kind: 'duplicate', minor: duplicate.amountMinor, currency: duplicate.currency });
+                router.replace({ pathname: '/bill/[id]', params: { id: duplicate.id } });
+              }}
+            />
             <Pressable accessibilityRole="button" onPress={save} disabled={saving || !valid} hitSlop={6} style={{ alignSelf: 'center', paddingTop: 14, paddingBottom: 2 }}>
               <T style={{ fontSize: 13.5, color: C.muted, textDecorationLine: 'underline' }}>{t('dup.saveCopy')}</T>
             </Pressable>

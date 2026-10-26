@@ -259,7 +259,6 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'stats.beforeDue': 'Voor vervaldatum betaald',
   'stats.days': 'dagen',
   'stats.billsPaid': 'Rekeningen betaald',
-  'stats.savedDiscounts': 'bespaard met betalingskortingen',
   'stats.fixedCosts': 'Vaste lasten',
   'stats.perMonth': 'per maand',
   'stats.byCategory': 'Per categorie',
@@ -439,4 +438,10 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'contract.notifyRise': "De laatste rekening is {pct}% gestegen.",
   'missing.title': "{payee}: nog geen rekening",
   'missing.body': "Die komt meestal vóór {date}. Kijk in je post, spam of op de website.",
+  'kept.title': "Bespaard in {year}",
+  'kept.discounts': "{amount} door betalingskorting",
+  'kept.duplicates_one': "{amount}: 1 rekening niet dubbel bewaard",
+  'kept.duplicates_other': "{amount}: {n} rekeningen niet dubbel bewaard",
+  'kept.doubles_one': "{amount}: 1 rekening niet dubbel betaald na een aanmaning",
+  'kept.doubles_other': "{amount}: {n} rekeningen niet dubbel betaald na een aanmaning",
 };
