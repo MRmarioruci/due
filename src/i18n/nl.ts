@@ -379,7 +379,6 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.widgetBroken': 'De widget kan niet starten',
   'settings.general': 'Algemeen',
   'settings.rerunSetup': 'Instellen opnieuw doorlopen',
-  'settings.development': 'Ontwikkeling',
   'settings.sampleBills': 'Voorbeeldrekeningen laden',
   'settings.sampleLoaded': 'Voorbeeldrekeningen geladen',
   'settings.whenPay': 'Wanneer betaal je het liefst?',
@@ -501,8 +500,6 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.dialA11y_other': "{n} rekeningen in de komende 30 dagen",
   'home.dialFoot': "VANDAAG ··· {n} DAGEN",
   'flow.title': "Waar het heen gaat",
-  'flow.entry': "Waar het heen gaat",
-  'flow.entryDetail': "Je inkomen, verdeeld over rekeningen en wat overblijft",
   'flow.emptyTitle': "Waar gaat je geld heen?",
   'flow.emptyText': "Vul in wat er elke maand binnenkomt en due laat zien hoeveel je rekeningen per categorie kosten en wat er overblijft.",
   'flow.addIncome': "Inkomen toevoegen",
@@ -560,4 +557,6 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.amount': "PER MAAND",
   'split.save': "Opslaan",
   'split.remove': "Dit potje verwijderen",
+  'flow.stripTitle': "WAAR HET HEEN GAAT",
+  'flow.stripInvite': "Voeg je inkomen toe om te zien waar het heen gaat",
 };

@@ -379,7 +379,6 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.widgetBroken': 'Widgeten på startskjermen kan ikke starte',
   'settings.general': 'Generelt',
   'settings.rerunSetup': 'Kjør oppsettet på nytt',
-  'settings.development': 'Utvikling',
   'settings.sampleBills': 'Last inn eksempelregninger',
   'settings.sampleLoaded': 'Eksempelregninger lastet inn',
   'settings.whenPay': 'Når liker du å betale?',
@@ -501,8 +500,6 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.dialA11y_other': "{n} regninger de neste 30 dagene",
   'home.dialFoot': "I DAG ··· {n} DAGER",
   'flow.title': "Hvor det går",
-  'flow.entry': "Hvor pengene går",
-  'flow.entryDetail': "Inntekten din fordelt på regninger og det som blir igjen",
   'flow.emptyTitle': "Hvor går pengene dine?",
   'flow.emptyText': "Legg inn det som kommer inn hver måned, så viser due hvor mye regningene tar, per kategori, og hva som blir igjen.",
   'flow.addIncome': "Legg til inntekt",
@@ -560,4 +557,6 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.amount': "PER MÅNED",
   'split.save': "Lagre",
   'split.remove': "Fjern denne posten",
+  'flow.stripTitle': "HVOR PENGENE GÅR",
+  'flow.stripInvite': "Legg inn inntekten din og se hvor den går",
 };

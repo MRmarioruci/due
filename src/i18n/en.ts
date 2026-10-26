@@ -397,7 +397,6 @@ export const en = {
   'settings.widgetBroken': 'The home-screen widget can’t start',
   'settings.general': 'General',
   'settings.rerunSetup': 'Run setup again',
-  'settings.development': 'Development',
   'settings.sampleBills': 'Load sample bills',
   'settings.sampleLoaded': 'Sample bills loaded',
   'settings.whenPay': 'When do you like to pay?',
@@ -521,8 +520,6 @@ export const en = {
   'home.dialA11y_other': "{n} bills in the next 30 days",
   'home.dialFoot': "TODAY ··· {n} DAYS",
   'flow.title': "Where it goes",
-  'flow.entry': "Where it goes",
-  'flow.entryDetail': "Your income, flowing into bills and what’s left",
   'flow.emptyTitle': "Where does your money go?",
   'flow.emptyText': "Add what comes in each month and due shows how much your bills take, by category, and what’s left.",
   'flow.addIncome': "Add your income",
@@ -580,6 +577,8 @@ export const en = {
   'split.amount': "PER MONTH",
   'split.save': "Save",
   'split.remove': "Remove this split",
+  'flow.stripTitle': "WHERE IT GOES",
+  'flow.stripInvite': "Add your income to see where it goes",
 } as const;
 
 type Full = keyof typeof en;

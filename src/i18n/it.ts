@@ -379,7 +379,6 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.widgetBroken': 'Il widget non può avviarsi',
   'settings.general': 'Generale',
   'settings.rerunSetup': 'Ripeti la configurazione',
-  'settings.development': 'Sviluppo',
   'settings.sampleBills': 'Carica fatture di esempio',
   'settings.sampleLoaded': 'Fatture di esempio caricate',
   'settings.whenPay': 'Quando preferisci pagare?',
@@ -501,8 +500,6 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.dialA11y_other': "{n} fatture nei prossimi 30 giorni",
   'home.dialFoot': "OGGI ··· {n} GIORNI",
   'flow.title': "Dove vanno i soldi",
-  'flow.entry': "Dove vanno i soldi",
-  'flow.entryDetail': "Le tue entrate, tra fatture e ciò che resta",
   'flow.emptyTitle': "Dove vanno i tuoi soldi?",
   'flow.emptyText': "Inserisci quanto entra ogni mese e due mostra quanto prendono le fatture, per categoria, e cosa resta.",
   'flow.addIncome': "Aggiungi le entrate",
@@ -560,4 +557,6 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.amount': "AL MESE",
   'split.save': "Salva",
   'split.remove': "Rimuovi questa voce",
+  'flow.stripTitle': "DOVE VANNO I SOLDI",
+  'flow.stripInvite': "Aggiungi le tue entrate per vedere dove vanno",
 };

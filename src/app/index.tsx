@@ -1,25 +1,26 @@
 import * as Haptics from 'expo-haptics';
-import { Redirect, router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Redirect, router, useIsFocused } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { currentLang, locale, t } from '@/i18n/core';
 import { categoryLabel } from '@/i18n/labels';
 import { dueForReview } from '@/lib/contracts';
-import { daysBetween, fromIso, shortDay, todayIso } from '@/lib/dates';
+import { fromIso, shortDay, todayIso } from '@/lib/dates';
 import { activeDiscount } from '@/lib/discount';
 import { DIAL_DAYS, dialPoints, homeState } from '@/lib/home';
 import { formatAmount } from '@/lib/money';
 import { openScan } from '@/lib/nav';
-import { planAroundPayday } from '@/lib/plan';
 import { expectedBills, findSeries } from '@/lib/recurring';
+import { useUnlocked } from '@/lib/lock';
 import { latestBillOf } from '@/lib/reminders';
-import { seedSampleBills } from '@/lib/seed';
 import { useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
-import { Dial, type DialPoint } from '@/ui/dial';
-import { Eyebrow, Icon, IconButton, T } from '@/ui/kit';
+import { Dial, SWEEP_END, type DialPoint } from '@/ui/dial';
+import { MoneyStrip } from '@/ui/money-strip';
+import { Icon, IconButton, T } from '@/ui/kit';
 import { Animated, enterFade, enterRow, useCountUp } from '@/ui/motion';
 import { ScanButton } from '@/ui/scan-button';
 import { C, F, GUTTER, themed } from '@/ui/theme';
@@ -43,10 +44,6 @@ export default function Home() {
 
   const state = homeState(bills, today);
   const open = bills.filter((b) => b.status === 'open');
-  const ccy = open[0]?.currency ?? settings.currency ?? 'CHF';
-  const in30 = open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= DIAL_DAYS);
-  const total30 = in30.filter((b) => b.currency === ccy).reduce((s, b) => s + payOf(b, today), 0);
-  const plan = settings.pay && settings.pay.every !== 'day' && open.length ? planAroundPayday(open, settings.pay, ccy, today) : null;
 
   // One quiet nudge at most: a contract to review, else a regular bill that hasn't come.
   const review = dueForReview(settings.contracts, today)[0];
@@ -65,6 +62,24 @@ export default function Home() {
 
   const amount = useCountUp(focus ? payOf(focus, today) : 0, 700);
 
+  // The dial's entrance plays whenever home comes into view: after unlocking, on returning to the
+  // app or to this screen. Played behind the lock screen, nobody would see it.
+  const unlocked = useUnlocked();
+  const focused = useIsFocused();
+  const [play, setPlay] = useState(0);
+  const visible = unlocked && focused;
+  const [wasVisible, setWasVisible] = useState(false);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) setPlay((p) => p + 1);
+  }
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') setPlay((p) => p + 1);
+    });
+    return () => sub.remove();
+  }, []);
+
   if (!settings.onboarded) return <Redirect href="/onboarding" />;
 
   const lead = state.kind === 'empty' ? t('home.welcome') : state.kind === 'calm' ? greeting() : state.daysLeft < 0 ? t('home.overdueLead') : t('home.thingsThisWeek', { n: state.more + 1 });
@@ -73,11 +88,10 @@ export default function Home() {
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + 28 }}>
         <View style={st.header}>
-          {/* Long-press the logo in development to load sample bills. */}
-          <Pressable onLongPress={__DEV__ ? seedSampleBills : undefined} style={st.logo} accessibilityRole="header">
+          <View style={st.logo} accessibilityRole="header">
             <T style={st.logoText}>due</T>
             <View style={st.logoDot} />
-          </Pressable>
+          </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
             <IconButton label={t('common.stats')} onPress={() => router.push('/stats')} style={{ borderWidth: 0 }}>
               <Icon name="stats" color={C.muted} />
@@ -99,13 +113,14 @@ export default function Home() {
 
         <View>
           <Dial
+            key={`dial-${play}`}
             days={DIAL_DAYS}
             start={today}
             points={dots}
             todayColor={focus ? C.fg : C.accent}
             label={t('home.dialA11y', { n: points.length })}>
             {state.kind === 'focus' ? (
-              <Animated.View entering={enterFade(250)} style={st.centerCol}>
+              <Animated.View key={`c-${play}`} entering={enterFade(250)} style={st.centerCol}>
                 <T style={[st.eyebrow, { color: C.accent }]} adjustsFontSizeToFit numberOfLines={1}>{caps(dueLabel(state.focus, state.daysLeft))}</T>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
                   <T style={st.ccy}>{state.focus.currency}</T>
@@ -117,7 +132,7 @@ export default function Home() {
                 </T>
               </Animated.View>
             ) : (
-              <Animated.View entering={enterFade(250)} style={st.centerCol}>
+              <Animated.View key={`c-${play}`} entering={enterFade(250)} style={st.centerCol}>
                 <T style={st.eyebrow}>{t('home.thisWeekCaps')}</T>
                 <T style={st.headline} adjustsFontSizeToFit numberOfLines={1}>{state.kind === 'empty' ? t('home.nothingYet') : t('home.allHandled')}</T>
                 <T style={st.centerSub}>
@@ -140,6 +155,10 @@ export default function Home() {
         </View>
 
         <View style={{ flex: 1.3, minHeight: 24 }} />
+
+        <Animated.View key={`strip-${play}`} entering={enterRow(0)} style={{ marginBottom: 14 }}>
+          <MoneyStrip delay={SWEEP_END} />
+        </Animated.View>
 
         {(review || late) && (
           <Animated.View entering={enterRow(0)}>
@@ -189,32 +208,7 @@ export default function Home() {
             </Pressable>
           </Animated.View>
         ) : (
-          <Animated.View entering={enterRow(1)} style={{ gap: 18, marginTop: 14 }}>
-            <View style={st.strip}>
-              <Pressable accessibilityRole="button" accessibilityHint={t('flow.title')} onPress={() => router.push('/flow')} style={{ gap: 6 }}>
-                <Eyebrow>{t('home.nextDays', { n: DIAL_DAYS })}</Eyebrow>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
-                  <T style={st.stripCcy}>{ccy}</T>
-                  <T style={st.stripAmount}>{formatAmount(total30, ccy)}</T>
-                </View>
-              </Pressable>
-              <View style={{ gap: 6, alignItems: 'flex-end' }}>
-                {plan ? (
-                  <>
-                    <Eyebrow>{t('home.payday')}</Eyebrow>
-                    <T style={{ fontSize: 15, lineHeight: 28, textAlign: 'right' }} numberOfLines={2}>
-                      {shortDay(plan.payday)}
-                      <T style={{ fontSize: 15, color: C.dim }}> · {plan.before.length ? t('home.paydayBefore', { amount: formatAmount(plan.beforeMinor, ccy) }) : t('home.paydayClear')}</T>
-                    </T>
-                  </>
-                ) : (
-                  <>
-                    <Eyebrow>{t('home.paid')}</Eyebrow>
-                    <T style={{ fontSize: 15, lineHeight: 28 }}>{bills.filter((b) => b.status === 'paid').length}</T>
-                  </>
-                )}
-              </View>
-            </View>
+          <Animated.View entering={enterRow(1)}>
             <Pressable accessibilityRole="button" onPress={() => router.push('/bills')} style={({ pressed }) => [st.outline, pressed && { backgroundColor: C.surface }]}>
               <T style={{ fontSize: 15 }}>{open.length ? t('home.comingUp', { n: open.length }) : t('home.paidBills')}</T>
               <Chevron />
@@ -266,8 +260,5 @@ const st = themed(() => StyleSheet.create({
   primary: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: C.fg, paddingHorizontal: 18 },
   primaryText: { fontFamily: F.semibold, fontSize: 15, letterSpacing: -0.15, color: C.bg, flexShrink: 1 },
   textLink: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  strip: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 18 },
-  stripAmount: { fontFamily: F.medium, fontSize: 22, lineHeight: 28, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
-  stripCcy: { fontFamily: F.medium, fontSize: 13, color: C.dim },
   outline: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, borderWidth: 1, borderColor: C.border },
 }));

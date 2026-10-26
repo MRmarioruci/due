@@ -379,7 +379,6 @@ export const fr: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.widgetBroken': 'Le widget ne peut pas démarrer',
   'settings.general': 'Général',
   'settings.rerunSetup': 'Relancer la configuration',
-  'settings.development': 'Développement',
   'settings.sampleBills': 'Charger des factures d’exemple',
   'settings.sampleLoaded': 'Factures d’exemple chargées',
   'settings.whenPay': 'Quand préférez-vous payer ?',
@@ -501,8 +500,6 @@ export const fr: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.dialA11y_other': "{n} factures dans les 30 prochains jours",
   'home.dialFoot': "AUJOURD’HUI ··· {n} JOURS",
   'flow.title': "Où va l’argent",
-  'flow.entry': "Où va l’argent",
-  'flow.entryDetail': "Vos revenus, répartis entre factures et reste",
   'flow.emptyTitle': "Où va votre argent ?",
   'flow.emptyText': "Indiquez ce qui rentre chaque mois et due montre combien vos factures en prennent, par catégorie, et ce qui reste.",
   'flow.addIncome': "Ajouter vos revenus",
@@ -560,4 +557,6 @@ export const fr: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.amount': "PAR MOIS",
   'split.save': "Enregistrer",
   'split.remove': "Supprimer ce poste",
+  'flow.stripTitle': "OÙ VA L’ARGENT",
+  'flow.stripInvite': "Ajoutez vos revenus pour voir où ils vont",
 };

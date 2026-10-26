@@ -379,7 +379,6 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.widgetBroken': 'Το widget της αρχικής οθόνης δεν μπορεί να ξεκινήσει',
   'settings.general': 'Γενικά',
   'settings.rerunSetup': 'Εκ νέου ρύθμιση',
-  'settings.development': 'Ανάπτυξη',
   'settings.sampleBills': 'Φόρτωση δειγμάτων λογαριασμών',
   'settings.sampleLoaded': 'Τα δείγματα λογαριασμών φορτώθηκαν',
   'settings.whenPay': 'Πότε προτιμάς να πληρώνεις;',
@@ -501,8 +500,6 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.dialA11y_other': "{n} λογαριασμοί τις επόμενες 30 ημέρες",
   'home.dialFoot': "ΣΗΜΕΡΑ ··· {n} ΗΜΕΡΕΣ",
   'flow.title': "Πού πάνε τα χρήματα",
-  'flow.entry': "Πού πάνε τα χρήματα",
-  'flow.entryDetail': "Το εισόδημά σου, μοιρασμένο σε λογαριασμούς και ό,τι περισσεύει",
   'flow.emptyTitle': "Πού πάνε τα χρήματά σου;",
   'flow.emptyText': "Πρόσθεσε τι μπαίνει κάθε μήνα και το due θα δείξει πόσα παίρνουν οι λογαριασμοί σου, ανά κατηγορία, και τι περισσεύει.",
   'flow.addIncome': "Πρόσθεσε το εισόδημά σου",
@@ -560,4 +557,6 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.amount': "ΑΝΑ ΜΗΝΑ",
   'split.save': "Αποθήκευση",
   'split.remove': "Αφαίρεση κονδυλίου",
+  'flow.stripTitle': "ΠΟΥ ΠΑΝΕ ΤΑ ΧΡΗΜΑΤΑ",
+  'flow.stripInvite': "Πρόσθεσε το εισόδημά σου για να δεις πού πάει",
 };

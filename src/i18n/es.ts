@@ -379,7 +379,6 @@ export const es: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.widgetBroken': 'El widget no puede iniciarse',
   'settings.general': 'General',
   'settings.rerunSetup': 'Repetir la configuración',
-  'settings.development': 'Desarrollo',
   'settings.sampleBills': 'Cargar facturas de ejemplo',
   'settings.sampleLoaded': 'Facturas de ejemplo cargadas',
   'settings.whenPay': '¿Cuándo prefieres pagar?',
@@ -501,8 +500,6 @@ export const es: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.dialA11y_other': "{n} facturas en los próximos 30 días",
   'home.dialFoot': "HOY ··· {n} DÍAS",
   'flow.title': "A dónde va",
-  'flow.entry': "A dónde va",
-  'flow.entryDetail': "Tus ingresos, repartidos entre facturas y lo que queda",
   'flow.emptyTitle': "¿A dónde va tu dinero?",
   'flow.emptyText': "Añade lo que entra cada mes y due te muestra cuánto se llevan tus facturas, por categoría, y lo que queda.",
   'flow.addIncome': "Añadir tus ingresos",
@@ -560,4 +557,6 @@ export const es: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.amount': "AL MES",
   'split.save': "Guardar",
   'split.remove': "Quitar esta partida",
+  'flow.stripTitle': "A DÓNDE VA",
+  'flow.stripInvite': "Añade tus ingresos para ver a dónde van",
 };

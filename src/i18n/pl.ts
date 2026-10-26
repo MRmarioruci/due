@@ -401,7 +401,6 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.widgetBroken': 'Widżet nie może się uruchomić',
   'settings.general': 'Ogólne',
   'settings.rerunSetup': 'Uruchom konfigurację ponownie',
-  'settings.development': 'Programowanie',
   'settings.sampleBills': 'Wczytaj przykładowe rachunki',
   'settings.sampleLoaded': 'Przykładowe rachunki wczytane',
   'settings.whenPay': 'Kiedy wolisz płacić?',
@@ -547,8 +546,6 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.dialA11y_other': "{n} rachunku w ciągu najbliższych 30 dni",
   'home.dialFoot': "DZIŚ ··· {n} DNI",
   'flow.title': "Na co idą pieniądze",
-  'flow.entry': "Na co idą pieniądze",
-  'flow.entryDetail': "Twój dochód rozłożony na rachunki i to, co zostaje",
   'flow.emptyTitle': "Na co idą twoje pieniądze?",
   'flow.emptyText': "Podaj, ile wpływa co miesiąc, a due pokaże, ile zabierają rachunki według kategorii i co zostaje.",
   'flow.addIncome': "Dodaj dochód",
@@ -606,4 +603,6 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.amount': "MIESIĘCZNIE",
   'split.save': "Zapisz",
   'split.remove': "Usuń tę kopertę",
+  'flow.stripTitle': "NA CO IDĄ PIENIĄDZE",
+  'flow.stripInvite': "Dodaj dochód, żeby zobaczyć, na co idzie",
 };

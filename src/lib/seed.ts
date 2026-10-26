@@ -1,9 +1,12 @@
 import { addDaysIso, todayIso } from './dates';
-import { homeCountry, homeCurrency } from './settings';
+import { getSettings, homeCountry, homeCurrency, updateSettings } from './settings';
 import { saveBill } from './store';
 import { emptyPayment, type Bill, type Category } from './types';
 
-/** Dev-only sample data so the list, bill and stats screens can be tried without scanning anything. */
+/**
+ * Sample data so every screen can be tried without scanning anything (Settings → Load sample bills).
+ * Also sets an income and a few splits when there are none, so "Where it goes" has something to show.
+ */
 export function seedSampleBills() {
   const today = todayIso();
   // Sample bills in your own currency; Swiss ones carry a real QR-bill payload, others a GiroCode-style IBAN.
@@ -61,4 +64,14 @@ export function seedSampleBills() {
     mk('Sunrise', 'Internet', 'telecom', 4980, -75, 77),
     mk('Helsana', 'Health insurance', 'insurance', 38720, -79, 81),
   ].forEach(saveBill);
+
+  if (!getSettings().income.length) updateSettings({ income: [{ label: null, monthlyMinor: 620000 }] });
+  if (!getSettings().splits.length)
+    updateSettings({
+      splits: [
+        { id: 'seed-savings', name: 'Savings', monthlyMinor: 80000 },
+        { id: 'seed-investing', name: 'Investing', monthlyMinor: 50000 },
+        { id: 'seed-groceries', name: 'Groceries', monthlyMinor: 60000 },
+      ],
+    });
 }

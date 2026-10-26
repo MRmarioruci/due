@@ -379,7 +379,6 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.widgetBroken': 'Das Widget kann nicht starten',
   'settings.general': 'Allgemein',
   'settings.rerunSetup': 'Einrichtung erneut starten',
-  'settings.development': 'Entwicklung',
   'settings.sampleBills': 'Beispielrechnungen laden',
   'settings.sampleLoaded': 'Beispielrechnungen geladen',
   'settings.whenPay': 'Wann bezahlst du am liebsten?',
@@ -501,8 +500,6 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.dialA11y_other': "{n} Rechnungen in den nächsten 30 Tagen",
   'home.dialFoot': "HEUTE ··· {n} TAGE",
   'flow.title': "Wohin es geht",
-  'flow.entry': "Wohin es geht",
-  'flow.entryDetail': "Dein Einkommen, aufgeteilt auf Rechnungen und was übrig bleibt",
   'flow.emptyTitle': "Wohin geht dein Geld?",
   'flow.emptyText': "Gib ein, was jeden Monat reinkommt, und due zeigt, wie viel deine Rechnungen nach Kategorie wegnehmen und was übrig bleibt.",
   'flow.addIncome': "Einkommen hinzufügen",
@@ -560,4 +557,6 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.amount': "PRO MONAT",
   'split.save': "Speichern",
   'split.remove': "Diesen Posten entfernen",
+  'flow.stripTitle': "WOHIN ES GEHT",
+  'flow.stripInvite': "Gib dein Einkommen ein und sieh, wohin es geht",
 };

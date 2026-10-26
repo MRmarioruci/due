@@ -77,6 +77,14 @@ export default function SettingsScreen() {
 
       <Section title={t('settings.general')}>
         <Row
+          label={t('settings.sampleBills')}
+          onPress={() => {
+            seedSampleBills();
+            toast(t('settings.sampleLoaded'));
+            goBack();
+          }}
+        />
+        <Row
           label={t('settings.rerunSetup')}
           onPress={() => {
             updateSettings({ onboarded: false });
@@ -103,18 +111,6 @@ export default function SettingsScreen() {
         )}
       </Section>
 
-      {__DEV__ && (
-        <Section title={t('settings.development')}>
-          <Row
-            label={t('settings.sampleBills')}
-            onPress={() => {
-              seedSampleBills();
-              toast(t('settings.sampleLoaded'));
-              goBack();
-            }}
-          />
-        </Section>
-      )}
     </ScrollView>
   );
 }

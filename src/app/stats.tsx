@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +10,7 @@ import { priceChange } from '@/lib/price-change';
 import { exportYear } from '@/lib/tax-export-file';
 import { paidYears } from '@/lib/tax-export';
 import { Options } from '@/ui/choosers';
+import { MoneyStrip } from '@/ui/money-strip';
 import { sheet, toast } from '@/ui/overlay';
 import type { Bill } from '@/lib/types';
 import { t } from '@/i18n/core';
@@ -65,6 +65,10 @@ export default function StatsScreen() {
         </IconButton>
         <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{t('common.stats')}</T>
         <View style={{ width: 44 }} />
+      </View>
+
+      <View style={{ marginTop: 14 }}>
+        <MoneyStrip />
       </View>
 
       <View style={st.segment} accessibilityRole="tablist">
@@ -140,17 +144,6 @@ export default function StatsScreen() {
             ))}
         </View>
       )}
-
-      <Pressable accessibilityRole="button" onPress={() => router.push('/flow')} style={({ pressed }) => [st.exportRow, { marginTop: 22, borderTopWidth: 1, borderTopColor: C.line }, pressed && { backgroundColor: C.surface }]}>
-        <Icon name="stats" size={16} />
-        <View style={{ flex: 1, gap: 3 }}>
-          <T style={{ fontSize: 15 }}>{t('flow.entry')}</T>
-          <T style={{ fontSize: 12.5, color: C.dim }}>{t('flow.entryDetail')}</T>
-        </View>
-        <View style={{ transform: [{ rotate: '180deg' }] }}>
-          <Icon name="back" size={14} color={C.dim} />
-        </View>
-      </Pressable>
 
       {series.length > 0 && (
         <View style={{ marginTop: 28 }}>

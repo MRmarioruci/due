@@ -24,6 +24,8 @@ const LABEL_R = 158;
 const SPAN = 300;
 const SWEEP_DELAY = 250;
 const SWEEP_MS = 1500;
+/** When the entrance is done, for whatever should follow it. */
+export const SWEEP_END = SWEEP_DELAY + SWEEP_MS;
 
 export type DialPoint = { key: string; day: number; size: number; color: string; pulse?: boolean };
 

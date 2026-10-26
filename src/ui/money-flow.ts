@@ -11,8 +11,8 @@ import type { NodeStyle } from './sankey';
 import { C, currentTheme } from './theme';
 
 /** Splits (savings, investing…) and what's left get their own colours, apart from bills' accent. */
-const SPLIT = { dark: '#3FD4F0', light: '#0E7490' };
-const LEFT = { dark: '#C8F25A', light: '#4D7C0F' };
+export const SPLIT = { dark: '#3FD4F0', light: '#0E7490' };
+export const LEFT = { dark: '#C8F25A', light: '#4D7C0F' };
 
 export type Period = 'month' | 'year';
 
