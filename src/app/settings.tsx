@@ -50,8 +50,9 @@ export default function SettingsScreen() {
         <Row label={t('settings.payday')} value={s.pay ? describePay(s.pay) : t('settings.notSet')} onPress={() => choosePay()} />
       </Section>
 
-      <Section title={t('settings.reminders')} note={remindersAvailable ? null : t('remind.expoGo')}>
-        <Row label={t('settings.remindMe')} value={leadLabel(s.remindDaysBefore)} onPress={chooseLead} />
+      {/* Days-before only matters for "just in time" paying; the other styles plan their own dates. */}
+      <Section title={t('settings.reminders')} note={remindersAvailable ? (s.payStyle === 'last' ? t('settings.remindMeNote') : null) : t('remind.expoGo')}>
+        {s.payStyle === 'last' && <Row label={t('settings.remindNew')} value={leadLabel(s.remindDaysBefore)} onPress={chooseLead} />}
         <Row label={t('settings.at')} value={formatHour(s.remindHour)} onPress={chooseHour} />
         <ToggleRow
           label={t('settings.nudges')}

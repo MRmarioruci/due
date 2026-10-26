@@ -362,6 +362,7 @@ export const fr: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.reminders': 'Rappels',
   'settings.remindMe': 'Me rappeler',
   'settings.remindMeNote': 'Par défaut pour les nouvelles factures. Modifiable pour chaque facture.',
+  'settings.remindNew': 'Nouvelles factures : rappel',
   'settings.at': 'À',
   'settings.reminderTime': 'Heure du rappel',
   'settings.nudges': 'Dernier rappel et alerte de retard',

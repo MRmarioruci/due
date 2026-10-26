@@ -384,6 +384,7 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.reminders': 'Przypomnienia',
   'settings.remindMe': 'Przypomnij',
   'settings.remindMeNote': 'Domyślnie dla nowych rachunków. Możesz zmienić dla każdego rachunku.',
+  'settings.remindNew': 'Nowe rachunki: przypomnij',
   'settings.at': 'O',
   'settings.reminderTime': 'Godzina przypomnienia',
   'settings.nudges': 'Ostatnie przypomnienie i alert o opóźnieniu',

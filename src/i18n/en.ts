@@ -380,6 +380,7 @@ export const en = {
   'settings.reminders': 'Reminders',
   'settings.remindMe': 'Remind me',
   'settings.remindMeNote': 'The default for new bills. You can change it per bill.',
+  'settings.remindNew': 'New bills: remind me',
   'settings.at': 'At',
   'settings.reminderTime': 'Reminder time',
   'settings.nudges': 'Last call and overdue nudges',

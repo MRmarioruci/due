@@ -362,6 +362,7 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.reminders': 'Erinnerungen',
   'settings.remindMe': 'Erinnern',
   'settings.remindMeNote': 'Standard für neue Rechnungen. Du kannst es pro Rechnung ändern.',
+  'settings.remindNew': 'Neue Rechnungen: erinnern',
   'settings.at': 'Um',
   'settings.reminderTime': 'Uhrzeit der Erinnerung',
   'settings.nudges': 'Letzte Erinnerung und Überfällig-Hinweis',

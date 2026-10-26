@@ -362,6 +362,7 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.reminders': 'Herinneringen',
   'settings.remindMe': 'Herinner me',
   'settings.remindMeNote': 'Standaard voor nieuwe rekeningen. Per rekening aan te passen.',
+  'settings.remindNew': 'Nieuwe rekeningen: herinner me',
   'settings.at': 'Om',
   'settings.reminderTime': 'Tijd van de herinnering',
   'settings.nudges': 'Laatste herinnering en te-laat-melding',

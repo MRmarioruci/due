@@ -362,6 +362,7 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'settings.reminders': 'Promemoria',
   'settings.remindMe': 'Ricordami',
   'settings.remindMeNote': 'Predefinito per le nuove fatture. Puoi cambiarlo per ogni fattura.',
+  'settings.remindNew': 'Nuove fatture: ricordami',
   'settings.at': 'Alle',
   'settings.reminderTime': 'Ora del promemoria',
   'settings.nudges': 'Ultimo avviso e avviso di ritardo',
