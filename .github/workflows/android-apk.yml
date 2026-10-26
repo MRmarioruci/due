@@ -48,7 +48,11 @@ jobs:
         run: npx tsc --noEmit && npx vitest run
 
       - name: Generate Android project
-        run: npx expo prebuild --platform android --no-install
+        run: |
+          npx expo prebuild --platform android --no-install
+          # The default 2 GB heap runs out while packaging the release APK; the runner has 16 GB.
+          sed -i 's/^org.gradle.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g/' android/gradle.properties
+          grep jvmargs android/gradle.properties
 
       - name: Build release APK
         working-directory: android
