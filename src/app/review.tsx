@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { formatHour, longDate, todayIso, daysBetween } from '@/lib/dates';
+import { formatHour, longDate, shortDay, todayIso, daysBetween } from '@/lib/dates';
 import { activeDiscount } from '@/lib/discount';
 import { takePendingDraft } from '@/lib/draft';
 import { formatMoney } from '@/lib/money';
@@ -156,7 +156,7 @@ export default function Review() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: duplicate ? 190 : 130 }} keyboardShouldPersistTaps="handled">
         <View style={st.header}>
           <IconButton label={existing ? t('review.closeWithoutSaving') : t('review.retake')} onPress={() => (existing ? goBack() : openScan(true))}>
             <Icon name={existing ? 'close' : 'back'} />
@@ -168,18 +168,6 @@ export default function Review() {
         {initial.warning && (
           <View style={st.warning}>
             <T style={{ fontSize: 13, color: C.muted, lineHeight: 19 }}>{initial.warning}</T>
-          </View>
-        )}
-
-        {duplicate && (
-          <View style={st.duplicate}>
-            <T style={{ fontFamily: F.semibold, fontSize: 14.5 }}>{t('dup.title')}</T>
-            <T style={{ fontSize: 13.5, color: C.muted, lineHeight: 19 }}>
-              {duplicate.status === 'paid' && duplicate.paidAt
-                ? t('dup.paid', { date: longDate(duplicate.paidAt.slice(0, 10)) })
-                : t('dup.open', { date: longDate(duplicate.createdAt.slice(0, 10)) })}
-            </T>
-            <Button title={t('dup.show')} kind="secondary" style={{ marginTop: 6 }} onPress={() => router.replace({ pathname: '/bill/[id]', params: { id: duplicate.id } })} />
           </View>
         )}
 
@@ -204,6 +192,16 @@ export default function Review() {
               style={st.description}
               accessibilityLabel={t('review.description')}
             />
+            {duplicate && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <View style={st.dupDot} />
+                <T style={{ fontSize: 12.5, color: C.muted }}>
+                  {duplicate.status === 'paid' && duplicate.paidAt
+                    ? t('dup.badgePaid', { date: shortDay(duplicate.paidAt.slice(0, 10)) })
+                    : t('dup.badgeOpen', { date: shortDay(duplicate.createdAt.slice(0, 10)) })}
+                </T>
+              </View>
+            )}
           </View>
         </View>
 
@@ -241,7 +239,8 @@ export default function Review() {
           </View>
         )}
 
-        {change && <PriceChangeLine change={change} currency={d.currency} />}
+        {/* Beside a duplicate, the comparison is with a bill that's already saved. */}
+        {change && !duplicate && <PriceChangeLine change={change} currency={d.currency} />}
 
         {d.dunning && (
           <View style={st.discount}>
@@ -330,7 +329,17 @@ export default function Review() {
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button title={existing ? t('review.saveChanges') : duplicate ? t('dup.saveAnyway') : t('review.saveBill')} onPress={save} loading={saving} disabled={!valid} />
+        {duplicate ? (
+          <>
+            <T style={{ fontSize: 13.5, color: C.muted, textAlign: 'center', marginBottom: 12 }}>{t('dup.title')}</T>
+            <Button title={t('dup.show')} onPress={() => router.replace({ pathname: '/bill/[id]', params: { id: duplicate.id } })} />
+            <Pressable accessibilityRole="button" onPress={save} disabled={saving || !valid} hitSlop={6} style={{ alignSelf: 'center', paddingTop: 14, paddingBottom: 2 }}>
+              <T style={{ fontSize: 13.5, color: C.muted, textDecorationLine: 'underline' }}>{t('dup.saveCopy')}</T>
+            </Pressable>
+          </>
+        ) : (
+          <Button title={existing ? t('review.saveChanges') : t('review.saveBill')} onPress={save} loading={saving} disabled={!valid} />
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -339,7 +348,7 @@ export default function Review() {
 const st = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
   headerTitle: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.3, color: C.muted },
-  duplicate: { marginTop: 16, gap: 4, borderWidth: 1, borderColor: C.accent, padding: 14 },
+  dupDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.dim },
   warning: { marginTop: 16, borderWidth: 1, borderColor: C.border, padding: 12 },
   hero: { marginTop: 22, flexDirection: 'row', gap: 14, alignItems: 'center' },
   thumb: { width: 46, height: 62, transform: [{ rotate: '-3deg' }] },
