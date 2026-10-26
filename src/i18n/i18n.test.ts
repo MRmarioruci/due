@@ -2,22 +2,24 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { LANGUAGES, setLang, t } from './core';
 import { de } from './de';
+import { el } from './el';
 import { en } from './en';
 import { es } from './es';
 import { fr } from './fr';
 import { it as itDict } from './it';
+import { nb } from './nb';
 import { nl } from './nl';
 import { pl } from './pl';
 import { pt } from './pt';
 
-const DICTS: Record<string, Record<string, string | undefined>> = { de, fr, it: itDict, es, pt, nl, pl };
+const DICTS: Record<string, Record<string, string | undefined>> = { de, fr, it: itDict, es, pt, nl, pl, nb, el };
 const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 
 afterEach(() => setLang('en', null));
 
 describe('translations', () => {
-  it('cover all 8 languages', () => {
-    expect(LANGUAGES.map((l) => l.code).sort()).toEqual(['de', 'en', 'es', 'fr', 'it', 'nl', 'pl', 'pt']);
+  it('cover all 10 languages', () => {
+    expect(LANGUAGES.map((l) => l.code).sort()).toEqual(['de', 'el', 'en', 'es', 'fr', 'it', 'nb', 'nl', 'pl', 'pt']);
   });
 
   for (const [code, dict] of Object.entries(DICTS)) {

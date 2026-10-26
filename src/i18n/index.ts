@@ -11,7 +11,9 @@ export { LANGUAGES, locale, t, type Lang } from './core';
 
 /** The phone's language when due has it, else English. */
 export function deviceLang(): Lang {
-  const code = getLocales()[0]?.languageCode;
+  let code = getLocales()[0]?.languageCode;
+  // Norwegian phones may report "no" or Nynorsk ("nn"); both get Bokmål.
+  if (code === 'no' || code === 'nn') code = 'nb';
   return isLang(code) ? code : 'en';
 }
 

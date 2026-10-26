@@ -2,15 +2,17 @@
 // can use it and still run under the unit tests, where the language is English.
 
 import { de } from './de';
+import { el } from './el';
 import { en, type Key } from './en';
 import { es } from './es';
 import { fr } from './fr';
 import { it } from './it';
+import { nb } from './nb';
 import { nl } from './nl';
 import { pl } from './pl';
 import { pt } from './pt';
 
-export type Lang = 'en' | 'de' | 'fr' | 'it' | 'es' | 'pt' | 'nl' | 'pl';
+export type Lang = 'en' | 'de' | 'fr' | 'it' | 'es' | 'pt' | 'nl' | 'pl' | 'nb' | 'el';
 export type { Key };
 
 /** Each language's own name, as shown in the language picker. */
@@ -23,9 +25,11 @@ export const LANGUAGES: { code: Lang; name: string }[] = [
   { code: 'pt', name: 'Português' },
   { code: 'nl', name: 'Nederlands' },
   { code: 'pl', name: 'Polski' },
+  { code: 'nb', name: 'Norsk' },
+  { code: 'el', name: 'Ελληνικά' },
 ];
 
-const DICTS: Record<Lang, Partial<Record<string, string>>> = { en, de, fr, it, es, pt, nl, pl };
+const DICTS: Record<Lang, Partial<Record<string, string>>> = { en, de, fr, it, es, pt, nl, pl, nb, el };
 
 let lang: Lang = 'en';
 let region: string | null = null;
