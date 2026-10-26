@@ -40,6 +40,8 @@ export type Settings = {
   digestId: string | null;
   /** Net income per month (salary first, then any other), for "Where it goes". Empty until set. */
   income: { label: string | null; monthlyMinor: number }[];
+  /** The user's own splits of income besides bills (savings, investing…), per month, for "Where it goes". */
+  splits: import('./sankey-model').Split[];
   /** Duplicates and double payments due stopped, for "money kept" in Stats. */
   kept: KeptEvent[];
   /** When to review each biller's contract (payeeKey → contract). */
@@ -48,7 +50,7 @@ export type Settings = {
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {}, kept: [], income: [] };
+const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {}, kept: [], income: [], splits: [] };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');

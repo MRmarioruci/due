@@ -108,6 +108,8 @@ export default function RootLayout() {
             <Stack.Screen name="shared" options={{ animation: 'fade' }} />
             <Stack.Screen name="import" options={{ animation: 'fade' }} />
             <Stack.Screen name="income" options={{ presentation: 'transparentModal', animation: 'none', contentStyle: { backgroundColor: 'transparent' } }} />
+            <Stack.Screen name="split" options={{ presentation: 'transparentModal', animation: 'none', contentStyle: { backgroundColor: 'transparent' } }} />
+            <Stack.Screen name="flow-share" options={{ animation: 'slide_from_bottom' }} />
           </Stack>
         </View>
         <OverlayHost />

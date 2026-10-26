@@ -34,7 +34,9 @@ export default function Income() {
     const extra = withOther ? parse(other) : null;
     if (extra) income.push({ label: null, monthlyMinor: extra });
     updateSettings({ income });
-    router.replace('/flow');
+    // Opened from "Where it goes": back to it; from elsewhere: on to it.
+    if (router.canGoBack()) router.back();
+    else router.replace('/flow');
   }
 
   return (
