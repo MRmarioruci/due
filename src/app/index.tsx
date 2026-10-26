@@ -1,441 +1,248 @@
+import * as Haptics from 'expo-haptics';
 import { Redirect, router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { daysBetween, fromIso, relativeDays, shortDay, todayIso } from '@/lib/dates';
+import { currentLang, locale, t } from '@/i18n/core';
+import { categoryLabel } from '@/i18n/labels';
+import { dueForReview } from '@/lib/contracts';
+import { daysBetween, fromIso, shortDay, todayIso } from '@/lib/dates';
 import { activeDiscount } from '@/lib/discount';
+import { DIAL_DAYS, dialPoints, homeState } from '@/lib/home';
 import { formatAmount } from '@/lib/money';
 import { openScan } from '@/lib/nav';
 import { planAroundPayday } from '@/lib/plan';
-import { dueForReview } from '@/lib/contracts';
-import { expectedBills, findSeries, type Series } from '@/lib/recurring';
+import { expectedBills, findSeries } from '@/lib/recurring';
 import { latestBillOf } from '@/lib/reminders';
-import { cadenceLabel, categoryLabel } from '@/i18n/labels';
-import { locale, t } from '@/i18n/core';
 import { seedSampleBills } from '@/lib/seed';
-import { getSettings, homeCurrency, updateSettings, useSettings } from '@/lib/settings';
-import { Options } from '@/ui/choosers';
-import { sheet } from '@/ui/overlay';
+import { useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
-import { CATEGORIES, type Bill, type Category } from '@/lib/types';
-import { Amount, Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
-import { Animated, enterFade, enterRow, GrowBar, moveRow, useCountUp } from '@/ui/motion';
+import type { Bill } from '@/lib/types';
+import { Dial, type DialPoint } from '@/ui/dial';
+import { Eyebrow, Icon, IconButton, T } from '@/ui/kit';
+import { Animated, enterFade, enterRow, useCountUp } from '@/ui/motion';
+import { ScanButton } from '@/ui/scan-button';
 import { C, F, GUTTER, themed } from '@/ui/theme';
 
-const HORIZON = 30;
+const payOf = (b: Bill, today: string) => activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0;
 
-type Filter = { category: Category | null; year: number | null };
-
-/** The year a bill belongs to in the list: its due date, else when it was paid or saved. */
-const yearOf = (b: Bill) => Number((b.dueDate ?? b.paidAt ?? b.createdAt).slice(0, 4));
-
-/** Every word typed must appear in the payee, description, category, reference, IBAN or amount. */
-function matches(b: Bill, query: string): boolean {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (!words.length) return true;
-  const amount = b.amountMinor != null ? `${(b.amountMinor / 100).toFixed(2)} ${formatAmount(b.amountMinor, b.currency)}` : '';
-  const hay = [b.payee, b.description, categoryLabel(b.category), b.payment.reference, b.payment.iban?.replace(/\s/g, ''), amount, b.currency].join(' ').toLowerCase();
-  return words.every((w) => hay.includes(w));
+function greeting(now = new Date()): string {
+  const h = now.getHours();
+  return t(h < 5 ? 'home.greetEvening' : h < 12 ? 'home.greetMorning' : h < 18 ? 'home.greetAfternoon' : 'home.greetEvening');
 }
 
-/** The currency most open bills are in; totals are shown in it and other currencies are counted separately. */
-function mainCurrency(bills: Bill[]): string {
-  const n = new Map<string, number>();
-  bills.forEach((b) => n.set(b.currency, (n.get(b.currency) ?? 0) + 1));
-  return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? homeCurrency();
-}
-
-export default function Bills() {
+/**
+ * Home, kept calm: a 30-day dial with one headline in the middle. With nothing due this week it says
+ * so and stops there; otherwise it leads with the one bill to deal with now. The full list is a tap away.
+ */
+export default function Home() {
   const insets = useSafeAreaInsets();
   const bills = useBills();
-  const [tab, setTab] = useState<'open' | 'paid'>('open');
-  const today = todayIso();
   const settings = useSettings();
+  const today = todayIso();
 
-  const [searching, setSearching] = useState(false);
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<Filter>({ category: null, year: null });
-  const narrowed = searching && !!query.trim() ? true : filter.category != null || filter.year != null;
-
-  const open = useMemo(() => bills.filter((b) => b.status === 'open'), [bills]);
-  const paid = useMemo(() => bills.filter((b) => b.status === 'paid').sort((a, b) => (b.paidAt ?? '').localeCompare(a.paidAt ?? '')), [bills]);
-  // Search and filters narrow the lists; the totals above stay for everything.
-  const keep = (b: Bill) => (!filter.category || b.category === filter.category) && (!filter.year || yearOf(b) === filter.year) && (!searching || matches(b, query));
-  const openShown = open.filter(keep);
-  const paidShown = paid.filter(keep);
-  const ccy = mainCurrency(open);
-  const window = open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= HORIZON);
-  const total = window.filter((b) => b.currency === ccy).reduce((sum, b) => sum + (activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0), 0);
-  const totalShown = useCountUp(total);
-  const otherCcy = window.some((b) => b.currency !== ccy);
-  const next = open.find((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0);
-  // Paid daily, there's no before/after payday to plan around.
+  const state = homeState(bills, today);
+  const open = bills.filter((b) => b.status === 'open');
+  const ccy = open[0]?.currency ?? settings.currency ?? 'CHF';
+  const in30 = open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= DIAL_DAYS);
+  const total30 = in30.filter((b) => b.currency === ccy).reduce((s, b) => s + payOf(b, today), 0);
   const plan = settings.pay && settings.pay.every !== 'day' && open.length ? planAroundPayday(open, settings.pay, ccy, today) : null;
-  const expected = expectedBills(findSeries(bills, today), today);
-  const reviews = dueForReview(settings.contracts, today);
 
-  // Sorted by due date: grouped by when they're due. By name or amount: one list.
-  const pay = (b: Bill) => activeDiscount(b, today)?.payMinor ?? (b.status === 'paid' ? b.paidAmountMinor : null) ?? b.amountMinor ?? 0;
-  const sortList = (xs: Bill[]) =>
-    settings.sortBy === 'name' ? [...xs].sort((a, b) => a.payee.localeCompare(b.payee, locale(), { sensitivity: 'base' })) : [...xs].sort((a, b) => pay(b) - pay(a));
-  const groups: { title: string; items: Bill[] }[] =
-    settings.sortBy !== 'due'
-      ? [{ title: t(`sort.${settings.sortBy}`), items: sortList(tab === 'paid' ? paidShown : openShown) }]
-      : tab === 'paid'
-      ? [{ title: t('home.paid'), items: paidShown }]
-      : [
-          { title: t('home.overdue'), items: openShown.filter((b) => b.dueDate && daysBetween(today, b.dueDate) < 0) },
-          { title: t('home.thisWeek'), items: openShown.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0 && daysBetween(today, b.dueDate) < 7) },
-          { title: t('home.later'), items: openShown.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 7) },
-          { title: t('home.noDueDate'), items: openShown.filter((b) => !b.dueDate) },
-        ];
+  // One quiet nudge at most: a contract to review, else a regular bill that hasn't come.
+  const review = dueForReview(settings.contracts, today)[0];
+  const late = expectedBills(findSeries(bills, today), today).find((s) => s.late);
 
-  /** One sheet with category and year chips; it re-opens on each tap so the ticks stay current. */
-  function chooseFilter(current: Filter = filter) {
-    const set = (next: Filter) => {
-      setFilter(next);
-      chooseFilter(next);
-    };
-    const cats = CATEGORIES.filter((c) => bills.some((b) => b.category === c));
-    const years = [...new Set(bills.map(yearOf))].sort((a, b) => b - a);
-    const chip = (key: string, label: string, on: boolean, onPress: () => void) => (
-      <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={onPress} style={[st.chip, on && st.chipOn]}>
-        <T style={{ fontSize: 13.5, color: on ? C.bg : C.fg }}>{label}</T>
-      </Pressable>
-    );
-    sheet.show({
-      title: t('filter.title'),
-      content: (
-        <View style={{ gap: 18, marginTop: 8 }}>
-          <View style={{ gap: 10 }}>
-            <Eyebrow>{t('review.category')}</Eyebrow>
-            <View style={st.chips}>
-              {chip('all', t('filter.all'), current.category == null, () => set({ ...current, category: null }))}
-              {cats.map((c) => chip(c, categoryLabel(c), current.category === c, () => set({ ...current, category: c })))}
-            </View>
-          </View>
-          {years.length > 1 && (
-            <View style={{ gap: 10 }}>
-              <Eyebrow>{t('filter.year')}</Eyebrow>
-              <View style={st.chips}>
-                {chip('all', t('filter.all'), current.year == null, () => set({ ...current, year: null }))}
-                {years.map((y) => chip(String(y), String(y), current.year === y, () => set({ ...current, year: y })))}
-              </View>
-            </View>
-          )}
-        </View>
-      ),
-      actions: [{ label: t('common.done'), kind: 'primary' }],
-    });
-  }
+  const focus = state.kind === 'focus' ? state.focus : null;
+  const points = dialPoints(bills, today);
+  const biggest = Math.max(1, ...points.map((p) => p.bill.amountMinor ?? 0));
+  const dots: DialPoint[] = points.map((p) => ({
+    key: p.bill.id,
+    day: p.day,
+    size: Math.round(5 + 7 * Math.sqrt((p.bill.amountMinor ?? 0) / biggest)),
+    color: p.bill.id === focus?.id || p.overdue ? C.accent : focus ? C.barMuted : C.fg,
+    pulse: p.bill.id === focus?.id,
+  }));
+
+  const amount = useCountUp(focus ? payOf(focus, today) : 0, 700);
 
   if (!settings.onboarded) return <Redirect href="/onboarding" />;
 
+  const lead = state.kind === 'empty' ? t('home.welcome') : state.kind === 'calm' ? greeting() : state.daysLeft < 0 ? t('home.overdueLead') : t('home.thingsThisWeek', { n: state.more + 1 });
+
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: 140 }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + 28 }}>
         <View style={st.header}>
           {/* Long-press the logo in development to load sample bills. */}
           <Pressable onLongPress={__DEV__ ? seedSampleBills : undefined} style={st.logo} accessibilityRole="header">
             <T style={st.logoText}>due</T>
             <View style={st.logoDot} />
           </Pressable>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <IconButton label={t('search.title')} onPress={() => setSearching(true)}>
-              <Icon name="search" color={C.muted} />
-            </IconButton>
-            <IconButton label={t('common.stats')} onPress={() => router.push('/stats')}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            <IconButton label={t('common.stats')} onPress={() => router.push('/stats')} style={{ borderWidth: 0 }}>
               <Icon name="stats" color={C.muted} />
             </IconButton>
-            <IconButton label={t('common.settings')} onPress={() => router.push('/settings')}>
+            <IconButton label={t('common.settings')} onPress={() => router.push('/settings')} style={{ borderWidth: 0 }}>
               <Icon name="settings" color={C.muted} />
             </IconButton>
+            <View style={{ marginLeft: 6 }}>
+              <ScanButton />
+            </View>
           </View>
         </View>
 
-        {searching && (
-          <Animated.View entering={enterFade(0)} style={st.search}>
-            <Icon name="search" size={16} color={C.dim} />
-            <TextInput
-              autoFocus
-              value={query}
-              onChangeText={setQuery}
-              placeholder={t('search.placeholder')}
-              placeholderTextColor={C.dim}
-              returnKeyType="search"
-              style={st.searchInput}
-              accessibilityLabel={t('search.title')}
-            />
+        <Animated.View entering={enterFade(0)}>
+          <T style={st.lead}>{lead}</T>
+        </Animated.View>
+
+        <View style={{ flex: 1, minHeight: 16 }} />
+
+        <View>
+          <Dial
+            days={DIAL_DAYS}
+            points={dots}
+            todayColor={focus ? C.fg : C.accent}
+            label={t('home.dialA11y', { n: points.length })}>
+            {state.kind === 'focus' ? (
+              <Animated.View entering={enterFade(250)} style={st.centerCol}>
+                <T style={[st.eyebrow, { color: C.accent }]} adjustsFontSizeToFit numberOfLines={1}>{caps(dueLabel(state.focus, state.daysLeft))}</T>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                  <T style={st.ccy}>{state.focus.currency}</T>
+                  <T style={st.big} adjustsFontSizeToFit numberOfLines={1}>{formatAmount(amount, state.focus.currency)}</T>
+                </View>
+                <T style={{ fontSize: 15, textAlign: 'center' }} numberOfLines={1}>
+                  {state.focus.payee}
+                  <T style={{ fontSize: 15, color: C.dim }}> · {state.focus.description?.split('·')[0].trim() || categoryLabel(state.focus.category)}</T>
+                </T>
+              </Animated.View>
+            ) : (
+              <Animated.View entering={enterFade(250)} style={st.centerCol}>
+                <T style={st.eyebrow}>{t('home.thisWeekCaps')}</T>
+                <T style={st.headline} adjustsFontSizeToFit numberOfLines={1}>{state.kind === 'empty' ? t('home.nothingYet') : t('home.allHandled')}</T>
+                <T style={st.centerSub}>
+                  {state.kind === 'calm' && state.next ? (
+                    <>
+                      {t('home.nothingUntil')}
+                      {'\n'}
+                      <T style={[st.centerSub, { color: C.fg }]}>{shortDay(state.next.dueDate!)}</T>
+                    </>
+                  ) : state.kind === 'empty' ? (
+                    t('home.firstText')
+                  ) : (
+                    t('home.nothingAtAll')
+                  )}
+                </T>
+              </Animated.View>
+            )}
+          </Dial>
+          <T style={st.dialFoot}>{t('home.dialFoot', { n: DIAL_DAYS })}</T>
+        </View>
+
+        <View style={{ flex: 1.3, minHeight: 24 }} />
+
+        {(review || late) && (
+          <Animated.View entering={enterRow(0)}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={t('search.close')}
-              hitSlop={10}
               onPress={() => {
-                setQuery('');
-                setSearching(false);
-              }}>
-              <Icon name="close" size={16} color={C.muted} />
+                const b = review ? latestBillOf(review.contract.payee) : null;
+                if (b) router.push({ pathname: '/bill/[id]', params: { id: b.id } });
+                else router.push('/bills');
+              }}
+              style={st.nudge}>
+              <View style={st.nudgeDot} />
+              <T style={{ flex: 1, fontSize: 13.5, color: C.muted }} numberOfLines={1}>
+                {review ? t('home.reviewNudge', { payee: review.contract.payee, n: review.daysLeft }) : t('home.lateNudge', { payee: late!.payee })}
+              </T>
+              <Chevron />
             </Pressable>
           </Animated.View>
         )}
 
-        {/* While searching, only the results: the totals, plan and runway step aside. */}
-        {!searching && (
-          <>
-          <View style={{ marginTop: 22 }}>
-            <Eyebrow>{t('home.nextDays', { n: HORIZON })}</Eyebrow>
-            <View style={{ marginTop: 8 }}>
-              <Amount currency={ccy} value={formatAmount(totalShown, ccy)} />
-            </View>
-            <T style={st.sub}>
-              {open.length === 0
-                ? t('home.empty')
-                : [t('home.open', { n: open.length }), next?.dueDate && t('home.nextDue', { date: shortDay(next.dueDate) }), otherCcy && t('home.otherCurrencies')].filter(Boolean).join(' · ')}
+        {state.kind === 'focus' ? (
+          <Animated.View entering={enterRow(1)} style={{ gap: 12, marginTop: 14 }}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                Haptics.selectionAsync();
+                router.push({ pathname: '/bill/[id]', params: { id: state.focus.id } });
+              }}
+              style={({ pressed }) => [st.primary, pressed && { opacity: 0.85 }]}>
+              <T style={st.primaryText} numberOfLines={1}>{t('home.pay', { payee: state.focus.payee })}</T>
+              <View style={{ transform: [{ rotate: '180deg' }] }}>
+                <Icon name="back" color={C.bg} size={16} />
+              </View>
+            </Pressable>
+            <T style={{ textAlign: 'center', fontSize: 13.5, color: C.dim }}>
+              {state.more > 0 ? t('home.thenMore', { n: state.more }) : state.then ? t('home.thenNothing', { date: shortDay(state.then.dueDate!) }) : t('home.thenNone')}
             </T>
-          </View>
-
-          {plan ? (
-            <Animated.View entering={enterFade(150)} style={st.plan}>
-              <View style={st.planCol}>
-                <Eyebrow>{t('home.beforePayday')}</Eyebrow>
-                <T style={st.planAmount}>{formatAmount(plan.beforeMinor, ccy)}</T>
-                <T style={st.planSub}>{plan.before.length ? t('home.beforeCount', { n: plan.before.length }) : t('home.nothingUntilPayday')}</T>
-              </View>
-              <View style={[st.planCol, st.planRight]}>
-                <Eyebrow>{t('home.afterPayday', { date: shortDay(plan.payday).toUpperCase() })}</Eyebrow>
-                <T style={st.planAmount}>{formatAmount(plan.afterMinor, ccy)}</T>
-                <T style={st.planSub}>{t('home.afterCount', { n: plan.after.length })}</T>
-              </View>
-            </Animated.View>
-          ) : (
-            open.length > 0 &&
-            !settings.pay && (
-              <Pressable accessibilityRole="link" onPress={() => router.push('/settings')} style={{ marginTop: 14, alignSelf: 'flex-start', paddingVertical: 6 }}>
-                <T style={{ fontSize: 13.5, color: C.muted }}>{t('home.setPayday')}</T>
-              </Pressable>
-            )
-          )}
-
-          {reviews.length > 0 && (
-            <Animated.View entering={enterFade(180)} style={st.reviews}>
-              <Eyebrow>{t('contract.homeTitle')}</Eyebrow>
-              {reviews.map((r) => (
-                <Pressable
-                  key={r.key}
-                  accessibilityRole="button"
-                  onPress={() => {
-                    const latest = latestBillOf(r.contract.payee);
-                    if (latest) router.push({ pathname: '/bill/[id]', params: { id: latest.id } });
-                  }}
-                  style={st.reviewRow}>
-                  <T style={{ flex: 1, fontSize: 14 }} numberOfLines={1}>{r.contract.payee}</T>
-                  <T style={{ fontFamily: F.mono, fontSize: 11, color: r.daysLeft <= 7 ? C.accent : C.muted }}>
-                    {r.daysLeft === 0 ? t('bill.today') : t('bill.daysLeft', { n: r.daysLeft })}
-                  </T>
-                </Pressable>
-              ))}
-            </Animated.View>
-          )}
-
-          <Runway bills={window} today={today} ccy={ccy} payday={plan?.payday ?? null} expected={expected} />
-          </>
-        )}
-
-        <View style={st.tabs}>
-          {(['open', 'paid'] as const).map((k) => {
-            const on = tab === k;
-            return (
-              <Pressable key={k} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setTab(k)} style={[st.tab, on && st.tabOn]}>
-                <View style={st.tabInner}>
-                  <T style={[st.tabText, { color: on ? C.fg : C.dim }]}>{k === 'open' ? t('home.upcoming') : t('home.paid')}</T>
-                  <T style={[st.tabCount, on && { color: C.muted }]}>{k === 'open' ? openShown.length : paidShown.length}</T>
+            <Pressable accessibilityRole="link" onPress={() => router.push('/bills')} style={st.textLink}>
+              <T style={{ fontSize: 13.5, color: C.fg, textDecorationLine: 'underline' }}>{t('home.allBills', { n: open.length })}</T>
+            </Pressable>
+          </Animated.View>
+        ) : state.kind === 'empty' ? (
+          <Animated.View entering={enterRow(1)} style={{ marginTop: 14 }}>
+            <Pressable accessibilityRole="button" onPress={() => openScan()} style={({ pressed }) => [st.primary, pressed && { opacity: 0.85 }]}>
+              <Icon name="scan" color={C.bg} size={18} />
+              <T style={st.primaryText}>{t('home.firstBill')}</T>
+            </Pressable>
+          </Animated.View>
+        ) : (
+          <Animated.View entering={enterRow(1)} style={{ gap: 18, marginTop: 14 }}>
+            <View style={st.strip}>
+              <View style={{ gap: 6 }}>
+                <Eyebrow>{t('home.nextDays', { n: DIAL_DAYS })}</Eyebrow>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
+                  <T style={st.stripCcy}>{ccy}</T>
+                  <T style={st.stripAmount}>{formatAmount(total30, ccy)}</T>
                 </View>
-              </Pressable>
-            );
-          })}
-          <Pressable accessibilityRole="button" accessibilityLabel={t('filter.title')} onPress={() => chooseFilter()} hitSlop={8} style={[st.sort, { marginLeft: 'auto' }]}>
-            <Icon name="filter" size={14} color={filter.category || filter.year ? C.accent : C.dim} />
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={t('sort.title')} onPress={chooseSort} hitSlop={8} style={[st.sort, { marginLeft: 0 }]}>
-            <Icon name="sort" size={14} color={C.dim} />
-            <T style={st.sortText}>{t(`sort.${settings.sortBy}`)}</T>
-          </Pressable>
-        </View>
-
-        {(filter.category || filter.year) && (
-          <View style={[st.chips, { marginTop: 14 }]}>
-            {filter.category && (
-              <Pressable accessibilityRole="button" accessibilityLabel={t('filter.remove', { what: categoryLabel(filter.category) })} onPress={() => setFilter({ ...filter, category: null })} style={[st.chip, st.chipOn, st.chipRow]}>
-                <T style={{ fontSize: 13, color: C.bg }}>{categoryLabel(filter.category)}</T>
-                <Icon name="close" size={12} color={C.bg} />
-              </Pressable>
-            )}
-            {filter.year && (
-              <Pressable accessibilityRole="button" accessibilityLabel={t('filter.remove', { what: String(filter.year) })} onPress={() => setFilter({ ...filter, year: null })} style={[st.chip, st.chipOn, st.chipRow]}>
-                <T style={{ fontSize: 13, color: C.bg }}>{filter.year}</T>
-                <Icon name="close" size={12} color={C.bg} />
-              </Pressable>
-            )}
-          </View>
-        )}
-
-        {narrowed && groups.every((g) => !g.items.length) && <T style={{ marginTop: 28, fontSize: 14, color: C.muted }}>{t('search.none')}</T>}
-
-        {tab === 'open' && !narrowed && expected.length > 0 && (
-          <View>
-            <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>{t('home.expected')}</Eyebrow>
-            {expected.map((s, idx) => (
-              <Animated.View key={s.key} entering={enterRow(idx)} layout={moveRow}>
-                <ExpectedRow series={s} />
-              </Animated.View>
-            ))}
-          </View>
-        )}
-
-        {groups
-          .filter((g) => g.items.length)
-          .map((g) => (
-            <View key={g.title}>
-              <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>{g.title}</Eyebrow>
-              {g.items.map((b, idx) => (
-                <Animated.View key={b.id} entering={enterRow(idx)} layout={moveRow}>
-                  <BillRow bill={b} today={today} />
-                </Animated.View>
-              ))}
+              </View>
+              <View style={{ gap: 6, alignItems: 'flex-end' }}>
+                {plan ? (
+                  <>
+                    <Eyebrow>{t('home.payday')}</Eyebrow>
+                    <T style={{ fontSize: 15, lineHeight: 28, textAlign: 'right' }} numberOfLines={2}>
+                      {shortDay(plan.payday)}
+                      <T style={{ fontSize: 15, color: C.dim }}> · {plan.before.length ? t('home.paydayBefore', { amount: formatAmount(plan.beforeMinor, ccy) }) : t('home.paydayClear')}</T>
+                    </T>
+                  </>
+                ) : (
+                  <>
+                    <Eyebrow>{t('home.paid')}</Eyebrow>
+                    <T style={{ fontSize: 15, lineHeight: 28 }}>{bills.filter((b) => b.status === 'paid').length}</T>
+                  </>
+                )}
+              </View>
             </View>
-          ))}
-      </ScrollView>
-
-      <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button onPress={() => openScan()} title={t('home.scan')} icon={<Icon name="scan" color={C.bg} size={20} />} />
-      </View>
-    </View>
-  );
-}
-
-function chooseSort() {
-  sheet.show({
-    title: t('sort.title'),
-    content: (
-      <Options
-        selected={getSettings().sortBy}
-        options={(['due', 'name', 'amount'] as const).map((k) => ({
-          key: k,
-          label: t(`sort.${k}`),
-          onPress: () => {
-            updateSettings({ sortBy: k });
-            sheet.hide();
-          },
-        }))}
-      />
-    ),
-  });
-}
-
-function BillRow({ bill, today }: { bill: Bill; today: string }) {
-  const days = bill.dueDate ? daysBetween(today, bill.dueDate) : null;
-  const urgent = bill.status === 'open' && days != null && days <= 3;
-  const discount = activeDiscount(bill, today);
-  const sub = bill.dunning && bill.status === 'open'
-    ? [t(`dun.level${bill.dunning.level}`), bill.dueDate && t('row.due', { date: shortDay(bill.dueDate) })].filter(Boolean).join(' · ')
-    : discount
-    ? t('row.discount', { pct: discount.percent, date: shortDay(discount.until) })
-    : [
-        bill.description ?? categoryLabel(bill.category),
-        bill.status === 'open' && bill.snoozedUntil && new Date(bill.snoozedUntil) > new Date()
-          ? t('row.snoozed', { date: shortDay(new Date(bill.snoozedUntil)) })
-          : bill.dueDate && t('row.due', { date: shortDay(bill.dueDate) }),
-      ].filter(Boolean).join(' · ');
-  // A plain Pressable, laid out like ExpectedRow: wrapping it in <Link asChild> merged styles and broke the row layout.
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() => router.push({ pathname: '/bill/[id]', params: { id: bill.id } })}
-      style={({ pressed }) => [st.row, pressed && { opacity: 0.6 }]}>
-      <View style={st.mono}>
-        <T style={st.monoText}>{bill.payee.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}</T>
-      </View>
-      <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
-        <T style={st.rowTitle} numberOfLines={1}>{bill.payee}</T>
-        <T style={[st.rowSub, (discount || (bill.dunning && bill.status === 'open')) && { color: C.accent }]} numberOfLines={1}>{sub}</T>
-      </View>
-      <View style={{ alignItems: 'flex-end', gap: 5 }}>
-        <T style={st.rowAmount}>
-          {bill.currency !== homeCurrency() ? `${bill.currency} ` : ''}
-          {formatAmount(discount?.payMinor ?? (bill.status === 'paid' ? bill.paidAmountMinor : null) ?? bill.amountMinor, bill.currency)}
-        </T>
-        <T style={[st.rowDays, { color: urgent ? C.accent : C.dim }]}>
-          {bill.status === 'paid' ? t('row.paid') : bill.dueDate ? relativeDays(bill.dueDate, today) : '—'}
-        </T>
-      </View>
-    </Pressable>
-  );
-}
-
-/** A bill that should come soon (or should have come) from a biller who bills regularly. */
-function ExpectedRow({ series: s }: { series: Series }) {
-  const when = s.late ? t('expected.late', { date: shortDay(s.expectedArrival) }) : t('expected.around', { cadence: cadenceLabel(s.cadence), date: shortDay(s.nextDue) });
-  return (
-    <View style={st.row} accessibilityLabel={t('expected.a11y', { payee: s.payee, when })}>
-      <View style={[st.mono, { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: C.barMuted }]}>
-        <T style={[st.monoText, { color: C.dim }]}>{s.payee.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}</T>
-      </View>
-      <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
-        <T style={[st.rowTitle, { color: C.muted }]} numberOfLines={1}>{s.payee}</T>
-        <T style={[st.rowSub, s.late && { color: C.accent }]} numberOfLines={1}>{when}</T>
-      </View>
-      <View style={{ alignItems: 'flex-end', gap: 5 }}>
-        <T style={[st.rowAmount, { color: C.muted }]}>≈ {formatAmount(s.amountMinor, s.currency)}</T>
-        <T style={[st.rowDays, { color: s.late ? C.accent : C.dim }]}>{s.late ? t('expected.notArrived') : t('expected.tag')}</T>
-      </View>
-    </View>
-  );
-}
-
-/** A 30-day strip: one bar per bill at its due date, height by amount. Shows at a glance how bills are spread out. */
-function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today: string; ccy: string; payday: string | null; expected: Series[] }) {
-  const paydayAt = payday ? daysBetween(today, payday) : null;
-  const max = Math.max(1, ...bills.map((b) => b.amountMinor ?? 0));
-  const end = fromIso(today);
-  end.setDate(end.getDate() + HORIZON);
-  const mid = fromIso(today);
-  mid.setDate(mid.getDate() + HORIZON / 2);
-  return (
-    <View style={st.runway} accessibilityLabel={t('runway.a11y', { n: HORIZON })}>
-      <View style={{ height: 64 }}>
-        <View style={st.ticks}>
-          {Array.from({ length: HORIZON + 1 }, (_, i) => (
-            <View key={i} style={{ width: 1, height: i % 7 === 0 ? 8 : 4, backgroundColor: i % 7 === 0 ? C.barMuted : C.tick }} />
-          ))}
-        </View>
-        <View style={[st.bar, { left: 0, width: 6, height: 6, marginLeft: 0, backgroundColor: C.accent }]} />
-        {paydayAt != null && paydayAt <= HORIZON && (
-          <View style={[st.payday, { left: `${(paydayAt / HORIZON) * 100}%` }]} accessibilityLabel={t('runway.payday')}>
-            <T style={st.paydayLabel}>{t('runway.pay')}</T>
-          </View>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/bills')} style={({ pressed }) => [st.outline, pressed && { backgroundColor: C.surface }]}>
+              <T style={{ fontSize: 15 }}>{open.length ? t('home.comingUp', { n: open.length }) : t('home.paidBills')}</T>
+              <Chevron />
+            </Pressable>
+          </Animated.View>
         )}
-        {expected
-          .filter((s) => !s.late && daysBetween(today, s.nextDue) <= HORIZON)
-          .map((s) => (
-            <GrowBar
-              key={'x' + s.key}
-              size={s.currency === ccy ? Math.max(8, (s.amountMinor / max) * 48) : 8}
-              delay={300 + (daysBetween(today, s.nextDue) / HORIZON) * 300}
-              style={[st.bar, { left: `${(daysBetween(today, s.nextDue) / HORIZON) * 100}%`, borderWidth: 1, borderColor: C.barMuted }]}
-            />
-          ))}
-        {bills.map((b) => {
-          const d = Math.max(0, daysBetween(today, b.dueDate!));
-          const h = b.currency === ccy && b.amountMinor ? Math.max(8, (b.amountMinor / max) * 48) : 8;
-          return <GrowBar key={b.id} size={h} delay={(d / HORIZON) * 300} style={[st.bar, { left: `${(d / HORIZON) * 100}%`, backgroundColor: d <= 7 ? C.accent : C.fg }]} />;
-        })}
-      </View>
-      <View style={st.runwayLabels}>
-        <T style={[st.runwayLabel, { color: C.fg }]}>{t('common.todayCaps')}</T>
-        <T style={st.runwayLabel}>{mid.toLocaleDateString(locale(), { day: 'numeric', month: 'short' }).toUpperCase()}</T>
-        <T style={st.runwayLabel}>{end.toLocaleDateString(locale(), { day: 'numeric', month: 'short' }).toUpperCase()}</T>
-      </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+/** Capitals in the app's language; Greek drops its accents in capitals. */
+function caps(text: string): string {
+  const up = text.toLocaleUpperCase(locale());
+  return currentLang() === 'el' ? up.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : up;
+}
+
+/** "Due Friday · 3 days", "Due today", "Overdue · 2 days". */
+function dueLabel(bill: Bill, days: number): string {
+  if (days < 0) return t('home.overdueBy', { n: -days });
+  if (days === 0) return t('home.dueToday');
+  const day = fromIso(bill.dueDate!).toLocaleDateString(locale(), { weekday: 'long' });
+  return t('home.dueIn', { day, n: days });
+}
+
+function Chevron() {
+  return (
+    <View style={{ transform: [{ rotate: '180deg' }] }}>
+      <Icon name="back" size={14} color={C.dim} />
     </View>
   );
 }
@@ -445,41 +252,21 @@ const st = themed(() => StyleSheet.create({
   logo: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
   logoText: { fontFamily: F.semibold, fontSize: 26, letterSpacing: -0.8, lineHeight: 28 },
   logoDot: { width: 7, height: 7, backgroundColor: C.accent, marginBottom: 6 },
-  sub: { marginTop: 10, fontSize: 14, color: C.muted },
-  runway: { marginTop: 26, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, paddingTop: 16, paddingBottom: 10 },
-  ticks: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  reviews: { marginTop: 22, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 },
-  reviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
-  plan: { marginTop: 22, flexDirection: 'row', borderTopWidth: 1, borderColor: C.line, paddingTop: 16 },
-  planCol: { flex: 1, gap: 6 },
-  planRight: { borderLeftWidth: 1, borderLeftColor: C.line, paddingLeft: 16 },
-  planAmount: { fontFamily: F.semibold, fontSize: 20, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
-  planSub: { fontSize: 12.5, lineHeight: 17, color: C.dim, paddingRight: 8 },
-  payday: { position: 'absolute', top: -6, bottom: 0, width: 1, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: C.muted },
-  paydayLabel: { position: 'absolute', top: -6, left: 4, fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, color: C.muted },
-  bar: { position: 'absolute', bottom: 14, width: 7, marginLeft: -3 },
-  runwayLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  runwayLabel: { fontFamily: F.mono, fontSize: 10.5, color: C.dim, letterSpacing: 0.4 },
-  tabs: { flexDirection: 'row', alignItems: 'flex-end', gap: 22, marginTop: 20 },
-  search: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10, height: 46, paddingHorizontal: 14, borderWidth: 1, borderColor: C.border },
-  searchInput: { flex: 1, color: C.fg, fontFamily: F.regular, fontSize: 15, paddingVertical: 0 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 12, height: 34, justifyContent: 'center', borderWidth: 1, borderColor: C.border },
-  chipOn: { backgroundColor: C.fg, borderColor: C.fg },
-  chipRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sort: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 8, minHeight: 32 },
-  sortText: { fontSize: 13, color: C.dim },
-  tab: { paddingBottom: 8, minHeight: 32, justifyContent: 'flex-end' },
-  tabOn: { borderBottomWidth: 1.5, borderBottomColor: C.fg },
-  tabInner: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  tabText: { fontFamily: F.medium, fontSize: 14 },
-  tabCount: { fontFamily: F.mono, fontSize: 11, color: C.dim },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 76, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.line },
-  mono: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
-  monoText: { fontFamily: F.semibold, fontSize: 12 },
-  rowTitle: { fontFamily: F.medium, fontSize: 15.5, lineHeight: 20 },
-  rowSub: { fontSize: 13, lineHeight: 17, color: C.dim },
-  rowAmount: { fontFamily: F.medium, fontSize: 15.5, fontVariant: ['tabular-nums'] },
-  rowDays: { fontFamily: F.mono, fontSize: 11 },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: C.footer },
+  lead: { marginTop: 30, fontSize: 15, color: C.muted },
+  centerCol: { alignItems: 'center', gap: 10 },
+  eyebrow: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.3, color: C.dim, textAlign: 'center' },
+  headline: { fontFamily: F.regular, fontSize: 36, letterSpacing: -1.4, lineHeight: 40, textAlign: 'center' },
+  centerSub: { fontSize: 14, lineHeight: 20, color: C.muted, textAlign: 'center' },
+  ccy: { fontFamily: F.medium, fontSize: 15, color: C.dim },
+  big: { fontFamily: F.regular, fontSize: 46, letterSpacing: -2, lineHeight: 50, fontVariant: ['tabular-nums'], maxWidth: 170 },
+  dialFoot: { marginTop: 4, textAlign: 'center', fontFamily: F.mono, fontSize: 10.5, letterSpacing: 0.8, color: C.dim },
+  nudge: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 4 },
+  nudgeDot: { width: 6, height: 6, backgroundColor: C.accent },
+  primary: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: C.fg, paddingHorizontal: 18 },
+  primaryText: { fontFamily: F.semibold, fontSize: 15, letterSpacing: -0.15, color: C.bg, flexShrink: 1 },
+  textLink: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  strip: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 18 },
+  stripAmount: { fontFamily: F.medium, fontSize: 22, lineHeight: 28, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
+  stripCcy: { fontFamily: F.medium, fontSize: 13, color: C.dim },
+  outline: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, borderWidth: 1, borderColor: C.border },
 }));
