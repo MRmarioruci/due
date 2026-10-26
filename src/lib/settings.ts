@@ -38,6 +38,8 @@ export type Settings = {
   weeklyDigest: boolean;
   /** Id of the scheduled weekly summary, so it can be replaced. */
   digestId: string | null;
+  /** Net income per month (salary first, then any other), for "Where it goes". Empty until set. */
+  income: { label: string | null; monthlyMinor: number }[];
   /** Duplicates and double payments due stopped, for "money kept" in Stats. */
   kept: KeptEvent[];
   /** When to review each biller's contract (payeeKey → contract). */
@@ -46,7 +48,7 @@ export type Settings = {
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {}, kept: [] };
+const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {}, kept: [], income: [] };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
@@ -84,6 +86,9 @@ const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
 };
+
+/** Net income per month, all sources together; 0 when not set. */
+export const monthlyIncome = (s: Settings = snapshot) => s.income.reduce((sum, i) => sum + i.monthlyMinor, 0);
 
 /** Notes money due stopped from being paid (see Stats → kept). */
 export function recordKept(e: Omit<KeptEvent, 'at'>) {

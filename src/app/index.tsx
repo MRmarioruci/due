@@ -191,13 +191,13 @@ export default function Home() {
         ) : (
           <Animated.View entering={enterRow(1)} style={{ gap: 18, marginTop: 14 }}>
             <View style={st.strip}>
-              <View style={{ gap: 6 }}>
+              <Pressable accessibilityRole="button" accessibilityHint={t('flow.title')} onPress={() => router.push('/flow')} style={{ gap: 6 }}>
                 <Eyebrow>{t('home.nextDays', { n: DIAL_DAYS })}</Eyebrow>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
                   <T style={st.stripCcy}>{ccy}</T>
                   <T style={st.stripAmount}>{formatAmount(total30, ccy)}</T>
                 </View>
-              </View>
+              </Pressable>
               <View style={{ gap: 6, alignItems: 'flex-end' }}>
                 {plan ? (
                   <>

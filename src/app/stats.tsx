@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -139,6 +140,17 @@ export default function StatsScreen() {
             ))}
         </View>
       )}
+
+      <Pressable accessibilityRole="button" onPress={() => router.push('/flow')} style={({ pressed }) => [st.exportRow, { marginTop: 22, borderTopWidth: 1, borderTopColor: C.line }, pressed && { backgroundColor: C.surface }]}>
+        <Icon name="stats" size={16} />
+        <View style={{ flex: 1, gap: 3 }}>
+          <T style={{ fontSize: 15 }}>{t('flow.entry')}</T>
+          <T style={{ fontSize: 12.5, color: C.dim }}>{t('flow.entryDetail')}</T>
+        </View>
+        <View style={{ transform: [{ rotate: '180deg' }] }}>
+          <Icon name="back" size={14} color={C.dim} />
+        </View>
+      </Pressable>
 
       {series.length > 0 && (
         <View style={{ marginTop: 28 }}>

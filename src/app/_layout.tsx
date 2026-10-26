@@ -107,6 +107,7 @@ export default function RootLayout() {
             <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="shared" options={{ animation: 'fade' }} />
             <Stack.Screen name="import" options={{ animation: 'fade' }} />
+            <Stack.Screen name="income" options={{ presentation: 'transparentModal', animation: 'none', contentStyle: { backgroundColor: 'transparent' } }} />
           </Stack>
         </View>
         <OverlayHost />
