@@ -559,4 +559,6 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.remove': "Dit potje verwijderen",
   'flow.stripTitle': "WAAR HET HEEN GAAT",
   'flow.stripInvite': "Voeg je inkomen toe om te zien waar het heen gaat",
+  'nav.home': "Home",
+  'nav.bills': "Rekeningen",
 };

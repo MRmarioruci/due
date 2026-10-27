@@ -559,4 +559,6 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.remove': "Αφαίρεση κονδυλίου",
   'flow.stripTitle': "ΠΟΥ ΠΑΝΕ ΤΑ ΧΡΗΜΑΤΑ",
   'flow.stripInvite': "Πρόσθεσε το εισόδημά σου για να δεις πού πάει",
+  'nav.home': "Αρχική",
+  'nav.bills': "Λογαριασμοί",
 };

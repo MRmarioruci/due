@@ -20,9 +20,9 @@ import { useBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 import { Dial, SWEEP_END, type DialPoint } from '@/ui/dial';
 import { MoneyStrip } from '@/ui/money-strip';
-import { Icon, IconButton, T } from '@/ui/kit';
+import { Icon, T } from '@/ui/kit';
 import { Animated, enterFade, enterRow, useCountUp } from '@/ui/motion';
-import { ScanButton } from '@/ui/scan-button';
+import { NAV_SPACE } from '@/ui/nav-bar';
 import { C, F, GUTTER, themed } from '@/ui/theme';
 
 const payOf = (b: Bill, today: string) => activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0;
@@ -86,23 +86,13 @@ export default function Home() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + 28 }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + NAV_SPACE }}>
         <View style={st.header}>
           <View style={st.logo} accessibilityRole="header">
             <T style={st.logoText}>due</T>
             <View style={st.logoDot} />
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-            <IconButton label={t('common.stats')} onPress={() => router.push('/stats')} style={{ borderWidth: 0 }}>
-              <Icon name="stats" color={C.muted} />
-            </IconButton>
-            <IconButton label={t('common.settings')} onPress={() => router.push('/settings')} style={{ borderWidth: 0 }}>
-              <Icon name="settings" color={C.muted} />
-            </IconButton>
-            <View style={{ marginLeft: 6 }}>
-              <ScanButton />
-            </View>
-          </View>
+          <T style={st.date}>{fromIso(today).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '').toUpperCase()}</T>
         </View>
 
         <Animated.View entering={enterFade(0)}>
@@ -247,6 +237,7 @@ const st = themed(() => StyleSheet.create({
   logo: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
   logoText: { fontFamily: F.semibold, fontSize: 26, letterSpacing: -0.8, lineHeight: 28 },
   logoDot: { width: 7, height: 7, backgroundColor: C.accent, marginBottom: 6 },
+  date: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1, color: C.dim },
   lead: { marginTop: 30, fontSize: 15, color: C.muted },
   centerCol: { alignItems: 'center', gap: 10 },
   eyebrow: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.3, color: C.dim, textAlign: 'center' },

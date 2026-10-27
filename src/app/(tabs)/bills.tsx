@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { daysBetween, fromIso, relativeDays, shortDay, todayIso } from '@/lib/dates';
 import { activeDiscount } from '@/lib/discount';
 import { formatAmount } from '@/lib/money';
-import { goBack } from '@/lib/nav';
 import { planAroundPayday } from '@/lib/plan';
 import { dueForReview } from '@/lib/contracts';
 import { expectedBills, findSeries, type Series } from '@/lib/recurring';
@@ -19,7 +18,7 @@ import { sheet } from '@/ui/overlay';
 import { useBills } from '@/lib/store';
 import { CATEGORIES, type Bill, type Category } from '@/lib/types';
 import { Amount, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
-import { ScanButton } from '@/ui/scan-button';
+import { NAV_SPACE } from '@/ui/nav-bar';
 import { Animated, enterFade, enterRow, GrowBar, moveRow, useCountUp } from '@/ui/motion';
 import { C, F, GUTTER, themed } from '@/ui/theme';
 
@@ -135,17 +134,12 @@ export default function Bills() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + NAV_SPACE }}>
         <View style={st.header}>
-          <IconButton label={t('common.back')} onPress={() => goBack()} style={{ marginLeft: -12, borderWidth: 0 }}>
-            <Icon name="back" />
+          <T style={st.title} accessibilityRole="header">{t('nav.bills')}</T>
+          <IconButton label={t('search.title')} onPress={() => setSearching(true)} style={{ borderWidth: 0, marginRight: -12 }}>
+            <Icon name="search" color={C.muted} />
           </IconButton>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <IconButton label={t('search.title')} onPress={() => setSearching(true)} style={{ borderWidth: 0 }}>
-              <Icon name="search" color={C.muted} />
-            </IconButton>
-            <ScanButton />
-          </View>
         </View>
 
         {searching && (
@@ -432,6 +426,7 @@ function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today:
 }
 
 const st = themed(() => StyleSheet.create({
+  title: { fontFamily: F.semibold, fontSize: 24, letterSpacing: -0.7 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 48 },
   sub: { marginTop: 10, fontSize: 14, color: C.muted },
   runway: { marginTop: 26, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, paddingTop: 16, paddingBottom: 10 },

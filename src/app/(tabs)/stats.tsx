@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { todayIso } from '@/lib/dates';
 import { formatAmount } from '@/lib/money';
-import { goBack } from '@/lib/nav';
 import { findSeries, monthlyFixedCosts, payeeKey } from '@/lib/recurring';
 import { priceChange } from '@/lib/price-change';
 import { exportYear } from '@/lib/tax-export-file';
@@ -19,8 +18,9 @@ import { homeCurrency, useSettings } from '@/lib/settings';
 import { moneyKept } from '@/lib/kept';
 import { computeStats, type Period } from '@/lib/stats';
 import { useBills } from '@/lib/store';
-import { Amount, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
+import { Amount, Eyebrow, Icon, T } from '@/ui/kit';
 import { Animated, enterRow, GrowBar, useCountUp } from '@/ui/motion';
+import { NAV_SPACE } from '@/ui/nav-bar';
 import { C, F, GUTTER, themed } from '@/ui/theme';
 
 const CHART_H = 150;
@@ -58,13 +58,9 @@ export default function StatsScreen() {
         : t('stats.nothingPaid', { period: p.prev() });
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + 40 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + NAV_SPACE }}>
       <View style={st.header}>
-        <IconButton label={t('common.backToBills')} onPress={() => goBack()}>
-          <Icon name="back" />
-        </IconButton>
-        <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{t('common.stats')}</T>
-        <View style={{ width: 44 }} />
+        <T style={{ fontFamily: F.semibold, fontSize: 24, letterSpacing: -0.7 }} accessibilityRole="header">{t('common.stats')}</T>
       </View>
 
       <View style={{ marginTop: 14 }}>

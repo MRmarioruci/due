@@ -559,4 +559,6 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.remove': "Diesen Posten entfernen",
   'flow.stripTitle': "WOHIN ES GEHT",
   'flow.stripInvite': "Gib dein Einkommen ein und sieh, wohin es geht",
+  'nav.home': "Start",
+  'nav.bills': "Rechnungen",
 };

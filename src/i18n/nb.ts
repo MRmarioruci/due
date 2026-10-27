@@ -559,4 +559,6 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.remove': "Fjern denne posten",
   'flow.stripTitle': "HVOR PENGENE GÅR",
   'flow.stripInvite': "Legg inn inntekten din og se hvor den går",
+  'nav.home': "Hjem",
+  'nav.bills': "Regninger",
 };

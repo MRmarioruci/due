@@ -579,6 +579,8 @@ export const en = {
   'split.remove': "Remove this split",
   'flow.stripTitle': "WHERE IT GOES",
   'flow.stripInvite': "Add your income to see where it goes",
+  'nav.home': "Home",
+  'nav.bills': "Bills",
 } as const;
 
 type Full = keyof typeof en;

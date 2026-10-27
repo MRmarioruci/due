@@ -559,4 +559,6 @@ export const pt: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.remove': "Remover esta rubrica",
   'flow.stripTitle': "PARA ONDE VAI",
   'flow.stripInvite': "Adicione o rendimento para ver para onde vai",
+  'nav.home': "Início",
+  'nav.bills': "Faturas",
 };

@@ -605,4 +605,6 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'split.remove': "Usuń tę kopertę",
   'flow.stripTitle': "NA CO IDĄ PIENIĄDZE",
   'flow.stripInvite': "Dodaj dochód, żeby zobaczyć, na co idzie",
+  'nav.home': "Start",
+  'nav.bills': "Rachunki",
 };
