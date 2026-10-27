@@ -36,10 +36,10 @@ const SINGLE: Single[] = [
 
 const INCOME = 800000;
 const SPLITS = [
-  { id: 'seed-savings', name: 'Savings', monthlyMinor: 100000 },
-  { id: 'seed-3a', name: 'Pillar 3a', monthlyMinor: 60000 },
-  { id: 'seed-investing', name: 'Investing', monthlyMinor: 50000 },
-  { id: 'seed-groceries', name: 'Groceries', monthlyMinor: 90000 },
+  { id: 'seed-savings', name: 'Savings', monthlyMinor: 100000, kind: 'save' as const },
+  { id: 'seed-3a', name: 'Pillar 3a', monthlyMinor: 60000, kind: 'save' as const },
+  { id: 'seed-investing', name: 'Investing', monthlyMinor: 50000, kind: 'save' as const },
+  { id: 'seed-groceries', name: 'Groceries', monthlyMinor: 90000, kind: 'spend' as const },
 ];
 
 /** Months of history before this one, and how far ahead upcoming bills go. */

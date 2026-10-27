@@ -661,6 +661,19 @@ export const en = {
   'billy.feed.nom': "Nom nom. {payee}.",
   'billy.feed.paid': "Paid. Delicious.",
   'billy.feed.aw': "Aw. I was hungry.",
+  'flow.spending': "Spending",
+  'flow.saving': "Saving",
+  'flow.summarySpent': "Spent",
+  'flow.summarySaved': "Saved",
+  'flow.cardSpent': "Spent {pct}",
+  'flow.cardSaved': "Saved {pct}",
+  'split.kindSpend': "Spending",
+  'split.kindSave': "Saving",
+  'split.spendNote': "Money that goes out, like your bills. It counts as spending.",
+  'split.saveNote': "Money you keep. It counts as saving, not spending.",
+  'split.textKinds': "Something that isn't a bill but goes out or gets put aside every month.",
+  'flow.splitsTextKinds': "What goes out or gets put aside each month that isn't a bill, like groceries or savings. Spending joins your bills; saving stays yours.",
+  'flow.leftTextKinds': "What's neither spent nor saved: free to use.",
 } as const;
 
 type Full = keyof typeof en;

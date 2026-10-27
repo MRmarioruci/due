@@ -42,12 +42,11 @@ export default function FlowShare() {
     }
   }
 
-  const free = m.flow.leftMinor - m.splitTotal;
   const facts = [
     amounts && t('flow.cardIncome', { amount: `${m.ccy} ${m.short(m.total)}` }),
-    t('flow.cardBills', { pct: m.pct(m.flow.billsMinor) }),
-    m.splitTotal > 0 && t('flow.cardSplits', { pct: m.pct(m.splitTotal) }),
-    free > 0 && t('flow.cardLeft', { pct: m.pct(free) }),
+    t('flow.cardSpent', { pct: m.pct(m.spent) }),
+    m.saved > 0 && t('flow.cardSaved', { pct: m.pct(m.saved) }),
+    m.free > 0 && t('flow.cardLeft', { pct: m.pct(m.free) }),
   ].filter(Boolean);
 
   return (

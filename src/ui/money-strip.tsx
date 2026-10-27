@@ -9,21 +9,21 @@ import { GrowBar } from './motion';
 import { C, F, currentTheme, themed } from './theme';
 
 /**
- * "Where it goes" in one line: this month's income as a bar split into bills, what's set aside and
- * what's left, growing in from the left. Tapping it opens the full chart. Before an income is set it
+ * "Where it goes" in one line: this month's income as a bar split into what's spent, saved and
+ * left, growing in from the left. Tapping it opens the full chart. Before an income is set it
  * shows a grey bar inviting to.
  */
 export function MoneyStrip({ delay = 0 }: { delay?: number }) {
   const m = useMoneyFlow();
   const theme = currentTheme();
-  const free = Math.max(0, m.flow.leftMinor - m.splitTotal);
-  const total = Math.max(1, m.flow.billsMinor + m.splitTotal + free);
+  const free = Math.max(0, m.free);
+  const total = Math.max(1, m.spent + m.saved + free);
   const parts =
     m.income > 0
       ? [
-          { key: 'bills', frac: m.flow.billsMinor / total, color: C.accent, text: `${t('flow.summaryBills')} ${m.pct(m.flow.billsMinor)}` },
-          { key: 'splits', frac: m.splitTotal / total, color: SPLIT[theme], text: `${t('flow.summarySplits')} ${m.pct(m.splitTotal)}` },
-          { key: 'left', frac: free / total, color: LEFT[theme], text: `${t('flow.left')} ${m.pct(free)}` },
+          { key: 'spent', frac: m.spent / total, color: C.accent, text: `${t('flow.summarySpent')} ${m.pct(m.spent)}` },
+          { key: 'saved', frac: m.saved / total, color: SPLIT[theme], text: `${t('flow.summarySaved')} ${m.pct(m.saved)}` },
+          { key: 'left', frac: free / total, color: LEFT[theme], text: `${t('flow.leftShort')} ${m.pct(free)}` },
         ].filter((p) => p.frac > 0)
       : [
           { key: 'a', frac: 0.5, color: C.border, text: '' },

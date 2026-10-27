@@ -9,6 +9,7 @@ import { formatAmount } from '@/lib/money';
 import { goBack } from '@/lib/nav';
 import { toMinor } from '@/lib/payment-codes';
 import { getSettings, homeCurrency, updateSettings } from '@/lib/settings';
+import { splitKind, type SplitKind } from '@/lib/sankey-model';
 import { newId } from '@/lib/store';
 import { T } from '@/ui/kit';
 import { Animated, enterFade } from '@/ui/motion';
@@ -23,12 +24,15 @@ export default function SplitEditor() {
   const existing = getSettings().splits.find((s) => s.id === params.id);
   const [name, setName] = useState(existing?.name ?? params.name ?? '');
   const [amount, setAmount] = useState(existing ? formatAmount(existing.monthlyMinor, homeCurrency()) : '');
+  // Spending or saving: guessed from the name until the user picks.
+  const [picked, setPicked] = useState<SplitKind | null>(existing?.kind ?? null);
+  const kind = picked ?? splitKind({ name });
   const minor = parse(amount) ?? 0;
   const valid = name.trim().length > 0 && minor > 0;
 
   function save() {
     const splits = getSettings().splits;
-    const next = { id: existing?.id ?? newId(), name: name.trim(), monthlyMinor: minor };
+    const next = { id: existing?.id ?? newId(), name: name.trim(), monthlyMinor: minor, kind };
     updateSettings({ splits: existing ? splits.map((s) => (s.id === existing.id ? next : s)) : [...splits, next] });
     goBack();
   }
@@ -46,7 +50,7 @@ export default function SplitEditor() {
       <View style={{ flex: 1 }} pointerEvents="box-none" />
       <Animated.View entering={SlideInDown.duration(320)} style={[st.panel, { paddingBottom: insets.bottom + 24 }]} accessibilityViewIsModal>
         <T style={st.title}>{existing ? t('split.editTitle') : t('split.addTitle')}</T>
-        <T style={st.text}>{t('split.text')}</T>
+        <T style={st.text}>{t('split.textKinds')}</T>
 
         <T style={[st.eyebrow, { marginTop: 22 }]}>{t('split.name')}</T>
         <TextInput
@@ -59,6 +63,18 @@ export default function SplitEditor() {
           maxLength={40}
           accessibilityLabel={t('split.name')}
         />
+
+        <View style={st.segment} accessibilityRole="radiogroup">
+          {(['spend', 'save'] as const).map((k) => {
+            const on = k === kind;
+            return (
+              <Pressable key={k} accessibilityRole="radio" accessibilityState={{ checked: on }} onPress={() => setPicked(k)} style={[st.segItem, on && { backgroundColor: C.fg }]}>
+                <T style={{ fontFamily: F.medium, fontSize: 13.5, color: on ? C.bg : C.dim }}>{k === 'spend' ? t('split.kindSpend') : t('split.kindSave')}</T>
+              </Pressable>
+            );
+          })}
+        </View>
+        <T style={st.note}>{kind === 'spend' ? t('split.spendNote') : t('split.saveNote')}</T>
 
         <T style={[st.eyebrow, { marginTop: 18 }]}>{t('split.amount')}</T>
         <View style={st.field}>
@@ -96,6 +112,9 @@ const st = themed(() => StyleSheet.create({
   panel: { backgroundColor: C.sheet, borderTopWidth: 1, borderTopColor: C.border, paddingHorizontal: GUTTER, paddingTop: 26 },
   title: { fontFamily: F.medium, fontSize: 22, letterSpacing: -0.4 },
   text: { marginTop: 8, fontSize: 14, lineHeight: 20, color: C.muted },
+  segment: { marginTop: 18, flexDirection: 'row', borderWidth: 1, borderColor: C.line, padding: 4 },
+  segItem: { flex: 1, height: 36, alignItems: 'center', justifyContent: 'center' },
+  note: { marginTop: 8, fontSize: 12.5, lineHeight: 18, color: C.dim },
   eyebrow: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1, color: C.dim },
   nameInput: { marginTop: 8, color: C.fg, fontFamily: F.regular, fontSize: 20, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.border },
   field: { marginTop: 10, flexDirection: 'row', alignItems: 'baseline', gap: 10, borderBottomWidth: 1, borderBottomColor: C.fg, paddingBottom: 8 },

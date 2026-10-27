@@ -10,8 +10,9 @@ import type { Category } from '@/lib/types';
 import type { NodeStyle } from './sankey';
 import { C, currentTheme } from './theme';
 
-/** Splits (savings, investing…) and what's left get their own colours, apart from bills' accent. */
+/** Saving and what's left get their own colours; spending is the accent, the user's own spending a lighter one. */
 export const SPLIT = { dark: '#3FD4F0', light: '#0E7490' };
+export const SPEND = { dark: '#FF9F87', light: '#E07856' };
 export const LEFT = { dark: '#C8F25A', light: '#4D7C0F' };
 
 export type { FlowPeriod };
@@ -56,8 +57,10 @@ export function useMoneyFlow(asked?: FlowPeriod) {
         return n.ref || (n.id === 'source:0' ? t('flow.salary') : t('flow.otherIncome'));
       case 'shortfall':
         return t('flow.shortfall');
-      case 'bills':
-        return t('flow.bills');
+      case 'spending':
+        return t('flow.spending');
+      case 'saving':
+        return t('flow.saving');
       case 'split':
         return n.ref ?? '';
       case 'left':
@@ -67,8 +70,13 @@ export function useMoneyFlow(asked?: FlowPeriod) {
         return n.ref === 'other' ? t('flow.other') : categoryLabel(n.ref as Category);
     }
   };
-  const colorOf = (n: SankeyNode) =>
-    n.kind === 'income' || n.kind === 'source' ? C.fg : n.kind === 'split' ? SPLIT[theme] : n.kind === 'left' ? LEFT[theme] : n.kind === 'category' ? C.barMuted : C.accent;
+  const colorOf = (n: SankeyNode) => {
+    if (n.kind === 'income' || n.kind === 'source') return C.fg;
+    if (n.kind === 'saving' || (n.kind === 'split' && n.group === 'save')) return SPLIT[theme];
+    if (n.kind === 'split') return SPEND[theme];
+    if (n.kind === 'left') return LEFT[theme];
+    return n.kind === 'category' ? C.barMuted : C.accent;
+  };
   const styleOf =
     (amounts: boolean) =>
     (n: SankeyNode): NodeStyle => ({
@@ -78,7 +86,11 @@ export function useMoneyFlow(asked?: FlowPeriod) {
       strong: n.kind === 'income' || n.kind === 'left',
     });
 
-  const splitTotal = model.nodes.filter((n) => n.kind === 'split').reduce((s, n) => s + n.minor, 0);
+  const sumOf = (kind: SankeyNode['kind']) => model.nodes.find((n) => n.kind === kind)?.minor ?? 0;
+  // Spent: bills and spending splits; saved: saving splits; free: what neither takes (below zero when over).
+  const spent = sumOf('spending');
+  const saved = sumOf('saving');
+  const free = flow.incomeMinor - spent - saved;
   const label = periodLabel(period, today);
-  return { flow, model, total, income, ccy, pct, short, nameOf, styleOf, splitTotal, label, splits: settings.splits, months, range };
+  return { flow, model, total, income, ccy, pct, short, nameOf, styleOf, spent, saved, free, label, splits: settings.splits, months, range };
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Flow } from './flow';
-import { buildSankey } from './sankey-model';
+import { buildSankey, splitKind } from './sankey-model';
 
 const flow: Flow = {
   incomeMinor: 620000,
@@ -16,16 +16,19 @@ const flow: Flow = {
 const sum = (xs: { minor: number }[]) => xs.reduce((s, x) => s + x.minor, 0);
 
 describe('sankey model', () => {
-  it('starts at income, splits into bills, own splits and what’s left, then bills by category', () => {
-    const m = buildSankey(flow, [{ label: null, minor: 620000 }], [{ id: 's', name: 'Savings', monthlyMinor: 80000 }], 1);
+  it('splits income into spending (bills by category, plus spending splits), saving and what’s left', () => {
+    const splits = [{ id: 's', name: 'Savings', monthlyMinor: 80000 }, { id: 'g', name: 'Groceries', monthlyMinor: 60000 }];
+    const m = buildSankey(flow, [{ label: null, minor: 620000 }], splits, 1);
     expect(m.columns).toBe(3);
     expect(m.nodes.map((n) => [n.id, n.col, n.minor])).toEqual([
       ['income', 0, 620000],
-      ['bills', 1, 330000],
+      ['spending', 1, 390000],
       ['cat:housing', 2, 185000],
       ['cat:other', 2, 145000],
-      ['split:s', 1, 80000],
-      ['left', 1, 210000],
+      ['split:g', 2, 60000],
+      ['saving', 1, 80000],
+      ['split:s', 2, 80000],
+      ['left', 1, 150000],
     ]);
     // Every node passes on exactly what it takes in.
     for (const n of m.nodes) {
@@ -33,6 +36,12 @@ describe('sankey model', () => {
       const outOf = sum(m.links.filter((l) => l.from === n.id));
       if (into && outOf) expect(outOf).toBe(into);
     }
+  });
+
+  it('tells saving from spending by name unless the user chose', () => {
+    expect(['Savings', 'Investing', 'Pillar 3a', 'Säule 3a', 'Notgroschen', 'Αποταμίευση', 'ETF'].map((name) => splitKind({ name }))).toEqual(Array(7).fill('save'));
+    expect(['Groceries', 'Lebensmittel', 'Entertainment', 'Fun'].map((name) => splitKind({ name }))).toEqual(Array(4).fill('spend'));
+    expect(splitKind({ name: 'Savings', kind: 'spend' })).toBe('spend');
   });
 
   it('shows several sources feeding income', () => {

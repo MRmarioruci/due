@@ -10,12 +10,12 @@ import { todayIso } from '@/lib/dates';
 import { formatAmount } from '@/lib/money';
 import { goBack } from '@/lib/nav';
 import { latestBillOf } from '@/lib/reminders';
-import type { SankeyNode } from '@/lib/sankey-model';
+import { splitKind, type SankeyNode } from '@/lib/sankey-model';
 import { Eyebrow, Icon, IconButton, T } from '@/ui/kit';
-import { periodParam, useMoneyFlow, type FlowPeriod } from '@/ui/money-flow';
+import { periodParam, SPEND, SPLIT, useMoneyFlow, type FlowPeriod } from '@/ui/money-flow';
 import { Animated, enterFade, enterRow } from '@/ui/motion';
 import { Sankey } from '@/ui/sankey';
-import { C, F, GUTTER, themed } from '@/ui/theme';
+import { C, currentTheme, F, GUTTER, themed } from '@/ui/theme';
 
 const CHART_H = 380;
 const LABEL_W = 92;
@@ -32,7 +32,7 @@ export default function FlowScreen() {
   const m = useMoneyFlow(period);
   const chartW = width - GUTTER * 2;
   const selected = m.model.nodes.find((n) => n.id === sel) ?? null;
-  const free = m.flow.leftMinor - m.splitTotal;
+  const free = m.free;
 
   // Stepping through months or years, within the ones there are bills for.
   const { first, last } = m.range;
@@ -114,11 +114,11 @@ export default function FlowScreen() {
                 </IconButton>
               </View>
               <T style={{ marginTop: 10, fontSize: 15, lineHeight: 22, color: C.muted }}>
-                {t('flow.summaryBills')} <T style={st.hl}>{m.pct(m.flow.billsMinor)}</T>
-                {m.splitTotal > 0 && (
+                {t('flow.summarySpent')} <T style={st.hl}>{m.pct(m.spent)}</T>
+                {m.saved > 0 && (
                   <>
                     {' · '}
-                    {t('flow.summarySplits')} <T style={st.hl}>{m.pct(m.splitTotal)}</T>
+                    {t('flow.summarySaved')} <T style={st.hl}>{m.pct(m.saved)}</T>
                   </>
                 )}
                 {' · '}
@@ -137,16 +137,16 @@ export default function FlowScreen() {
             </View>
             <T style={st.hint}>{t('flow.hint')}</T>
 
-            {selected && (selected.kind === 'category' || selected.kind === 'bills' || selected.kind === 'left') && (
+            {selected && (selected.kind === 'category' || selected.kind === 'spending' || selected.kind === 'left') && (
               <View style={st.section}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <T style={[st.eyebrow, { color: C.accent }]}>{m.nameOf(selected).toUpperCase()}</T>
                   <T style={{ fontSize: 13, color: C.muted }}>{`${m.ccy} ${formatAmount(selected.minor, m.ccy)}`}</T>
                 </View>
                 {selected.kind === 'left' ? (
-                  <T style={{ marginTop: 10, fontSize: 13.5, lineHeight: 20, color: C.muted }}>{t('flow.leftText')}</T>
+                  <T style={{ marginTop: 10, fontSize: 13.5, lineHeight: 20, color: C.muted }}>{t('flow.leftTextKinds')}</T>
                 ) : (
-                  (selected.kind === 'bills' ? m.flow.groups.flatMap((g) => g.rows) : (m.flow.groups.find((g) => `cat:${g.key}` === selected.id)?.rows ?? []))
+                  (selected.kind === 'spending' ? m.flow.groups.flatMap((g) => g.rows) : (m.flow.groups.find((g) => `cat:${g.key}` === selected.id)?.rows ?? []))
                     .slice()
                     .sort((a, b) => b.minor - a.minor)
                     .map((r, i) => (
@@ -172,11 +172,15 @@ export default function FlowScreen() {
 
             <View style={st.section}>
               <T style={st.eyebrow}>{t('flow.splitsTitle')}</T>
-              <T style={{ marginTop: 6, fontSize: 13, lineHeight: 19, color: C.dim }}>{t('flow.splitsText')}</T>
+              <T style={{ marginTop: 6, fontSize: 13, lineHeight: 19, color: C.dim }}>{t('flow.splitsTextKinds')}</T>
               {m.splits.map((s, i) => (
                 <Animated.View key={s.id} entering={enterRow(i)}>
                   <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/split', params: { id: s.id } })} style={st.row}>
-                    <T style={{ flex: 1, fontSize: 14 }} numberOfLines={1}>{s.name}</T>
+                    <View style={[st.kindDot, { backgroundColor: splitKind(s) === 'save' ? SPLIT[currentTheme()] : SPEND[currentTheme()] }]} />
+                    <T style={{ flex: 1, fontSize: 14 }} numberOfLines={1}>
+                      {s.name}
+                      <T style={{ fontSize: 12.5, color: C.dim }}>{` · ${splitKind(s) === 'save' ? t('split.kindSave') : t('split.kindSpend')}`}</T>
+                    </T>
                     <T style={{ fontSize: 14, fontVariant: ['tabular-nums'] }}>{formatAmount(s.monthlyMinor, m.ccy)}</T>
                     <T style={{ fontSize: 12, color: C.dim }}>{t('flow.perMonthShort')}</T>
                   </Pressable>
@@ -213,6 +217,7 @@ export default function FlowScreen() {
 const st = themed(() => StyleSheet.create({
   stepper: { flexDirection: 'row', alignItems: 'center', marginHorizontal: -12 },
   stepBtn: { borderWidth: 0 },
+  kindDot: { width: 8, height: 8 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
   segment: { marginTop: 10, flexDirection: 'row', borderWidth: 1, borderColor: C.line, padding: 3 },
   segItem: { flex: 1, height: 38, alignItems: 'center', justifyContent: 'center' },
