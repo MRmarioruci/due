@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { currentLang, locale, t } from '@/i18n/core';
 import { categoryLabel } from '@/i18n/labels';
 import { dueForReview } from '@/lib/contracts';
-import { fromIso, shortDay, todayIso } from '@/lib/dates';
+import { addDaysIso, daysBetween, fromIso, shortDay, todayIso } from '@/lib/dates';
 import { billyMood, freshBill } from '@/lib/billy';
 import { activeDiscount } from '@/lib/discount';
 import { DIAL_DAYS, dialPoints, homeState } from '@/lib/home';
@@ -71,8 +71,11 @@ export default function Home() {
   const [play, setPlay] = useState(0);
   const visible = unlocked && focused;
   const [wasVisible, setWasVisible] = useState(false);
+  // Dragging the dial's marker shows the bill on that day in the middle, until it goes back to today.
+  const [scrub, setScrub] = useState<number | null>(null);
   if (visible !== wasVisible) {
     setWasVisible(visible);
+    setScrub(null);
     if (visible) setPlay((p) => p + 1);
   }
   useEffect(() => {
@@ -84,12 +87,17 @@ export default function Home() {
 
   if (!settings.onboarded) return <Redirect href="/onboarding" />;
 
+  const onDay = scrub == null ? [] : points.filter((p) => p.day === scrub).map((p) => p.bill);
+  const picked = onDay[0] ?? null;
+  const opened = picked ?? focus;
+
   const fresh = freshBill(bills);
   const billy = settings.billy ? (
     <Billy
       mood={billyMood(state.kind, state.kind === 'focus' ? state.daysLeft : 0)}
       target={state.kind === 'focus' ? { dialDeg: angle(Math.max(0, state.daysLeft), DIAL_DAYS), payee: state.focus.payee, daysLeft: state.daysLeft } : null}
       fed={fresh ? { id: fresh.id, payee: fresh.payee } : null}
+      peek={picked?.payee ?? null}
       active={visible}
     />
   ) : null;
@@ -121,8 +129,34 @@ export default function Home() {
             points={dots}
             todayColor={focus ? C.fg : C.accent}
             label={t('home.dialA11y', { n: points.length })}
-            overlay={billy}>
-            {state.kind === 'focus' ? (
+            scrubLabel={t('home.scrubA11y')}
+            onScrub={(day) => {
+              billyHold();
+              setScrub(day);
+            }}
+            onCentrePress={opened ? () => router.push({ pathname: '/bill/[id]', params: { id: opened.id } }) : undefined}>
+            {scrub != null ? (
+              <Animated.View key={`s-${scrub}`} entering={enterFade(0).duration(160)} style={st.centerCol}>
+                {picked ? (
+                  <>
+                    <T style={[st.eyebrow, { color: C.accent }]} adjustsFontSizeToFit numberOfLines={1}>{caps(dueLabel(picked, daysBetween(today, picked.dueDate!)))}</T>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                      <T style={st.ccy}>{picked.currency}</T>
+                      <T style={st.big} adjustsFontSizeToFit numberOfLines={1}>{formatAmount(payOf(picked, today), picked.currency)}</T>
+                    </View>
+                    <T style={{ fontSize: 15, textAlign: 'center' }} numberOfLines={1}>
+                      {picked.payee}
+                      {onDay.length > 1 && <T style={{ fontSize: 15, color: C.dim }}> +{onDay.length - 1}</T>}
+                    </T>
+                  </>
+                ) : (
+                  <>
+                    <T style={st.eyebrow}>{caps(fromIso(addDaysIso(today, scrub)).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, ''))}</T>
+                    <T style={st.headline} adjustsFontSizeToFit numberOfLines={1}>{t('home.nothingThatDay')}</T>
+                  </>
+                )}
+              </Animated.View>
+            ) : state.kind === 'focus' ? (
               <Animated.View key={`c-${play}`} entering={enterFade(250)} style={st.centerCol}>
                 <T style={[st.eyebrow, { color: C.accent }]} adjustsFontSizeToFit numberOfLines={1}>{caps(dueLabel(state.focus, state.daysLeft))}</T>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
@@ -155,6 +189,7 @@ export default function Home() {
             )}
           </Dial>
           <T style={st.dialFoot}>{t('home.dialFoot', { n: DIAL_DAYS })}</T>
+          {billy}
         </View>
 
         <View style={{ flex: 1.3, minHeight: 24 }} />

@@ -1,19 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { billyMood, freshBill, REACH, SEAT, standBeside, trackAngle } from './billy';
+import { billyMood, freshBill, ROAM, underBill } from './billy';
 import type { Bill } from './types';
 
 describe('billy', () => {
-  it('puts today on the left of his seat and the last day on the right', () => {
-    expect(trackAngle(-150)).toBe(210);
-    expect(trackAngle(150)).toBe(150);
-  });
-
-  it('stands a step short of a bill, never higher than he can climb', () => {
-    expect(standBeside(210)).toBe(199);
-    expect(standBeside(150)).toBe(161);
-    expect(standBeside(300)).toBe(SEAT + REACH);
-    expect(standBeside(60)).toBe(SEAT - REACH);
+  it('walks to right under a bill, as far as the strip goes', () => {
+    expect(underBill(0)).toBeCloseTo(0);
+    expect(underBill(-150)).toBeCloseTo(-59);
+    expect(underBill(90)).toBe(ROAM - 7 > 118 ? 118 : Math.min(118, ROAM));
+    expect(underBill(-90, 200)).toBe(-ROAM);
   });
 
   it('worries about overdue bills', () => {

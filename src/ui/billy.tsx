@@ -5,20 +5,18 @@ import Animated, { Easing, FadeIn, FadeOut, useAnimatedProps, useAnimatedStyle, 
 import Svg, { Circle, Ellipse, G, Path, Rect, Text as SvgText } from 'react-native-svg';
 
 import { t, type Key } from '@/i18n/core';
-import { REACH, SEAT, standBeside, trackAngle, type BillyMood } from '@/lib/billy';
+import { HOME_X, ROAM, underBill, type BillyMood } from '@/lib/billy';
 
-import { CX, SWEEP_END, TICK_R } from './dial';
+import { SWEEP_END } from './dial';
 import { C, F, themed } from './theme';
 
 /**
- * Billy, a small goat who eats bills. He sits in the gap at the bottom of the home dial, fidgets
- * every few seconds and, every so often, goes off along the inside of the ring: up to the next bill
- * to sniff it, for a dance, a spin or a stroll, or (with nothing due) back to sleep, talking in his
- * sleep. A bill saved a moment ago gets eaten first. Tap him and he hops. He holds still while the
- * screen is out of view, being scrolled, or when the phone asks for reduced motion.
+ * Billy, a small goat who eats bills. He lives on a strip under the home dial, fidgets every few
+ * seconds and, every so often, walks off along it: under the next bill to sniff it, for a dance, a
+ * spin or zoomies, or (with nothing due) back to sleep, talking in his sleep. A bill saved a moment
+ * ago gets eaten first. He looks up when you drag the dial onto a bill. Tap him and he hops. He holds
+ * still while the screen is out of view, being scrolled, or when the phone asks for reduced motion.
  */
-const R = TICK_R - 10;
-const DIAL_W = CX * 2;
 const W = 64;
 const H = Math.round(W * 0.9);
 const FUR = '#F3F1EC';
@@ -188,15 +186,22 @@ function Bubble({ line }: { line: string | null }) {
   );
 }
 
-export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: BillyTarget | null; fed: { id: string; payee: string } | null; active: boolean }) {
+/** Height of Billy's strip under the dial. */
+export const BILLY_STRIP = H + 14;
+
+type Side = 'left' | 'right';
+
+export function Billy({ mood, target, fed, peek, active }: { mood: BillyMood; target: BillyTarget | null; fed: { id: string; payee: string } | null; peek: string | null; active: boolean }) {
   const reduced = useReducedMotion();
   const [face, setFace] = useState<Face>(baseFace(mood));
   const [line, setLine] = useState<string | null>(null);
+  const [side, setSide] = useState<Side>('right');
   const [appActive, setAppActive] = useState(AppState.currentState === 'active');
+  const [rowW, setRowW] = useState(340);
 
   const parts = useParts();
   const { look, lookUp, chew, zz, ear } = parts;
-  const theta = useSharedValue(SEAT);
+  const x = useSharedValue(HOME_X);
   const hop = useSharedValue(0);
   const step = useSharedValue(0);
   const lean = useSharedValue(0);
@@ -212,6 +217,9 @@ export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: 
 
   const moving = active && appActive && !reduced;
 
+  // Speech goes on whichever side of him has more room.
+  const sideFor = (at: number): Side => (at <= 0 ? 'right' : 'left');
+
   // The behaviour script: pop up after the dial's entrance, eat a fresh bill or greet, then a
   // fidget every few seconds and an outing every 10–20 s. Any change (mood, the next bill, leaving
   // the screen) restarts it.
@@ -222,7 +230,7 @@ export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: 
     const rest = baseFace(mood);
 
     if (!moving) {
-      theta.set(SEAT);
+      x.set(HOME_X);
       step.set(0);
       lean.set(0);
       look.set(0);
@@ -232,21 +240,21 @@ export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: 
     }
 
     const say = async (text: string, ms = 2600) => {
+      setSide(sideFor(x.get()));
       setLine(text);
       const ok = await wait(ms);
       setLine((l) => (l === text ? null : l));
       return ok;
     };
     const walkTo = async (to: number, speed = 1) => {
-      const from = theta.get();
-      if (Math.abs(to - from) < 0.5) return alive();
-      const ms = (Math.abs(to - from) * 40) / speed;
-      // Higher angles are towards today, on the left.
-      const dir = to > from ? -1 : 1;
+      const from = x.get();
+      if (Math.abs(to - from) < 1) return alive();
+      const ms = (Math.abs(to - from) * 7) / speed;
+      const dir = to > from ? 1 : -1;
       look.set(withTiming(dir, { duration: 200 }));
       lean.set(withTiming(dir * 6, { duration: 200 }));
       step.set(withRepeat(withTiming(1, { duration: 120 / speed }), -1, true));
-      theta.set(withTiming(to, { duration: ms, easing: Easing.inOut(Easing.quad) }));
+      x.set(withTiming(to, { duration: ms, easing: Easing.inOut(Easing.quad) }));
       const ok = await wait(ms);
       step.set(withTiming(0, { duration: 120 }));
       lean.set(withTiming(0, { duration: 200 }));
@@ -266,14 +274,14 @@ export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: 
       return wait(250);
     };
     const back = async () => {
-      if (!(await walkTo(SEAT))) return false;
+      if (!(await walkTo(HOME_X))) return false;
       look.set(withTiming(0, { duration: 250 }));
       lookUp.set(withTiming(0, { duration: 250 }));
       setFace(rest);
       return true;
     };
 
-    // Small things he does in his seat between outings.
+    // Small things he does on his spot between outings.
     const fidget = async () => {
       if (mood === 'calm') {
         flickEar(ear);
@@ -290,7 +298,7 @@ export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: 
         lean.set(withSequence(withTiming(-7, { duration: 160 }), withTiming(7, { duration: 220 }), withTiming(-4, { duration: 180 }), withTiming(0, { duration: 160 })));
         if (!(await wait(720))) return false;
       } else {
-        // Glances up at the headline in the middle.
+        // Glances up at the dial.
         lookUp.set(withTiming(1, { duration: 250 }));
         if (!(await wait(900))) return false;
         lookUp.set(withTiming(0, { duration: 250 }));
@@ -299,19 +307,18 @@ export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: 
     };
 
     const stroll = async () => {
-      const side = chance(0.5) ? 1 : -1;
-      if (!(await walkTo(SEAT + side * between(18, REACH - 5)))) return false;
+      if (!(await walkTo(between(-ROAM, ROAM)))) return false;
       if (!(await lookAround())) return false;
       if (!(await say(quip(mood)))) return false;
       return back();
     };
     const visit = async () => {
       if (!target) return stroll();
-      const dot = trackAngle(target.dialDeg);
       const late = target.daysLeft < 0;
-      if (!(await walkTo(standBeside(dot), late ? 1.6 : 1))) return false;
-      look.set(withTiming(dot > SEAT ? -1 : 1, { duration: 200 }));
+      if (!(await walkTo(underBill(target.dialDeg), late ? 1.6 : 1))) return false;
+      look.set(withTiming(0, { duration: 200 }));
       lookUp.set(withTiming(1, { duration: 300 }));
+      if (!(await jump(14))) return false;
       setFace('chew');
       chew.set(withRepeat(withTiming(1, { duration: 160 }), 8, true));
       if (!(await wait(1300))) return false;
@@ -341,9 +348,9 @@ export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: 
       return say(t('billy.q.whee'), 1800);
     };
     const trip = async () => {
-      const side = chance(0.5) ? 1 : -1;
-      if (!(await walkTo(SEAT + side * 20, 1.4))) return false;
-      lean.set(withSequence(withTiming(side * -28, { duration: 160 }), withTiming(side * -22, { duration: 400 }), withTiming(0, { duration: 260 })));
+      const dir = chance(0.5) ? 1 : -1;
+      if (!(await walkTo(HOME_X + 60 + dir * 30, 1.4))) return false;
+      lean.set(withSequence(withTiming(dir * 28, { duration: 160 }), withTiming(dir * 22, { duration: 400 }), withTiming(0, { duration: 260 })));
       setFace('worried');
       if (!(await wait(900))) return false;
       setFace('idle');
@@ -351,10 +358,9 @@ export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: 
       return back();
     };
     const zoom = async () => {
-      const side = chance(0.5) ? 1 : -1;
-      if (!(await walkTo(SEAT + side * REACH, 2.6))) return false;
+      if (!(await walkTo(ROAM, 2.6))) return false;
       if (!(await jump(10))) return false;
-      if (!(await walkTo(SEAT - side * 20, 2.6))) return false;
+      if (!(await walkTo(-ROAM, 2.6))) return false;
       if (!(await say(t('billy.q.zoom'), 1800))) return false;
       return back();
     };
@@ -423,8 +429,8 @@ export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: 
 
     return () => {
       cancelled = true;
-      // Back to his seat if he was out when things changed.
-      theta.set(withTiming(SEAT, { duration: 500 }));
+      // Back to his spot if he was out when things changed.
+      x.set(withTiming(HOME_X, { duration: 500 }));
       step.set(0);
       lean.set(withTiming(0));
       chew.set(0);
@@ -452,56 +458,79 @@ export function Billy({ mood, target, fed, active }: { mood: BillyMood; target: 
     if (lineTimer.current) clearTimeout(lineTimer.current);
   }, []);
 
+  /** Says something now, outside the script (a tap, the dial being dragged). */
+  const blurt = (text: string, ms = 2600, after?: () => void) => {
+    setSide(sideFor(x.get()));
+    setLine(text);
+    if (lineTimer.current) clearTimeout(lineTimer.current);
+    lineTimer.current = setTimeout(() => {
+      setLine((l) => (l === text ? null : l));
+      after?.();
+    }, ms);
+  };
+
+  // Dragging the dial onto a bill: he looks up at it and has an opinion.
+  const [seenPeek, setSeenPeek] = useState(peek);
+  if (peek !== seenPeek) {
+    setSeenPeek(peek);
+    // Moved off the last bill: that remark no longer applies.
+    if (seenPeek) {
+      const old = t('billy.peek', { payee: seenPeek });
+      setLine((l) => (l === old ? null : l));
+    }
+    if (peek) {
+      setSide(sideFor(HOME_X));
+      setLine(t('billy.peek', { payee: peek }));
+    }
+  }
+  useEffect(() => {
+    if (!peek) return;
+    lookUp.set(withTiming(1, { duration: 200 }));
+    flickEar(ear);
+    const timer = setTimeout(() => {
+      lookUp.set(withTiming(0, { duration: 300 }));
+      setLine((l) => (l === t('billy.peek', { payee: peek }) ? null : l));
+    }, 2200);
+    return () => clearTimeout(timer);
+  }, [peek, lookUp, ear]);
+
   const onTap = () => {
     Haptics.selectionAsync();
     hop.set(withSequence(withTiming(16, { duration: 140, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 220, easing: Easing.in(Easing.quad) })));
     flickEar(ear);
     const text = asleep ? t('billy.up') : chance(0.5) ? t(pick(['billy.tickle', 'billy.both', 'billy.q.meh'])) : quip(mood);
     if (asleep) setFace('idle');
-    setLine(text);
-    if (lineTimer.current) clearTimeout(lineTimer.current);
-    lineTimer.current = setTimeout(() => {
-      setLine((l) => (l === text ? null : l));
-      if (asleep) setFace('sleep');
-    }, 2600);
+    blurt(text, 2600, asleep ? () => setFace('sleep') : undefined);
   };
 
-  // Feet on the ring, half-upright to it; hops and steps push him along his own "up".
-  const body = useAnimatedStyle(() => {
-    const th = theta.get();
-    const rad = (th * Math.PI) / 180;
-    const x = CX + R * Math.sin(rad);
-    const y = CX - R * Math.cos(rad);
-    return {
-      opacity: Math.min(1, pop.get() * 1.5),
-      transform: [
-        { translateX: x - W / 2 },
-        { translateY: y - H / 2 },
-        // Half-upright to the ring: a full tilt reads as falling over.
-        { rotate: `${(th - 180) * 0.5 + lean.get()}deg` },
-        { translateY: -H / 2 - hop.get() - step.get() * 2.5 + (1 - pop.get()) * 26 },
-      ],
-    };
-  });
-  // Speech goes under his feet, outside the ring, so it never covers the headline in the middle.
+  // Standing on the strip's floor; leaning and spinning around his feet.
+  const body = useAnimatedStyle(() => ({
+    opacity: Math.min(1, pop.get() * 1.5),
+    transform: [
+      { translateX: rowW / 2 + x.get() - W / 2 },
+      { translateY: BILLY_STRIP - H - hop.get() - step.get() * 2.5 + (1 - pop.get()) * 20 },
+      { translateY: H / 2 },
+      { rotate: `${lean.get()}deg` },
+      { translateY: -H / 2 },
+    ],
+  }));
+  const right = side === 'right';
   const bubble = useAnimatedStyle(() => {
-    const rad = (theta.get() * Math.PI) / 180;
-    const r = R + 6;
-    const x = Math.min(DIAL_W - 110, Math.max(110, CX + r * Math.sin(rad)));
-    return { transform: [{ translateX: x - 110 }, { translateY: CX - r * Math.cos(rad) }] };
+    const at = rowW / 2 + x.get();
+    return right ? { left: at + W / 2 + 4, right: 0 } : { left: 0, right: rowW - at + W / 2 + 4 };
   });
 
   return (
-    <>
-      <Animated.View pointerEvents="box-none" style={[st.body, body]}>
+    <View style={st.strip} onLayout={(e) => setRowW(e.nativeEvent.layout.width)}>
+      <Animated.View pointerEvents="none" style={[st.bubbleSlot, { alignItems: right ? 'flex-start' : 'flex-end' }, bubble]}>
+        <Bubble line={line} />
+      </Animated.View>
+      <Animated.View style={[st.body, body]}>
         <Pressable onPress={onTap} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('billy.a11y')} style={StyleSheet.absoluteFill}>
           <BillyArt face={face} parts={parts} width={W} />
         </Pressable>
       </Animated.View>
-      <Animated.View pointerEvents="none" style={[st.bubbleSlot, bubble]}>
-        <Bubble line={line} />
-      </Animated.View>
-    </>
+    </View>
   );
 }
 
@@ -605,7 +634,8 @@ export function BillyMeet({ optedOut, onGone, size = 150 }: { optedOut: boolean;
 
 const st = themed(() => StyleSheet.create({
   body: { position: 'absolute', left: 0, top: 0, width: W, height: H },
-  bubbleSlot: { position: 'absolute', left: 0, top: 0, width: 220, height: 60, alignItems: 'center', justifyContent: 'flex-start' },
+  strip: { height: BILLY_STRIP, alignSelf: 'stretch' },
+  bubbleSlot: { position: 'absolute', top: 0, bottom: 14, justifyContent: 'center' },
   bubble: { maxWidth: 240, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: C.bg, borderWidth: 1, borderColor: C.border },
   bubbleText: { fontFamily: F.regular, fontSize: 12.5, lineHeight: 16, color: C.fg, textAlign: 'center' },
 }));

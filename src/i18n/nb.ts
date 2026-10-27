@@ -609,4 +609,7 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'billy.optOut': "Ingen geiter, takk",
   'billy.bye': "Billy dro. Han tok med niste.",
   'billy.back': "Billy er tilbake. Han savnet deg.",
+  'home.scrubA11y': "Dra rundt skiven for å se regningen for en dag",
+  'home.nothingThatDay': "Ingenting forfaller",
+  'billy.peek': "Åh, {payee}. Ser godt ut.",
 };

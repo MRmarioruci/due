@@ -609,4 +609,7 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'billy.optOut': "Niente capre, grazie",
   'billy.bye': "Billy se n'è andato. Si è portato uno spuntino.",
   'billy.back': "Billy è tornato. Gli sei mancato.",
+  'home.scrubA11y': "Trascina sul quadrante per vedere la bolletta di un giorno",
+  'home.nothingThatDay': "Niente in scadenza",
+  'billy.peek': "Ooh, {payee}. Sembra buona.",
 };

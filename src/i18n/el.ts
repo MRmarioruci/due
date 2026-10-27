@@ -609,4 +609,7 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'billy.optOut': "Όχι κατσίκες, ευχαριστώ",
   'billy.bye': "Ο Μπίλι έφυγε. Πήρε κολατσιό για τον δρόμο.",
   'billy.back': "Ο Μπίλι γύρισε. Του έλειψες.",
+  'home.scrubA11y': "Σύρε γύρω από τον δίσκο για να δεις τον λογαριασμό μιας μέρας",
+  'home.nothingThatDay': "Τίποτα δεν λήγει",
+  'billy.peek': "Ωω, {payee}. Φαίνεται νόστιμο.",
 };

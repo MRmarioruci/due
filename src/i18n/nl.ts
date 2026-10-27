@@ -609,4 +609,7 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'billy.optOut': "Geen geiten, bedankt",
   'billy.bye': "Billy is weg. Hij nam wat te snoepen mee voor onderweg.",
   'billy.back': "Billy is terug. Hij heeft je gemist.",
+  'home.scrubA11y': "Sleep rond de wijzerplaat om de rekening van een dag te zien",
+  'home.nothingThatDay': "Niets te betalen",
+  'billy.peek': "Ooh, {payee}. Ziet er lekker uit.",
 };

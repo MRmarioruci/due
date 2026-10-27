@@ -1,22 +1,18 @@
 import type { Bill } from './types';
 
 /**
- * Billy, the goat on the home dial. He walks along the inside of the ring, upright to it: his track
- * angle is 180 at the bottom of the dial (his seat, in the gap), growing towards today's side.
+ * Billy, the goat under the home dial. He lives on a strip below it and walks left and right along
+ * it; his spot is towards the left, so what he says fits on his right.
  */
 export type BillyMood = 'empty' | 'calm' | 'focus' | 'late';
 
-export const SEAT = 180;
-/** How far up the ring he climbs either way; beyond this he'd be standing on the wall. */
-export const REACH = 45;
+/** His spot on the strip, and how far either way from its middle he walks, in px. */
+export const HOME_X = -100;
+export const ROAM = 125;
 
-/** A dial angle (−150° today … +150° the last day) as an angle on Billy's track. */
-export const trackAngle = (dialDeg: number) => (dialDeg + 360) % 360;
-
-/** Where he stands to nibble the bill at track angle `a`: a step short of it, as high as he can climb. */
-export function standBeside(a: number): number {
-  const at = a >= SEAT ? a - 11 : a + 11;
-  return Math.min(SEAT + REACH, Math.max(SEAT - REACH, at));
+/** Where on the strip is right under a bill on the dial (dial angle in degrees, bills at radius `r`). */
+export function underBill(dialDeg: number, r = 118): number {
+  return Math.max(-ROAM, Math.min(ROAM, r * Math.sin((dialDeg * Math.PI) / 180)));
 }
 
 export function billyMood(kind: 'empty' | 'calm' | 'focus', daysLeft: number): BillyMood {

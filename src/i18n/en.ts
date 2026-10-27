@@ -629,6 +629,9 @@ export const en = {
   'billy.optOut': "No goats, thanks",
   'billy.bye': "Billy left. He took a snack for the road.",
   'billy.back': "Billy's back. He missed you.",
+  'home.scrubA11y': "Drag around the dial to see the bill on a day",
+  'home.nothingThatDay': "Nothing due",
+  'billy.peek': "Ooh, {payee}. Looks tasty.",
 } as const;
 
 type Full = keyof typeof en;
