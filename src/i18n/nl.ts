@@ -619,4 +619,10 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.byYear': "Jaar",
   'flow.prevPeriod': "Vorige",
   'flow.nextPeriod': "Volgende",
+  'calendar.syncedTo': "Je rekeningen staan in ‘{name}’",
+  'calendar.offTextNow': "De rekeningen die due toevoegde, gaan uit je agenda. In due blijven ze staan.",
+  'calendar.which': "Agenda",
+  'calendar.pickTitle': "Welke agenda?",
+  'calendar.pickNote': "Kies er een van je Google-account om je rekeningen in Google Agenda te zien, op het web en op je andere apparaten.",
+  'calendar.none': "Geen agenda op deze telefoon neemt nieuwe afspraken aan. Voeg een Google-account toe in de instellingen van je telefoon.",
 };

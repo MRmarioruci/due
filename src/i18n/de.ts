@@ -619,4 +619,10 @@ export const de: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.byYear': "Jahr",
   'flow.prevPeriod': "Zurück",
   'flow.nextPeriod': "Weiter",
+  'calendar.syncedTo': "Deine Rechnungen sind in „{name}“",
+  'calendar.offTextNow': "Die von due eingetragenen Rechnungen werden aus deinem Kalender entfernt. In due bleiben sie.",
+  'calendar.which': "Kalender",
+  'calendar.pickTitle': "Welcher Kalender?",
+  'calendar.pickNote': "Wähle einen in deinem Google-Konto, dann siehst du die Rechnungen in Google Kalender, im Web und auf deinen anderen Geräten.",
+  'calendar.none': "Kein Kalender auf diesem Handy nimmt Termine an. Füge in den Handy-Einstellungen ein Google-Konto hinzu.",
 };

@@ -10,7 +10,8 @@ import { widgetProblem } from '@/widget';
 import { deviceLang, LANGUAGES, t } from '@/i18n';
 import { countryName, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { remindersAvailable, rescheduleAll } from '@/lib/reminders';
-import { disableCalendarSync, enableCalendarSync } from '@/lib/calendar';
+import { disableCalendarSync, enableCalendarSync, pickableCalendars, moveToCalendar } from '@/lib/calendar';
+import { calendarLabel } from '@/lib/calendar-event';
 import { removeAllBills } from '@/lib/remove';
 import { seedSampleBills } from '@/lib/seed';
 import { useBills } from '@/lib/store';
@@ -61,6 +62,7 @@ export default function SettingsScreen() {
         />
         <ToggleRow label={t('settings.digest')} value={s.weeklyDigest} onChange={(v) => updateSettings({ weeklyDigest: v })} />
         <ToggleRow label={t('calendar.sync')} value={s.calendarSync} onChange={toggleCalendar} />
+        {s.calendarSync && <Row label={t('calendar.which')} value={s.calendarName ?? '—'} onPress={chooseCalendar} />}
       </Section>
 
       <Section title={t('settings.security')} note={t('settings.lockNote')}>
@@ -118,15 +120,40 @@ export default function SettingsScreen() {
   );
 }
 
-/** Calendar sync on asks for access and fills a "due" calendar; off removes that calendar. */
+/** Calendar sync on asks for access and puts the bills in the main Google calendar; off takes them out. */
 async function toggleCalendar(on: boolean) {
   if (on) {
-    if (await enableCalendarSync()) toast(t('calendar.syncOn'));
+    const name = await enableCalendarSync();
+    if (name) toast(t('calendar.syncedTo', { name }));
+    else if (getSettings().calendarSync) toast(t('calendar.none'));
     else toast(t('calendar.noAccess'));
     return;
   }
-  const sure = await sheet.confirm({ title: t('calendar.offTitle'), message: t('calendar.offText'), confirm: t('calendar.offConfirm'), destructive: true });
+  const sure = await sheet.confirm({ title: t('calendar.offTitle'), message: t('calendar.offTextNow'), confirm: t('calendar.offConfirm'), destructive: true });
   if (sure) await disableCalendarSync();
+}
+
+async function chooseCalendar() {
+  const cals = await pickableCalendars();
+  if (!cals.length) return toast(t('calendar.none'));
+  sheet.show({
+    title: t('calendar.pickTitle'),
+    message: t('calendar.pickNote'),
+    content: (
+      <Options
+        selected={getSettings().calendarId}
+        options={cals.map((c) => ({
+          key: c.id,
+          label: calendarLabel(c),
+          onPress: async () => {
+            sheet.hide();
+            await moveToCalendar(c);
+            toast(t('calendar.syncedTo', { name: calendarLabel(c) }));
+          },
+        }))}
+      />
+    ),
+  });
 }
 
 /* ---------- choosers: each opens one sheet ---------- */

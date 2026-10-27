@@ -45,6 +45,8 @@ export type Settings = {
   /** Keep open bills in a "due" calendar on the phone, and its id and events (billId → event). */
   calendarSync: boolean;
   calendarId: string | null;
+  /** The picked calendar as shown in Settings ("Personal · me@gmail.com"). */
+  calendarName: string | null;
   calendarEvents: Record<string, { eventId: string; sig: string }>;
   /** Duplicates and double payments due stopped, for "money kept" in Stats. */
   kept: KeptEvent[];
@@ -58,7 +60,7 @@ export type Settings = {
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {}, kept: [], income: [], splits: [], calendarSync: false, calendarId: null, calendarEvents: {}, billy: true, dialDragged: false };
+const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {}, kept: [], income: [], splits: [], calendarSync: false, calendarId: null, calendarName: null, calendarEvents: {}, billy: true, dialDragged: false };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');

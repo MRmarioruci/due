@@ -619,4 +619,10 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.byYear': "År",
   'flow.prevPeriod': "Forrige",
   'flow.nextPeriod': "Neste",
+  'calendar.syncedTo': "Regningene dine er i «{name}»",
+  'calendar.offTextNow': "Regningene due la inn, tas ut av kalenderen. I due blir de værende.",
+  'calendar.which': "Kalender",
+  'calendar.pickTitle': "Hvilken kalender?",
+  'calendar.pickNote': "Velg en på Google-kontoen din for å se regningene i Google Kalender, på nettet og på de andre enhetene dine.",
+  'calendar.none': "Ingen kalender på denne telefonen tar imot nye hendelser. Legg til en Google-konto i telefonens innstillinger.",
 };

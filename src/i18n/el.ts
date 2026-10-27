@@ -619,4 +619,10 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.byYear': "Έτος",
   'flow.prevPeriod': "Προηγούμενο",
   'flow.nextPeriod': "Επόμενο",
+  'calendar.syncedTo': "Οι λογαριασμοί σου είναι στο «{name}»",
+  'calendar.offTextNow': "Οι λογαριασμοί που πρόσθεσε το due αφαιρούνται από το ημερολόγιο. Στο due μένουν.",
+  'calendar.which': "Ημερολόγιο",
+  'calendar.pickTitle': "Ποιο ημερολόγιο;",
+  'calendar.pickNote': "Διάλεξε ένα του λογαριασμού Google για να βλέπεις τους λογαριασμούς στο Google Calendar, στο web και στις άλλες συσκευές σου.",
+  'calendar.none': "Κανένα ημερολόγιο σε αυτό το κινητό δεν δέχεται νέα συμβάντα. Πρόσθεσε έναν λογαριασμό Google στις ρυθμίσεις του κινητού.",
 };

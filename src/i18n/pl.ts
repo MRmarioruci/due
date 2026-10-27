@@ -663,4 +663,10 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.byYear': "Rok",
   'flow.prevPeriod': "Poprzedni",
   'flow.nextPeriod': "Następny",
+  'calendar.syncedTo': "Twoje rachunki są w „{name}”",
+  'calendar.offTextNow': "Rachunki dodane przez due znikną z kalendarza. W due zostają.",
+  'calendar.which': "Kalendarz",
+  'calendar.pickTitle': "Który kalendarz?",
+  'calendar.pickNote': "Wybierz kalendarz z konta Google, a rachunki zobaczysz w Kalendarzu Google, w przeglądarce i na innych urządzeniach.",
+  'calendar.none': "Żaden kalendarz na tym telefonie nie przyjmuje nowych wydarzeń. Dodaj konto Google w ustawieniach telefonu.",
 };

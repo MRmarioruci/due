@@ -619,4 +619,10 @@ export const es: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.byYear': "Año",
   'flow.prevPeriod': "Anterior",
   'flow.nextPeriod': "Siguiente",
+  'calendar.syncedTo': "Tus facturas están en «{name}»",
+  'calendar.offTextNow': "Las facturas que añadió due se quitan de tu calendario. En due se quedan.",
+  'calendar.which': "Calendario",
+  'calendar.pickTitle': "¿Qué calendario?",
+  'calendar.pickNote': "Elige uno de tu cuenta de Google para ver tus facturas en Google Calendar, en la web y en tus otros dispositivos.",
+  'calendar.none': "Ningún calendario de este teléfono acepta eventos nuevos. Añade una cuenta de Google en los ajustes del teléfono.",
 };

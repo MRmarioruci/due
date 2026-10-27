@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { allDayLocal, allDayUtc, billEvent, eventSig } from './calendar-event';
+import { allDayLocal, allDayUtc, billEvent, calendarLabel, defaultCalendar, eventSig, writableCalendars, type CalendarInfo } from './calendar-event';
 import { emptyPayment, type Bill } from './types';
 
 const bill: Bill = {
@@ -49,5 +49,26 @@ describe('bills in the calendar', () => {
     expect(eventSig(billEvent({ ...bill, remindDaysBefore: 7 })!)).toBe(a);
     expect(eventSig(billEvent({ ...bill, dueDate: '2026-11-02' })!)).not.toBe(a);
     expect(eventSig(billEvent({ ...bill, amountMinor: 7000 })!)).not.toBe(a);
+  });
+});
+
+describe('choosing a calendar', () => {
+  const cal = (id: string, extra: Partial<CalendarInfo>): CalendarInfo => ({ id, title: id, allowsModifications: true, accessLevel: 'owner', source: { name: 'Phone', type: 'LOCAL' }, ...extra });
+  const google = (id: string, extra: Partial<CalendarInfo> = {}) => cal(id, { source: { name: 'me@gmail.com', type: 'com.google' }, ...extra });
+
+  it('prefers the Google account’s own calendar', () => {
+    const all = [cal('phone', { isPrimary: true }), google('Holidays', { accessLevel: 'read', allowsModifications: false }), google('Team'), google('me@gmail.com', { ownerAccount: 'me@gmail.com' })];
+    expect(defaultCalendar(all)?.id).toBe('me@gmail.com');
+  });
+
+  it('falls back to the phone’s primary calendar without a Google account', () => {
+    expect(defaultCalendar([cal('a', {}), cal('b', { isPrimary: true })])?.id).toBe('b');
+    expect(defaultCalendar([])).toBeNull();
+  });
+
+  it('leaves out read-only calendars and the old local "due" one', () => {
+    const all = [google('Holidays', { accessLevel: 'read' }), cal('due', { name: 'due', ownerAccount: 'due' }), cal('phone', {}), google('mine')];
+    expect(writableCalendars(all).map((c) => c.id)).toEqual(['mine', 'phone']);
+    expect(calendarLabel(google('Personal'))).toBe('Personal · me@gmail.com');
   });
 });

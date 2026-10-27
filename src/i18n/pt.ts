@@ -619,4 +619,10 @@ export const pt: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.byYear': "Ano",
   'flow.prevPeriod': "Anterior",
   'flow.nextPeriod': "Seguinte",
+  'calendar.syncedTo': "As tuas faturas estão em “{name}”",
+  'calendar.offTextNow': "As faturas que o due adicionou saem do teu calendário. No due ficam.",
+  'calendar.which': "Calendário",
+  'calendar.pickTitle': "Que calendário?",
+  'calendar.pickNote': "Escolhe um da tua conta Google para veres as faturas no Google Calendar, na web e nos teus outros dispositivos.",
+  'calendar.none': "Nenhum calendário deste telemóvel aceita eventos novos. Adiciona uma conta Google nas definições do telemóvel.",
 };

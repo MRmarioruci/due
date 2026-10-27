@@ -639,6 +639,12 @@ export const en = {
   'flow.byYear': "Year",
   'flow.prevPeriod': "Previous",
   'flow.nextPeriod': "Next",
+  'calendar.syncedTo': "Your bills are in “{name}”",
+  'calendar.offTextNow': "The bill events due added are taken out of your calendar. Your bills stay in due.",
+  'calendar.which': "Calendar",
+  'calendar.pickTitle': "Which calendar?",
+  'calendar.pickNote': "Pick one on your Google account to see your bills in Google Calendar, on the web and on your other devices.",
+  'calendar.none': "No calendar on this phone takes new events. Add a Google account in the phone’s settings.",
 } as const;
 
 type Full = keyof typeof en;

@@ -619,4 +619,10 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.byYear': "Anno",
   'flow.prevPeriod': "Precedente",
   'flow.nextPeriod': "Successivo",
+  'calendar.syncedTo': "Le tue bollette sono in “{name}”",
+  'calendar.offTextNow': "Le bollette aggiunte da due vengono tolte dal calendario. In due restano.",
+  'calendar.which': "Calendario",
+  'calendar.pickTitle': "Quale calendario?",
+  'calendar.pickNote': "Scegline uno del tuo account Google per vedere le bollette in Google Calendar, sul web e sugli altri dispositivi.",
+  'calendar.none': "Nessun calendario su questo telefono accetta nuovi eventi. Aggiungi un account Google nelle impostazioni del telefono.",
 };
