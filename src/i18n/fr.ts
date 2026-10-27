@@ -636,4 +636,9 @@ export const fr: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.main': "Agenda principal",
   'calendar.phoneOnly': "Sur ce téléphone uniquement",
   'calendar.phoneCalendar': "Agenda du téléphone",
+  'billy.feed.ask': "Nourris-moi ! Glisse-la jusqu’ici.",
+  'billy.feed.close': "Oui ! Lâche !",
+  'billy.feed.nom': "Miam miam. {payee}.",
+  'billy.feed.paid': "Payée. Délicieux.",
+  'billy.feed.aw': "Oh. J’avais faim.",
 };

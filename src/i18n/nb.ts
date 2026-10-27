@@ -636,4 +636,9 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.main': "Hovedkalender",
   'calendar.phoneOnly': "Bare på denne telefonen",
   'calendar.phoneCalendar': "Telefonkalender",
+  'billy.feed.ask': "Mat meg! Dra den hit opp.",
+  'billy.feed.close': "Ja! Slipp!",
+  'billy.feed.nom': "Nam nam. {payee}.",
+  'billy.feed.paid': "Betalt. Deilig.",
+  'billy.feed.aw': "Åh. Jeg var sulten.",
 };

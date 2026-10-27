@@ -28,7 +28,7 @@ const BLUSH = '#FF8C78';
 // Draws his edge on the light theme, where white fur would vanish.
 const EDGE = '#2b2b2b';
 
-type Face = 'idle' | 'chew' | 'happy' | 'sleep' | 'worried' | 'sad' | 'yawn';
+export type Face = 'idle' | 'chew' | 'happy' | 'sleep' | 'worried' | 'sad' | 'yawn' | 'gape';
 export type BillyTarget = { dialDeg: number; payee: string; daysLeft: number };
 
 let lastTouch = 0;
@@ -58,7 +58,7 @@ const AnimatedG = Animated.createAnimatedComponent(G);
 
 type Parts = { look: SharedValue<number>; lookUp: SharedValue<number>; lid: SharedValue<number>; chew: SharedValue<number>; zz: SharedValue<number>; ear: SharedValue<number> };
 
-function useParts(): Parts {
+export function useParts(): Parts {
   const look = useSharedValue(0);
   const lookUp = useSharedValue(0);
   const lid = useSharedValue(0);
@@ -69,7 +69,7 @@ function useParts(): Parts {
 }
 
 /** Blinks on his own clock, sometimes twice, so he never quite repeats. */
-function useBlink(lid: SharedValue<number>, on: boolean) {
+export function useBlink(lid: SharedValue<number>, on: boolean) {
   useEffect(() => {
     if (!on) return;
     let timer: ReturnType<typeof setTimeout>;
@@ -85,10 +85,10 @@ function useBlink(lid: SharedValue<number>, on: boolean) {
   }, [on, lid]);
 }
 
-const flickEar = (ear: SharedValue<number>) => ear.set(withSequence(withTiming(1, { duration: 90 }), withTiming(0, { duration: 140 }), withTiming(1, { duration: 90 }), withTiming(0, { duration: 160 })));
+export const flickEar = (ear: SharedValue<number>) => ear.set(withSequence(withTiming(1, { duration: 90 }), withTiming(0, { duration: 140 }), withTiming(1, { duration: 90 }), withTiming(0, { duration: 160 })));
 
 /** The goat himself, facing you. Everything that moves comes in through `parts`. */
-function BillyArt({ face, parts, width }: { face: Face; parts: Parts; width: number }) {
+export function BillyArt({ face, parts, width }: { face: Face; parts: Parts; width: number }) {
   const { look, lookUp, lid, chew, zz, ear } = parts;
   const down = face === 'worried' || face === 'sad' ? 1.5 : 0;
   const pupilL = useAnimatedProps(() => ({ x: 41 + look.get() * 3.5, y: 51.8 - lookUp.get() * 2.5 + down }));
@@ -150,7 +150,12 @@ function BillyArt({ face, parts, width }: { face: Face; parts: Parts; width: num
       <Path d={brow} fill="none" stroke={INK} strokeWidth={2.6} strokeLinecap="round" />
 
       <Rect x={55} y={68} width={10} height={8} rx={1.5} fill={C.accent} />
-      {face === 'yawn' ? (
+      {face === 'gape' ? (
+        <G>
+          <Ellipse cx={60} cy={88} rx={9} ry={10} fill={INK} />
+          <Ellipse cx={60} cy={94} rx={5.5} ry={3.2} fill={BLUSH} />
+        </G>
+      ) : face === 'yawn' ? (
         <Ellipse cx={60} cy={87} rx={6} ry={6.5} fill={INK} />
       ) : face === 'happy' ? (
         <Path d="M50 82 Q60 93 70 82 Z" fill={INK} stroke={INK} strokeWidth={2} strokeLinejoin="round" />
@@ -177,7 +182,7 @@ function BillyArt({ face, parts, width }: { face: Face; parts: Parts; width: num
   );
 }
 
-function Bubble({ line }: { line: string | null }) {
+export function Bubble({ line }: { line: string | null }) {
   if (!line) return null;
   return (
     <Animated.View key={line} entering={FadeIn.duration(180)} exiting={FadeOut.duration(160)} style={st.bubble}>
@@ -523,7 +528,7 @@ export function Billy({ mood, target, fed, peek, hint = false, active }: { mood:
     ],
   }));
   // While he's off doing a cameo, his spot under the dial stays empty: there's only one Billy.
-  const away = useSyncExternalStore(onCameo, () => cameo != null);
+  const away = useSyncExternalStore(onCameo, () => cameo != null || feed != null);
 
   const right = side === 'right';
   const bubble = useAnimatedStyle(() => {
@@ -667,6 +672,18 @@ export function billyCameo(kind: CameoKind, payee: string, when?: string): boole
   cameoChanged();
   return true;
 }
+
+/* Feeding (see billy-feed.tsx): which bill is being fed to him, if any. */
+export type Feed = { bill: import('@/lib/types').Bill; from: { x: number; y: number; w: number; h: number }; outcome: 'eat' | 'miss' | null; returned: boolean };
+let feed: Feed | null = null;
+export const feedStore = {
+  get: () => feed,
+  set(next: Feed | null) {
+    feed = next;
+    cameoChanged();
+  },
+  subscribe: onCameo,
+};
 
 /** Mounted once over the whole app; touches pass through it. */
 export function BillyCameoHost() {
@@ -834,7 +851,7 @@ function CameoPlay({ cameo: c, onDone }: { cameo: Cameo; onDone: () => void }) {
 const CONFETTI = ['#FF5A36', '#3FD4F0', '#C8F25A', '#F3F1EC'];
 
 /** A handful of squares thrown up from one point, falling as they fade. */
-function Burst({ x, bottom }: { x: number; bottom: number }) {
+export function Burst({ x, bottom }: { x: number; bottom: number }) {
   const [bits] = useState(() =>
     Array.from({ length: 14 }, (_, i) => ({ i, dx: between(-110, 110), up: between(140, 260), spin: between(-540, 540), size: between(5, 9), color: CONFETTI[i % CONFETTI.length], delay: between(0, 90) })),
   );

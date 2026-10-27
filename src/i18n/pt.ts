@@ -636,4 +636,9 @@ export const pt: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.main': "Calendário principal",
   'calendar.phoneOnly': "Só neste telemóvel",
   'calendar.phoneCalendar': "Calendário do telemóvel",
+  'billy.feed.ask': "Dá-ma! Arrasta-a até aqui.",
+  'billy.feed.close': "Sim! Larga!",
+  'billy.feed.nom': "Nham nham. {payee}.",
+  'billy.feed.paid': "Paga. Deliciosa.",
+  'billy.feed.aw': "Ah. Tinha fome.",
 };

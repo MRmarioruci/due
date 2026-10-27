@@ -17,7 +17,10 @@ import { getSettings, useSettings, type Settings } from '@/lib/settings';
 import { recategorizeOthers, useBills } from '@/lib/store';
 import { pickCategory } from '@/lib/categorize';
 import { updateWidget } from '@/widget';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { BillyCameoHost } from '@/ui/billy';
+import { BillyFeedHost } from '@/ui/billy-feed';
 import { OverlayHost } from '@/ui/overlay';
 import { applyTheme, C, currentTheme, type ThemeName } from '@/ui/theme';
 
@@ -106,6 +109,7 @@ export default function RootLayout() {
   const theme = { ...navTheme, colors: { ...navTheme.colors, background: C.bg, card: C.bg, text: C.fg, border: C.line, primary: C.fg } };
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <ThemeProvider value={theme}>
       <StatusBar style={themeName === 'dark' ? 'light' : 'dark'} />
       <LockGate>
@@ -122,7 +126,9 @@ export default function RootLayout() {
         </View>
         <OverlayHost />
         <BillyCameoHost />
+        <BillyFeedHost />
       </LockGate>
     </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

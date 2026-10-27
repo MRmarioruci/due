@@ -636,4 +636,9 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.main': "Κύριο ημερολόγιο",
   'calendar.phoneOnly': "Μόνο σε αυτό το κινητό",
   'calendar.phoneCalendar': "Ημερολόγιο κινητού",
+  'billy.feed.ask': "Τάισέ με! Σύρε το εδώ πάνω.",
+  'billy.feed.close': "Ναι! Άφησέ το!",
+  'billy.feed.nom': "Χαμ χαμ. {payee}.",
+  'billy.feed.paid': "Πληρώθηκε. Νόστιμο.",
+  'billy.feed.aw': "Ωχ. Πεινούσα.",
 };

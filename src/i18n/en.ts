@@ -656,6 +656,11 @@ export const en = {
   'calendar.main': "Main calendar",
   'calendar.phoneOnly': "On this phone only",
   'calendar.phoneCalendar': "Phone calendar",
+  'billy.feed.ask': "Feed me! Drag it up here.",
+  'billy.feed.close': "Yes! Let go!",
+  'billy.feed.nom': "Nom nom. {payee}.",
+  'billy.feed.paid': "Paid. Delicious.",
+  'billy.feed.aw': "Aw. I was hungry.",
 } as const;
 
 type Full = keyof typeof en;

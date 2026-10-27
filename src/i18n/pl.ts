@@ -680,4 +680,9 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.main': "Kalendarz główny",
   'calendar.phoneOnly': "Tylko na tym telefonie",
   'calendar.phoneCalendar': "Kalendarz telefonu",
+  'billy.feed.ask': "Nakarm mnie! Przeciągnij tutaj.",
+  'billy.feed.close': "Tak! Puść!",
+  'billy.feed.nom': "Mniam mniam. {payee}.",
+  'billy.feed.paid': "Zapłacone. Pyszne.",
+  'billy.feed.aw': "Ech. Byłem głodny.",
 };

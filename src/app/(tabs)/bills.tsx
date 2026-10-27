@@ -9,17 +9,19 @@ import { formatAmount } from '@/lib/money';
 import { planAroundPayday } from '@/lib/plan';
 import { dueForReview } from '@/lib/contracts';
 import { expectedBills, findSeries, type Series } from '@/lib/recurring';
-import { latestBillOf } from '@/lib/reminders';
+import { latestBillOf, markPaid } from '@/lib/reminders';
 import { cadenceLabel, categoryLabel } from '@/i18n/labels';
 import { locale, t } from '@/i18n/core';
 import { getSettings, homeCurrency, updateSettings, useSettings } from '@/lib/settings';
 import { Options } from '@/ui/choosers';
-import { sheet } from '@/ui/overlay';
+import { sheet, toast } from '@/ui/overlay';
 import { useBills } from '@/lib/store';
 import { CATEGORIES, type Bill, type Category } from '@/lib/types';
 import { Amount, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
 import { NAV_SPACE } from '@/ui/nav-bar';
 import { Animated, enterFade, enterRow, GrowBar, moveRow, useCountUp } from '@/ui/motion';
+import { billyCameo } from '@/ui/billy';
+import { FEED_HOLD_MS, FeedableRow } from '@/ui/billy-feed';
 import { C, F, GUTTER, themed } from '@/ui/theme';
 
 const HORIZON = 30;
@@ -288,7 +290,9 @@ export default function Bills() {
               <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>{g.title}</Eyebrow>
               {g.items.map((b, idx) => (
                 <Animated.View key={b.id} entering={enterRow(idx)} layout={moveRow}>
-                  <BillRow bill={b} today={today} />
+                  <FeedableRow bill={b}>
+                    <BillRow bill={b} today={today} />
+                  </FeedableRow>
                 </Animated.View>
               ))}
             </View>
@@ -336,7 +340,17 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
   return (
     <Pressable
       accessibilityRole="button"
+      // What a long press does by touch (feed it to Billy), as an action for screen readers.
+      accessibilityActions={bill.status === 'open' ? [{ name: 'pay', label: t('bill.markPaid') }] : undefined}
+      onAccessibilityAction={async (e) => {
+        if (e.nativeEvent.actionName !== 'pay') return;
+        await markPaid(bill);
+        if (!billyCameo('paid', bill.payee)) toast(t('bill.markedPaid', { payee: bill.payee }));
+      }}
       onPress={() => router.push({ pathname: '/bill/[id]', params: { id: bill.id } })}
+      // A long press is the start of feeding it to Billy: letting go mustn't also open the bill.
+      onLongPress={() => {}}
+      delayLongPress={FEED_HOLD_MS - 40}
       style={({ pressed }) => [st.row, pressed && { opacity: 0.6 }]}>
       <View style={st.mono}>
         <T style={st.monoText}>{bill.payee.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}</T>

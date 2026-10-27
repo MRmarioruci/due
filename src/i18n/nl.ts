@@ -636,4 +636,9 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.main': "Hoofdagenda",
   'calendar.phoneOnly': "Alleen op deze telefoon",
   'calendar.phoneCalendar': "Telefoonagenda",
+  'billy.feed.ask': "Voer me! Sleep hem hierheen.",
+  'billy.feed.close': "Ja! Loslaten!",
+  'billy.feed.nom': "Nom nom. {payee}.",
+  'billy.feed.paid': "Betaald. Heerlijk.",
+  'billy.feed.aw': "Ah. Ik had honger.",
 };
