@@ -1,42 +1,58 @@
-import { daysBetween, relativeDays } from '@/lib/dates';
-import { activeDiscount, targetDate } from '@/lib/discount';
-import { formatAmount } from '@/lib/money';
-import type { Bill } from '@/lib/types';
+import { relativeDays, shortDay } from '../lib/dates';
+import { activeDiscount } from '../lib/discount';
+import { dialPoints, homeState } from '../lib/home';
+import { formatAmount } from '../lib/money';
+import type { Bill } from '../lib/types';
+import { t } from '../i18n/core';
 
-export type WidgetData = {
-  currency: string;
-  total: string;
-  count: number;
-  next: { payee: string; amount: string; when: string; urgent: boolean } | null;
-};
+import type { WidgetDot } from './dial-svg';
 
-/** What the home-screen widget shows: the 30-day total and the next bill to deal with. */
-export function widgetData(bills: Bill[], today: string, fallbackCurrency = 'EUR'): WidgetData {
-  const open = bills.filter((b) => b.status === 'open');
-  const counts = new Map<string, number>();
-  open.forEach((b) => counts.set(b.currency, (counts.get(b.currency) ?? 0) + 1));
-  const currency = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? fallbackCurrency;
+const ACCENT = '#FF5A36';
+const FG = '#ededed';
+const MUTED = '#5f5f5f';
 
-  const pay = (b: Bill) => activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0;
-  const window = open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= 30);
-  const total = window.filter((b) => b.currency === currency).reduce((s, b) => s + pay(b), 0);
+/** The middle of the dial: the one bill to deal with now, or that everything is handled. */
+export type WidgetCentre =
+  | { kind: 'focus'; label: string; urgent: boolean; currency: string; amount: string; payee: string }
+  | { kind: 'calm'; label: string; headline: string; sub: string | null };
 
-  const next = open
-    .map((b) => ({ b, deadline: targetDate(b, today) }))
-    .filter((x) => x.deadline)
-    .sort((a, b) => a.deadline!.localeCompare(b.deadline!))[0];
+export type WidgetData = { dots: WidgetDot[]; todayColor: string; centre: WidgetCentre };
 
+/** What the home-screen widget shows: the same dial and headline as the app's home screen. */
+export function widgetData(bills: Bill[], today: string): WidgetData {
+  const state = homeState(bills, today);
+  const focus = state.kind === 'focus' ? state.focus : null;
+  const points = dialPoints(bills, today);
+  const biggest = Math.max(1, ...points.map((p) => p.bill.amountMinor ?? 0));
+  const dots = points.map((p) => ({
+    day: p.day,
+    size: Math.round(7 + 9 * Math.sqrt((p.bill.amountMinor ?? 0) / biggest)),
+    color: p.bill.id === focus?.id || p.overdue ? ACCENT : focus ? MUTED : FG,
+  }));
+
+  if (state.kind === 'focus') {
+    const b = state.focus;
+    return {
+      dots,
+      todayColor: FG,
+      centre: {
+        kind: 'focus',
+        label: relativeDays(b.dueDate!, today).toUpperCase(),
+        urgent: state.daysLeft <= 3,
+        currency: b.currency,
+        amount: formatAmount(activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0, b.currency),
+        payee: b.payee,
+      },
+    };
+  }
   return {
-    currency,
-    total: formatAmount(total, currency),
-    count: window.length,
-    next: next
-      ? {
-          payee: next.b.payee,
-          amount: `${next.b.currency} ${formatAmount(pay(next.b), next.b.currency)}`,
-          when: relativeDays(next.deadline!, today),
-          urgent: daysBetween(today, next.deadline!) <= 3,
-        }
-      : null,
+    dots,
+    todayColor: ACCENT,
+    centre: {
+      kind: 'calm',
+      label: t('home.thisWeekCaps'),
+      headline: state.kind === 'empty' ? t('home.nothingYet') : t('home.allHandled'),
+      sub: state.kind === 'calm' && state.next ? `${t('widget.next')} ${shortDay(state.next.dueDate!)}` : null,
+    },
   };
 }

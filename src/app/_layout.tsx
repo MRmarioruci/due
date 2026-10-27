@@ -12,6 +12,7 @@ import { LockGate } from '@/lib/lock';
 import { usePayCheck } from '@/lib/pay-check';
 import { listenForResponses, scheduleDigest, setupNotifications, syncReminders } from '@/lib/reminders';
 import { syncCalendar } from '@/lib/calendar';
+import { takeScanLaunch } from '@/lib/nav';
 import { getSettings, useSettings, type Settings } from '@/lib/settings';
 import { recategorizeOthers, useBills } from '@/lib/store';
 import { pickCategory } from '@/lib/categorize';
@@ -50,7 +51,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (!ready || started.current) return;
     started.current = true;
-    if (TRANSIENT.includes(pathname)) router.replace('/');
+    // …unless the widget's Scan square opened the app, which means "scan now".
+    if (TRANSIENT.includes(pathname) && !takeScanLaunch()) router.replace('/');
   }, [ready, pathname]);
 
   // Keep the Monday summary in step with the bills (debounced: saving one bill can touch several rows).

@@ -81,12 +81,13 @@
             {
               "name": "Due",
               "label": "due.",
-              "description": "Your next bill and the 30-day total",
+              "description": "Your next 30 days on a dial, and scan in one tap",
               "previewImage": "./assets/widget-preview/due.png",
-              "minWidth": "250dp",
-              "minHeight": "110dp",
-              "targetCellWidth": 4,
+              "minWidth": "150dp",
+              "minHeight": "150dp",
+              "targetCellWidth": 2,
               "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
               "updatePeriodMillis": 1800000
             }
           ]

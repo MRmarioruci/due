@@ -18,6 +18,24 @@ export function openScan(replace = false) {
   else router.push('/scan');
 }
 
+/**
+ * The widget's Scan square opens due://scan. The link marks the request before the router lands
+ * on the scan screen, so it opens even on a cold start, where a relaunch onto /scan would
+ * otherwise be sent home.
+ */
+let launchedToScan = false;
+export function requestScanFromLink() {
+  scanRequested = true;
+  launchedToScan = true;
+}
+
+/** True once, when the app was opened by the scan link (the root layout keeps it on the scan screen). */
+export function takeScanLaunch(): boolean {
+  const r = launchedToScan;
+  launchedToScan = false;
+  return r;
+}
+
 /** True once per request: the scan screen calls it when it mounts. */
 export function takeScanRequest(): boolean {
   const r = scanRequested;

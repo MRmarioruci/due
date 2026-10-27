@@ -411,9 +411,6 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'onb.finish': 'Fullfør',
   'onb.notNow': 'Ikke nå',
 
-  'widget.open_one': '{n} ÅPEN · 30 DAGER',
-  'widget.open_other': '{n} ÅPNE · 30 DAGER',
-  'widget.nothing': 'Ingenting å betale',
   'contract.section': "Avtale",
   'contract.reviewBy': "Gå gjennom innen",
   'contract.add': "Legg til dato",
@@ -573,4 +570,5 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.add': "Legg til i kalender",
   'calendar.alreadyIn': "Den er allerede i kalenderen «due-regninger»",
   'calendar.couldNotOpen': "Ingen kalenderapp kunne åpnes",
+  'widget.next': "Neste",
 };

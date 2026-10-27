@@ -431,9 +431,6 @@ export const en = {
   'onb.notNow': 'Not now',
 
   // Widget
-  'widget.open_one': '{n} OPEN · 30 DAYS',
-  'widget.open_other': '{n} OPEN · 30 DAYS',
-  'widget.nothing': 'Nothing to pay',
   'contract.section': "Contract",
   'contract.reviewBy': "Review by",
   'contract.add': "Add a date",
@@ -593,6 +590,7 @@ export const en = {
   'calendar.add': "Add to calendar",
   'calendar.alreadyIn': "It’s already in your “due bills” calendar",
   'calendar.couldNotOpen': "No calendar app could open",
+  'widget.next': "Next",
 } as const;
 
 type Full = keyof typeof en;

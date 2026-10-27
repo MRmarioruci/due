@@ -411,9 +411,6 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'onb.finish': 'Τέλος',
   'onb.notNow': 'Όχι τώρα',
 
-  'widget.open_one': '{n} ΑΝΟΙΧΤΟΣ · 30 ΗΜΕΡΕΣ',
-  'widget.open_other': '{n} ΑΝΟΙΧΤΟΙ · 30 ΗΜΕΡΕΣ',
-  'widget.nothing': 'Τίποτα για πληρωμή',
   'contract.section': "Σύμβαση",
   'contract.reviewBy': "Έλεγχος έως",
   'contract.add': "Πρόσθεσε ημερομηνία",
@@ -573,4 +570,5 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.add': "Προσθήκη στο ημερολόγιο",
   'calendar.alreadyIn': "Είναι ήδη στο ημερολόγιο «Λογαριασμοί due»",
   'calendar.couldNotOpen': "Καμία εφαρμογή ημερολογίου δεν άνοιξε",
+  'widget.next': "Επόμενος",
 };

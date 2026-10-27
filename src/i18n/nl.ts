@@ -411,9 +411,6 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'onb.finish': 'Klaar',
   'onb.notNow': 'Niet nu',
 
-  'widget.open_one': '{n} OPEN · 30 DAGEN',
-  'widget.open_other': '{n} OPEN · 30 DAGEN',
-  'widget.nothing': 'Niets te betalen',
   'contract.section': "Contract",
   'contract.reviewBy': "Herzien vóór",
   'contract.add': "Datum toevoegen",
@@ -573,4 +570,5 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.add': "Aan agenda toevoegen",
   'calendar.alreadyIn': "Hij staat al in de agenda ‘due-rekeningen’",
   'calendar.couldNotOpen': "Er kon geen agenda-app openen",
+  'widget.next': "Volgende",
 };

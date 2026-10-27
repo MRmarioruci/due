@@ -411,9 +411,6 @@ export const es: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'onb.finish': 'Terminar',
   'onb.notNow': 'Ahora no',
 
-  'widget.open_one': '{n} PENDIENTE · 30 DÍAS',
-  'widget.open_other': '{n} PENDIENTES · 30 DÍAS',
-  'widget.nothing': 'Nada que pagar',
   'contract.section': "Contrato",
   'contract.reviewBy': "Revisar antes del",
   'contract.add': "Añadir una fecha",
@@ -573,4 +570,5 @@ export const es: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.add': "Añadir al calendario",
   'calendar.alreadyIn': "Ya está en el calendario «Facturas de due»",
   'calendar.couldNotOpen': "No se pudo abrir ninguna app de calendario",
+  'widget.next': "Próxima",
 };

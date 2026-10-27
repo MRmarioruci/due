@@ -433,11 +433,6 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'onb.finish': 'Zakończ',
   'onb.notNow': 'Nie teraz',
 
-  'widget.open_one': '{n} OTWARTY · 30 DNI',
-  'widget.open_few': '{n} OTWARTE · 30 DNI',
-  'widget.open_many': '{n} OTWARTYCH · 30 DNI',
-  'widget.open_other': '{n} OTWARTEGO · 30 DNI',
-  'widget.nothing': 'Nic do zapłaty',
   'contract.section': "Umowa",
   'contract.reviewBy': "Przejrzyj do",
   'contract.add': "Dodaj datę",
@@ -619,4 +614,5 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.add': "Dodaj do kalendarza",
   'calendar.alreadyIn': "Jest już w kalendarzu „Rachunki due”",
   'calendar.couldNotOpen': "Nie udało się otworzyć aplikacji kalendarza",
+  'widget.next': "Następny",
 };
