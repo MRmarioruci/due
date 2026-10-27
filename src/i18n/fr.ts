@@ -612,4 +612,5 @@ export const fr: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.scrubA11y': "Fais glisser autour du cadran pour voir la facture d'un jour",
   'home.nothingThatDay': "Rien à payer",
   'billy.peek': "Oh, {payee}. Ça a l'air bon.",
+  'flow.leftShort': "Reste",
 };

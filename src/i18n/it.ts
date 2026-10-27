@@ -20,7 +20,7 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.open_other': '{n} fatture aperte',
   'home.nextDue': 'prossima scadenza {date}',
   'home.otherCurrencies': 'più altre valute',
-  'home.beforePayday': 'Prima dello stipendio',
+  'home.beforePayday': 'Prima della paga',
   'home.beforeCount_one': '{n} fattura dal saldo attuale',
   'home.beforeCount_other': '{n} fatture dal saldo attuale',
   'home.nothingUntilPayday': 'Niente fino allo stipendio',
@@ -612,4 +612,5 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.scrubA11y': "Trascina sul quadrante per vedere la bolletta di un giorno",
   'home.nothingThatDay': "Niente in scadenza",
   'billy.peek': "Ooh, {payee}. Sembra buona.",
+  'flow.leftShort': "Resta",
 };

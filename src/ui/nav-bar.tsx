@@ -73,7 +73,10 @@ export function NavBar({ state, navigation }: TabBarProps) {
     return (
       <Pressable key={tab.name} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={t(tab.label)} onPress={() => go(tab.name)} style={st.cell}>
         <Icon name={tab.icon} size={20} color={on ? C.fg : C.dim} />
-        <T style={[st.label, on && { color: C.fg, fontFamily: F.medium }]}>{t(tab.label)}</T>
+        {/* One line in every language: long words ("Einstellungen") shrink to fit instead of breaking. */}
+        <T style={[st.label, on && { color: C.fg, fontFamily: F.medium }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+          {t(tab.label)}
+        </T>
       </Pressable>
     );
   });
@@ -128,7 +131,7 @@ function ScanButton() {
 const st = themed(() => StyleSheet.create({
   bar: { position: 'absolute', left: 16, right: 16, height: BAR_H, flexDirection: 'row', backgroundColor: C.sheet, borderWidth: 1, borderColor: C.border },
   cell: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 5 },
-  label: { fontSize: 10.5, color: C.dim },
+  label: { fontSize: 10.5, color: C.dim, alignSelf: 'stretch', textAlign: 'center', paddingHorizontal: 2 },
   line: { position: 'absolute', top: -1, left: 0, width: 18, height: 2, backgroundColor: C.accent },
   // The ring in the background colour makes the square look cut out of the bar.
   scanWrap: { marginTop: -34, borderWidth: 6, borderColor: C.bg },

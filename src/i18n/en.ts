@@ -632,6 +632,7 @@ export const en = {
   'home.scrubA11y': "Drag around the dial to see the bill on a day",
   'home.nothingThatDay': "Nothing due",
   'billy.peek': "Ooh, {payee}. Looks tasty.",
+  'flow.leftShort': "Left",
 } as const;
 
 type Full = keyof typeof en;

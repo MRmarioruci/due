@@ -216,12 +216,13 @@ export default function BillScreen() {
   const original = originalOf(bill);
   const proof = paid ? proofOf(bill) : null;
 
-  const rows: { label: string; value: string; mono?: boolean }[] = [
-    bill.payment.iban && { label: 'IBAN', value: groupIban(bill.payment.iban), mono: true },
+  const rows: { label: string; value: string; mono?: boolean; fit?: boolean }[] = [
+    // An IBAN reads best on one line: it shrinks a little rather than leave a digit on its own.
+    bill.payment.iban && { label: 'IBAN', value: groupIban(bill.payment.iban), mono: true, fit: true },
     bill.payment.reference && { label: t('review.reference'), value: bill.payment.reference, mono: true },
     bill.payment.accountNumber && { label: t('bill.accountNo'), value: bill.payment.accountNumber, mono: true },
     bill.payment.message && { label: t('bill.message'), value: bill.payment.message },
-  ].filter(Boolean) as { label: string; value: string; mono?: boolean }[];
+  ].filter(Boolean) as { label: string; value: string; mono?: boolean; fit?: boolean }[];
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -342,7 +343,9 @@ export default function BillScreen() {
           {rows.map((r) => (
             <View key={r.label} style={st.row}>
               <T style={st.rowLabel}>{r.label}</T>
-              <T style={[st.rowValue, r.mono && { fontFamily: F.mono, fontSize: 12 }]} selectable>{r.value}</T>
+              <T style={[st.rowValue, r.mono && { fontFamily: F.mono, fontSize: 12 }]} selectable numberOfLines={r.fit ? 1 : undefined} adjustsFontSizeToFit={r.fit} minimumFontScale={0.75}>
+                {r.value}
+              </T>
               <Pressable accessibilityRole="button" accessibilityLabel={t('bill.copy', { label: r.label })} onPress={() => copy(r.label, r.value)} style={st.copy}>
                 <Icon name={copied === r.label ? 'check' : 'copy'} color={copied === r.label ? C.accent : C.muted} size={16} />
               </Pressable>

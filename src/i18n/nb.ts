@@ -612,4 +612,5 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.scrubA11y': "Dra rundt skiven for å se regningen for en dag",
   'home.nothingThatDay': "Ingenting forfaller",
   'billy.peek': "Åh, {payee}. Ser godt ut.",
+  'flow.leftShort': "Igjen",
 };

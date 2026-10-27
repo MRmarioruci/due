@@ -20,7 +20,7 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.open_other': '{n} ανοιχτοί λογαριασμοί',
   'home.nextDue': 'επόμενη λήξη {date}',
   'home.otherCurrencies': 'συν άλλα νομίσματα',
-  'home.beforePayday': 'Πριν από τη μισθοδοσία',
+  'home.beforePayday': 'Πριν τον μισθό',
   'home.beforeCount_one': '{n} λογαριασμός από το τρέχον υπόλοιπο',
   'home.beforeCount_other': '{n} λογαριασμοί από το τρέχον υπόλοιπο',
   'home.nothingUntilPayday': 'Τίποτα μέχρι τη μισθοδοσία',
@@ -612,4 +612,5 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.scrubA11y': "Σύρε γύρω από τον δίσκο για να δεις τον λογαριασμό μιας μέρας",
   'home.nothingThatDay': "Τίποτα δεν λήγει",
   'billy.peek': "Ωω, {payee}. Φαίνεται νόστιμο.",
+  'flow.leftShort': "Περισσεύουν",
 };

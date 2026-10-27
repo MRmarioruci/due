@@ -656,4 +656,5 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.scrubA11y': "Przeciągnij po tarczy, by zobaczyć rachunek z danego dnia",
   'home.nothingThatDay': "Nic do zapłaty",
   'billy.peek': "Ooo, {payee}. Wygląda smakowicie.",
+  'flow.leftShort': "Zostaje",
 };

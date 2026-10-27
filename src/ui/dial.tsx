@@ -57,6 +57,8 @@ const CENTRE_W = 190;
 const CENTRE_H = 160;
 
 type DialProps = {
+  /** Drawn at this many px wide; everything inside scales with it. */
+  size?: number;
   days: number;
   start: string;
   points: DialPoint[];
@@ -68,7 +70,7 @@ type DialProps = {
   scrubLabel?: string;
 };
 
-export function Dial({ days, start, points, todayColor, label, children, onScrub, onCentrePress, scrubLabel }: DialProps) {
+export function Dial({ size = DIAL, days, start, points, todayColor, label, children, onScrub, onCentrePress, scrubLabel }: DialProps) {
   const sweep = useSharedValue(0);
   useEffect(() => {
     sweep.value = withDelay(SWEEP_DELAY, withTiming(1, { duration: SWEEP_MS, easing: Easing.inOut(Easing.quad) }));
@@ -79,9 +81,11 @@ export function Dial({ days, start, points, todayColor, label, children, onScrub
   // The dragged marker, in days from today.
   const knob = useSharedValue(0);
   const billDays = points.map((p) => p.day);
+  // The drawing is laid out at DIAL px and scaled to `size`.
+  const k = size / DIAL;
   const [scrub] = useState(() => {
     // Plain closure state: the responder is made once and reads the latest props from `latest`.
-    let latest = { billDays, onScrub, days };
+    let latest = { billDays, onScrub, days, k };
     let shown: number | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let from = { x: 0, y: 0 };
@@ -101,10 +105,10 @@ export function Dial({ days, start, points, todayColor, label, children, onScrub
         latest.onScrub?.(null);
       }, BACK_AFTER);
     };
-    const moveTo = (x: number, y: number) => report(snapDay(dayAtPoint(x, y, CX, latest.days), latest.billDays));
+    const moveTo = (x: number, y: number) => report(snapDay(dayAtPoint(x / latest.k, y / latest.k, CX, latest.days), latest.billDays));
     const responder = PanResponder.create({
       onStartShouldSetPanResponder: (e) => {
-        const r = Math.hypot(e.nativeEvent.locationX - CX, e.nativeEvent.locationY - CX);
+        const r = Math.hypot(e.nativeEvent.locationX / latest.k - CX, e.nativeEvent.locationY / latest.k - CX);
         return r > GRAB_FROM && r < CX + 14;
       },
       onPanResponderGrant: (e) => {
@@ -130,16 +134,16 @@ export function Dial({ days, start, points, todayColor, label, children, onScrub
       },
     };
   });
-  useEffect(() => scrub.sync({ billDays, onScrub, days }));
+  useEffect(() => scrub.sync({ billDays, onScrub, days, k }));
   useEffect(() => () => scrub.stop(), [scrub]);
 
-  const centre = { left: CX - CENTRE_W / 2, top: CX - CENTRE_H / 2, width: CENTRE_W, height: CENTRE_H };
+  const centre = { left: (CX - CENTRE_W / 2) * k, top: (CX - CENTRE_H / 2) * k, width: CENTRE_W * k, height: CENTRE_H * k };
 
   return (
-    <View style={st.wrap} {...(onScrub ? scrub.handlers : {})}>
+    <View style={[st.wrap, { width: size, height: size }]} {...(onScrub ? scrub.handlers : {})}>
       {/* The decoration ignores touches, so a touch's position is always relative to the dial. */}
       <View style={StyleSheet.absoluteFill} accessible accessibilityRole="image" accessibilityLabel={label}>
-        <Svg width={DIAL} height={DIAL} style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Svg width={size} height={size} viewBox={`0 0 ${DIAL} ${DIAL}`} style={StyleSheet.absoluteFill} pointerEvents="none">
           {Array.from({ length: days + 1 }, (_, i) => (
             <Tick key={i} i={i} days={days} sweep={sweep} />
           ))}
@@ -148,10 +152,10 @@ export function Dial({ days, start, points, todayColor, label, children, onScrub
           {onScrub && <Pointer days={days} knob={knob} />}
         </Svg>
         {weeks.map((d) => (
-          <WeekLabel key={d} day={d} days={days} start={start} />
+          <WeekLabel key={d} day={d} days={days} start={start} k={k} />
         ))}
         {points.map((p) => (
-          <Dot key={p.key} point={p} deg={angle(p.day, days)} delay={reachedAt(p.day, days)} />
+          <Dot key={p.key} point={p} deg={angle(p.day, days)} delay={reachedAt(p.day, days)} k={k} />
         ))}
       </View>
       {onCentrePress ? (
@@ -165,6 +169,7 @@ export function Dial({ days, start, points, todayColor, label, children, onScrub
       )}
       {onScrub && (
         <Knob
+          k={k}
           days={days}
           knob={knob}
           label={scrubLabel ?? label}
@@ -176,11 +181,11 @@ export function Dial({ days, start, points, todayColor, label, children, onScrub
 }
 
 /** The square you drag: it sits on today's mark until moved. */
-function Knob({ days, knob, label, onStep }: { days: number; knob: SharedValue<number>; label: string; onStep: (dir: 1 | -1) => void }) {
+function Knob({ k, days, knob, label, onStep }: { k: number; days: number; knob: SharedValue<number>; label: string; onStep: (dir: 1 | -1) => void }) {
   const style = useAnimatedStyle(() => {
     const deg = -SPAN / 2 + (knob.get() / days) * SPAN;
     const p = at(deg, TICK_R);
-    return { transform: [{ translateX: p.x - KNOB / 2 }, { translateY: p.y - KNOB / 2 }, { rotate: `${deg}deg` }] };
+    return { transform: [{ translateX: p.x * k - KNOB / 2 }, { translateY: p.y * k - KNOB / 2 }, { rotate: `${deg}deg` }] };
   });
   return (
     <Animated.View
@@ -252,9 +257,12 @@ function Today({ color, days }: { color: string; days: number }) {
 }
 
 /** "3 NOV" outside a week mark, appearing as the hand reaches it. */
-function WeekLabel({ day, days, start }: { day: number; days: number; start: string }) {
-  const { x, y } = at(angle(day, days), LABEL_R);
-  const text = fromIso(addDaysIso(start, day)).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }).replace('.', '').toUpperCase();
+function WeekLabel({ day, days, start, k }: { day: number; days: number; start: string; k: number }) {
+  // The text doesn't shrink with the dial, so it keeps the same gap from the ring at any size.
+  const p = at(angle(day, days), TICK_R + (LABEL_R - TICK_R) / k);
+  const x = p.x * k;
+  const y = p.y * k;
+  const text = fromIso(addDaysIso(start, day)).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }).replace(/\./g, '').toUpperCase();
   return (
     <Animated.View pointerEvents="none" entering={FadeIn.delay(reachedAt(day, days)).duration(400)} style={[st.label, { left: x - 30, top: y - 7 }]}>
       <Text style={st.labelText} numberOfLines={1}>
@@ -265,8 +273,10 @@ function WeekLabel({ day, days, start }: { day: number; days: number; start: str
 }
 
 /** A bill, dropping onto its day with a little spring as the hand passes. */
-function Dot({ point, deg, delay }: { point: DialPoint; deg: number; delay: number }) {
-  const { x, y } = at(deg, DOT_R);
+function Dot({ point, deg, delay, k }: { point: DialPoint; deg: number; delay: number; k: number }) {
+  const p = at(deg, DOT_R);
+  const x = p.x * k;
+  const y = p.y * k;
   const land = useSharedValue(0);
   useEffect(() => {
     land.value = withDelay(delay, withSpring(1, { damping: 9, stiffness: 180, mass: 0.6 }));
@@ -295,7 +305,7 @@ function Pulse({ color, size, delay }: { color: string; size: number; delay: num
 }
 
 const st = themed(() => StyleSheet.create({
-  wrap: { width: DIAL, height: DIAL, alignSelf: 'center' },
+  wrap: { alignSelf: 'center' },
   center: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   knob: { position: 'absolute', left: 0, top: 0, width: KNOB, height: KNOB, backgroundColor: C.fg, borderWidth: 3, borderColor: C.bg },
   dot: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },

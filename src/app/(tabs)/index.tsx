@@ -1,7 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { Redirect, router, useIsFocused } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { currentLang, locale, t } from '@/i18n/core';
@@ -20,7 +20,7 @@ import { useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 import { Billy, billyHold } from '@/ui/billy';
-import { angle, Dial, SWEEP_END, type DialPoint } from '@/ui/dial';
+import { angle, Dial, DIAL, SWEEP_END, type DialPoint } from '@/ui/dial';
 import { MoneyStrip } from '@/ui/money-strip';
 import { Icon, T } from '@/ui/kit';
 import { Animated, enterFade, enterRow, useCountUp } from '@/ui/motion';
@@ -40,6 +40,10 @@ function greeting(now = new Date()): string {
  */
 export default function Home() {
   const insets = useSafeAreaInsets();
+  // The dial's date labels reach ~20 px past its ring on each side, into the margins; on narrow
+  // phones the dial shrinks so they stay on screen.
+  const { width: screenW } = useWindowDimensions();
+  const dialSize = Math.min(DIAL, Math.round((screenW - 16) * (DIAL / 376)));
   const bills = useBills();
   const settings = useSettings();
   const today = todayIso();
@@ -124,6 +128,7 @@ export default function Home() {
         <View>
           <Dial
             key={`dial-${play}`}
+            size={dialSize}
             days={DIAL_DAYS}
             start={today}
             points={dots}

@@ -44,7 +44,8 @@ export function useMoneyFlow(period: Period) {
       case 'split':
         return n.ref ?? '';
       case 'left':
-        return t('flow.left');
+        // Short: diagram labels have little room.
+        return t('flow.leftShort');
       case 'category':
         return n.ref === 'other' ? t('flow.other') : categoryLabel(n.ref as Category);
     }

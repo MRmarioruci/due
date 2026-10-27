@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { daysBetween, fromIso, relativeDays, shortDay, todayIso } from '@/lib/dates';
+import { daysBetween, fromIso, relativeDays, shortDay, todayIso, dayMonth } from '@/lib/dates';
 import { activeDiscount } from '@/lib/discount';
 import { formatAmount } from '@/lib/money';
 import { planAroundPayday } from '@/lib/plan';
@@ -191,7 +191,7 @@ export default function Bills() {
                 <T style={st.planSub}>{plan.before.length ? t('home.beforeCount', { n: plan.before.length }) : t('home.nothingUntilPayday')}</T>
               </View>
               <View style={[st.planCol, st.planRight]}>
-                <Eyebrow>{t('home.afterPayday', { date: shortDay(plan.payday).toUpperCase() })}</Eyebrow>
+                <Eyebrow>{t('home.afterPayday', { date: dayMonth(plan.payday).toUpperCase() })}</Eyebrow>
                 <T style={st.planAmount}>{formatAmount(plan.afterMinor, ccy)}</T>
                 <T style={st.planSub}>{t('home.afterCount', { n: plan.after.length })}</T>
               </View>
@@ -245,9 +245,9 @@ export default function Bills() {
           <Pressable accessibilityRole="button" accessibilityLabel={t('filter.title')} onPress={() => chooseFilter()} hitSlop={8} style={[st.sort, { marginLeft: 'auto' }]}>
             <Icon name="filter" size={14} color={filter.category || filter.year ? C.accent : C.dim} />
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={t('sort.title')} onPress={chooseSort} hitSlop={8} style={[st.sort, { marginLeft: 0 }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('sort.title')} onPress={chooseSort} hitSlop={8} style={[st.sort, { marginLeft: 0, flexShrink: 1 }]}>
             <Icon name="sort" size={14} color={C.dim} />
-            <T style={st.sortText}>{t(`sort.${settings.sortBy}`)}</T>
+            <T style={st.sortText} numberOfLines={1}>{t(`sort.${settings.sortBy}`)}</T>
           </Pressable>
         </View>
 
@@ -397,7 +397,10 @@ function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today:
         <View style={[st.bar, { left: 0, width: 6, height: 6, marginLeft: 0, backgroundColor: C.accent }]} />
         {paydayAt != null && paydayAt <= HORIZON && (
           <View style={[st.payday, { left: `${(paydayAt / HORIZON) * 100}%` }]} accessibilityLabel={t('runway.payday')}>
-            <T style={st.paydayLabel}>{t('runway.pay')}</T>
+            {/* Near the right edge the label goes on the left of the line, so it isn't cut off. */}
+            <T style={[st.paydayLabel, paydayAt / HORIZON > 0.75 ? { right: 4 } : { left: 4 }]} numberOfLines={1}>
+              {t('runway.pay')}
+            </T>
           </View>
         )}
         {expected
@@ -439,11 +442,11 @@ const st = themed(() => StyleSheet.create({
   planAmount: { fontFamily: F.semibold, fontSize: 20, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
   planSub: { fontSize: 12.5, lineHeight: 17, color: C.dim, paddingRight: 8 },
   payday: { position: 'absolute', top: -6, bottom: 0, width: 1, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: C.muted },
-  paydayLabel: { position: 'absolute', top: -6, left: 4, fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, color: C.muted },
+  paydayLabel: { position: 'absolute', top: -6, fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, color: C.muted },
   bar: { position: 'absolute', bottom: 14, width: 7, marginLeft: -3 },
   runwayLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   runwayLabel: { fontFamily: F.mono, fontSize: 10.5, color: C.dim, letterSpacing: 0.4 },
-  tabs: { flexDirection: 'row', alignItems: 'flex-end', gap: 22, marginTop: 20 },
+  tabs: { flexDirection: 'row', alignItems: 'flex-end', gap: 18, marginTop: 20 },
   search: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10, height: 46, paddingHorizontal: 14, borderWidth: 1, borderColor: C.border },
   searchInput: { flex: 1, color: C.fg, fontFamily: F.regular, fontSize: 15, paddingVertical: 0 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -451,7 +454,8 @@ const st = themed(() => StyleSheet.create({
   chipOn: { backgroundColor: C.fg, borderColor: C.fg },
   chipRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sort: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 8, minHeight: 32 },
-  sortText: { fontSize: 13, color: C.dim },
+  // Gives way first when the tab names are long, ending in … rather than off the screen.
+  sortText: { fontSize: 13, color: C.dim, flexShrink: 1 },
   tab: { paddingBottom: 8, minHeight: 32, justifyContent: 'flex-end' },
   tabOn: { borderBottomWidth: 1.5, borderBottomColor: C.fg },
   tabInner: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
