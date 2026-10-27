@@ -1,6 +1,10 @@
+'use no memo';
+// The widget library calls these components as plain functions to flatten them into a tree for
+// Android, so: no hooks, no memoising compiler, and no fragments (it can't call a fragment).
+
 import { FlexWidget, OverlapWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
 
-import { t } from '@/i18n/core';
+import { t } from '../i18n/core';
 
 import type { WidgetData } from './data';
 import { dialSvg, SCAN_ICON } from './dial-svg';
@@ -31,18 +35,18 @@ export function DueWidget({ data, size }: { data: WidgetData; size: number }) {
           style={{ fontSize: Math.round(8 * k), fontFamily: 'JetBrainsMono-Regular', letterSpacing: 0.1, color: c.kind === 'focus' && c.urgent ? ACCENT : DIM }}
         />
         {c.kind === 'focus' ? (
-          <>
+          <FlexWidget style={{ flexDirection: 'column', alignItems: 'center', flexGap: Math.round(3 * k) }}>
             <FlexWidget style={{ flexDirection: 'row', alignItems: 'flex-end', flexGap: 3 }}>
               <TextWidget text={c.currency} style={{ fontSize: Math.round(9 * k), fontFamily: 'Archivo-Regular', color: DIM, marginBottom: Math.round(3 * k) }} />
               <TextWidget text={c.amount} maxLines={1} style={{ fontSize: Math.round(22 * k), fontFamily: 'Archivo-Regular', color: FG }} />
             </FlexWidget>
             <TextWidget text={c.payee} maxLines={1} truncate="END" style={{ fontSize: Math.round(10 * k), fontFamily: 'Archivo-Regular', color: FG }} />
-          </>
+          </FlexWidget>
         ) : (
-          <>
+          <FlexWidget style={{ flexDirection: 'column', alignItems: 'center', flexGap: Math.round(3 * k) }}>
             <TextWidget text={c.headline} maxLines={1} style={{ fontSize: Math.round(17 * k), fontFamily: 'Archivo-Regular', color: FG }} />
-            {c.sub && <TextWidget text={c.sub} maxLines={1} style={{ fontSize: Math.round(9 * k), fontFamily: 'Archivo-Regular', color: DIM }} />}
-          </>
+            {c.sub ? <TextWidget text={c.sub} maxLines={1} style={{ fontSize: Math.round(9 * k), fontFamily: 'Archivo-Regular', color: DIM }} /> : null}
+          </FlexWidget>
         )}
         <FlexWidget
           clickAction="OPEN_URI"

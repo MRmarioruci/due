@@ -7,6 +7,7 @@ import { getBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 
 import { widgetData } from './data';
+import { checkWidgetTree } from './tree';
 
 export const WIDGET_NAME = 'Due';
 
@@ -48,7 +49,9 @@ function render(bills: Bill[], size: Size) {
 /** If drawing fails, show the error on the widget itself instead of leaving an empty box. */
 function renderSafely(load: () => Bill[], size: Size) {
   try {
-    return render(load(), size);
+    const widget = render(load(), size);
+    checkWidgetTree(widget);
+    return widget;
   } catch (err) {
     console.error('[widget]', err);
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- only reachable where the native module exists
