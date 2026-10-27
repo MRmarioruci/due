@@ -5,12 +5,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { t } from '@/i18n/core';
 import { cadenceLabel } from '@/i18n/labels';
+import { currentPeriod, shiftMonth } from '@/lib/flow';
+import { todayIso } from '@/lib/dates';
 import { formatAmount } from '@/lib/money';
 import { goBack } from '@/lib/nav';
 import { latestBillOf } from '@/lib/reminders';
 import type { SankeyNode } from '@/lib/sankey-model';
 import { Eyebrow, Icon, IconButton, T } from '@/ui/kit';
-import { useMoneyFlow, type Period } from '@/ui/money-flow';
+import { periodParam, useMoneyFlow, type FlowPeriod } from '@/ui/money-flow';
 import { Animated, enterFade, enterRow } from '@/ui/motion';
 import { Sankey } from '@/ui/sankey';
 import { C, F, GUTTER, themed } from '@/ui/theme';
@@ -24,12 +26,34 @@ const SUGGESTED = ['flow.suggest.savings', 'flow.suggest.investing', 'flow.sugge
 export default function FlowScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const [period, setPeriod] = useState<Period>('month');
+  const today = todayIso();
+  const [period, setPeriod] = useState<FlowPeriod>(() => currentPeriod('month', today));
   const [sel, setSel] = useState<string | null>(null);
   const m = useMoneyFlow(period);
   const chartW = width - GUTTER * 2;
   const selected = m.model.nodes.find((n) => n.id === sel) ?? null;
   const free = m.flow.leftMinor - m.splitTotal;
+
+  // Stepping through months or years, within the ones there are bills for.
+  const { first, last } = m.range;
+  const canPrev = period.kind === 'month' ? period.month > first : period.year > first.slice(0, 4);
+  const canNext = period.kind === 'month' ? period.month < last : period.year < last.slice(0, 4);
+  function go(p: FlowPeriod) {
+    setPeriod(p);
+    setSel(null);
+  }
+  function step(dir: 1 | -1) {
+    if (period.kind === 'month') go({ kind: 'month', month: shiftMonth(period.month, dir) });
+    else go({ kind: 'year', year: String(Number(period.year) + dir) });
+  }
+  function switchTo(kind: FlowPeriod['kind']) {
+    if (kind === period.kind) return;
+    if (period.kind === 'month') return go({ kind: 'year', year: period.month.slice(0, 4) });
+    // Back to months: this month in this year, else the year's last month there are bills for.
+    const now = currentPeriod('month', today);
+    const month = period.year === today.slice(0, 4) ? (now as { month: string }).month : `${period.year}-12`;
+    go({ kind: 'month', month: month > last ? last : month < first ? first : month });
+  }
 
   function press(n: SankeyNode) {
     if (n.kind === 'split') return router.push({ pathname: '/split', params: { id: n.id.slice('split:'.length) } });
@@ -46,7 +70,7 @@ export default function FlowScreen() {
           </IconButton>
           <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{t('flow.title')}</T>
           {m.income > 0 ? (
-            <IconButton label={t('flow.share')} onPress={() => router.push({ pathname: '/flow-share', params: { period } })} style={{ marginRight: -12, borderWidth: 0 }}>
+            <IconButton label={t('flow.share')} onPress={() => router.push({ pathname: '/flow-share', params: { period: periodParam(period) } })} style={{ marginRight: -12, borderWidth: 0 }}>
               <Icon name="share" />
             </IconButton>
           ) : (
@@ -65,26 +89,30 @@ export default function FlowScreen() {
         ) : (
           <>
             <View style={st.segment} accessibilityRole="tablist">
-              {(['month', 'year'] as const).map((p) => {
-                const on = p === period;
+              {(['month', 'year'] as const).map((k) => {
+                const on = k === period.kind;
                 return (
-                  <Pressable
-                    key={p}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: on }}
-                    onPress={() => {
-                      setPeriod(p);
-                      setSel(null);
-                    }}
-                    style={[st.segItem, on && { backgroundColor: C.fg }]}>
-                    <T style={{ fontFamily: F.medium, fontSize: 13.5, color: on ? C.bg : C.dim }}>{p === 'month' ? t('flow.thisMonth') : t('flow.yearSoFar', { year: new Date().getFullYear() })}</T>
+                  <Pressable key={k} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => switchTo(k)} style={[st.segItem, on && { backgroundColor: C.fg }]}>
+                    <T style={{ fontFamily: F.medium, fontSize: 13.5, color: on ? C.bg : C.dim }} numberOfLines={1}>
+                      {k === 'month' ? t('flow.byMonth') : t('flow.byYear')}
+                    </T>
                   </Pressable>
                 );
               })}
             </View>
 
-            <View style={{ marginTop: 20 }}>
-              <Eyebrow>{m.label.toUpperCase()}</Eyebrow>
+            <View style={{ marginTop: 14 }}>
+              <View style={st.stepper}>
+                <IconButton label={t('flow.prevPeriod')} disabled={!canPrev} onPress={() => step(-1)} style={[st.stepBtn, !canPrev && { opacity: 0.3 }]}>
+                  <Icon name="back" size={16} />
+                </IconButton>
+                <Eyebrow style={{ flex: 1, textAlign: 'center', color: C.fg }}>{m.label.toUpperCase()}</Eyebrow>
+                <IconButton label={t('flow.nextPeriod')} disabled={!canNext} onPress={() => step(1)} style={[st.stepBtn, !canNext && { opacity: 0.3 }]}>
+                  <View style={{ transform: [{ rotate: '180deg' }] }}>
+                    <Icon name="back" size={16} />
+                  </View>
+                </IconButton>
+              </View>
               <T style={{ marginTop: 10, fontSize: 15, lineHeight: 22, color: C.muted }}>
                 {t('flow.summaryBills')} <T style={st.hl}>{m.pct(m.flow.billsMinor)}</T>
                 {m.splitTotal > 0 && (
@@ -104,7 +132,7 @@ export default function FlowScreen() {
               </T>
             </View>
 
-            <View key={period} style={{ marginTop: 24 }}>
+            <View key={periodParam(period)} style={{ marginTop: 24 }}>
               <Sankey model={m.model} width={chartW} height={CHART_H} labelW={LABEL_W} styleOf={m.styleOf(true)} selected={sel} onPress={press} />
             </View>
             <T style={st.hint}>{t('flow.hint')}</T>
@@ -132,7 +160,7 @@ export default function FlowScreen() {
                           style={st.row}>
                           <T style={{ flex: 1, fontSize: 14 }} numberOfLines={1}>
                             {r.payee}
-                            {r.cadence && r.cadence !== 'monthly' && period === 'month' && <T style={{ fontSize: 12.5, color: C.dim }}>{` · ${t('flow.perMonth', { cadence: cadenceLabel(r.cadence).toLowerCase() })}`}</T>}
+                            {r.cadence && r.cadence !== 'monthly' && period.kind === 'month' && <T style={{ fontSize: 12.5, color: C.dim }}>{` · ${t('flow.perMonth', { cadence: cadenceLabel(r.cadence).toLowerCase() })}`}</T>}
                           </T>
                           <T style={{ fontSize: 14, fontVariant: ['tabular-nums'] }}>{formatAmount(r.minor, m.ccy)}</T>
                         </Pressable>
@@ -183,6 +211,8 @@ export default function FlowScreen() {
 }
 
 const st = themed(() => StyleSheet.create({
+  stepper: { flexDirection: 'row', alignItems: 'center', marginHorizontal: -12 },
+  stepBtn: { borderWidth: 0 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
   segment: { marginTop: 10, flexDirection: 'row', borderWidth: 1, borderColor: C.line, padding: 3 },
   segItem: { flex: 1, height: 38, alignItems: 'center', justifyContent: 'center' },

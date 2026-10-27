@@ -55,9 +55,9 @@ export function Button({ title, onPress, kind = 'primary', loading, disabled, st
   );
 }
 
-export function IconButton({ label, onPress, children, style }: { label: string; onPress?: () => void; children: ReactNode; style?: StyleProp<ViewStyle> }) {
+export function IconButton({ label, onPress, children, style, disabled }: { label: string; onPress?: () => void; children: ReactNode; style?: StyleProp<ViewStyle>; disabled?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={4} style={({ pressed }) => [s.iconButton, pressed && { backgroundColor: C.surface }, style]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled }} disabled={disabled} onPress={onPress} hitSlop={4} style={({ pressed }) => [s.iconButton, pressed && { backgroundColor: C.surface }, style]}>
       {children}
     </Pressable>
   );

@@ -1,7 +1,7 @@
 import { locale, t } from '@/i18n/core';
 import { categoryLabel } from '@/i18n/labels';
 import { fromIso, todayIso } from '@/lib/dates';
-import { monthFlow, yearFlow } from '@/lib/flow';
+import { currentPeriod, flowRange, periodFlow, periodMonths, type FlowPeriod } from '@/lib/flow';
 import { buildSankey, type SankeyNode } from '@/lib/sankey-model';
 import { homeCurrency, monthlyIncome, useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
@@ -14,17 +14,34 @@ import { C, currentTheme } from './theme';
 export const SPLIT = { dark: '#3FD4F0', light: '#0E7490' };
 export const LEFT = { dark: '#C8F25A', light: '#4D7C0F' };
 
-export type Period = 'month' | 'year';
+export type { FlowPeriod };
 
-/** Everything "Where it goes" and its share image show, for one period. */
-export function useMoneyFlow(period: Period) {
+/** "October 2026", "2026 so far" or "2025". */
+export function periodLabel(period: FlowPeriod, today = todayIso()): string {
+  if (period.kind === 'year') return period.year === today.slice(0, 4) ? t('flow.yearSoFar', { year: period.year }) : period.year;
+  return fromIso(`${period.month}-01`).toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
+}
+
+/** As a route param: "month:2026-10" or "year:2026"; anything else is this month. */
+export const periodParam = (p: FlowPeriod) => (p.kind === 'month' ? `month:${p.month}` : `year:${p.year}`);
+export function parsePeriod(param: string | undefined, today = todayIso()): FlowPeriod {
+  const [kind, value] = (param ?? '').split(':');
+  if (kind === 'year' && /^\d{4}$/.test(value)) return { kind, year: value };
+  if (kind === 'month' && /^\d{4}-\d{2}$/.test(value)) return { kind, month: value };
+  return currentPeriod(kind === 'year' ? 'year' : 'month', today);
+}
+
+/** Everything "Where it goes" and its share image show, for one period (this month by default). */
+export function useMoneyFlow(asked?: FlowPeriod) {
   const bills = useBills();
   const settings = useSettings();
   const today = todayIso();
+  const period = asked ?? currentPeriod('month', today);
   const ccy = homeCurrency();
   const income = monthlyIncome(settings);
-  const months = period === 'year' ? fromIso(today).getMonth() + 1 : 1;
-  const flow = (period === 'year' ? yearFlow : monthFlow)(bills, income, ccy, today);
+  const months = periodMonths(period, today);
+  const flow = periodFlow(period, bills, income, ccy, today);
+  const range = flowRange(bills, ccy, today);
   const model = buildSankey(flow, settings.income.map((i) => ({ label: i.label, minor: i.monthlyMinor })), settings.splits, months);
   const total = model.nodes.find((n) => n.kind === 'income')?.minor ?? 0;
   const theme = currentTheme();
@@ -62,6 +79,6 @@ export function useMoneyFlow(period: Period) {
     });
 
   const splitTotal = model.nodes.filter((n) => n.kind === 'split').reduce((s, n) => s + n.minor, 0);
-  const label = period === 'year' ? t('flow.yearSoFar', { year: today.slice(0, 4) }) : new Date().toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
-  return { flow, model, total, income, ccy, pct, short, nameOf, styleOf, splitTotal, label, splits: settings.splits, months };
+  const label = periodLabel(period, today);
+  return { flow, model, total, income, ccy, pct, short, nameOf, styleOf, splitTotal, label, splits: settings.splits, months, range };
 }

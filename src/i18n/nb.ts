@@ -615,4 +615,8 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.leftShort': "Igjen",
   'home.dragHint': "Dra firkanten for å se fremover",
   'billy.dragHint': "Psst. Dra firkanten rundt skiven.",
+  'flow.byMonth': "Måned",
+  'flow.byYear': "År",
+  'flow.prevPeriod': "Forrige",
+  'flow.nextPeriod': "Neste",
 };

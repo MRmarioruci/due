@@ -615,4 +615,8 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.leftShort': "Περισσεύουν",
   'home.dragHint': "Σύρε το τετράγωνο για να δεις μπροστά",
   'billy.dragHint': "Ψιτ. Σύρε το τετράγωνο γύρω από τον δίσκο.",
+  'flow.byMonth': "Μήνας",
+  'flow.byYear': "Έτος",
+  'flow.prevPeriod': "Προηγούμενο",
+  'flow.nextPeriod': "Επόμενο",
 };

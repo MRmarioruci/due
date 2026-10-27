@@ -14,7 +14,7 @@ import { C, F, currentTheme, themed } from './theme';
  * shows a grey bar inviting to.
  */
 export function MoneyStrip({ delay = 0 }: { delay?: number }) {
-  const m = useMoneyFlow('month');
+  const m = useMoneyFlow();
   const theme = currentTheme();
   const free = Math.max(0, m.flow.leftMinor - m.splitTotal);
   const total = Math.max(1, m.flow.billsMinor + m.splitTotal + free);

@@ -615,4 +615,8 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.leftShort': "Resta",
   'home.dragHint': "Trascina il quadrato per guardare avanti",
   'billy.dragHint': "Psst. Trascina il quadrato lungo il quadrante.",
+  'flow.byMonth': "Mese",
+  'flow.byYear': "Anno",
+  'flow.prevPeriod': "Precedente",
+  'flow.nextPeriod': "Successivo",
 };

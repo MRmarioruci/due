@@ -615,4 +615,8 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'flow.leftShort': "Over",
   'home.dragHint': "Sleep het vierkantje om vooruit te kijken",
   'billy.dragHint': "Psst. Sleep het vierkantje rond de wijzerplaat.",
+  'flow.byMonth': "Maand",
+  'flow.byYear': "Jaar",
+  'flow.prevPeriod': "Vorige",
+  'flow.nextPeriod': "Volgende",
 };

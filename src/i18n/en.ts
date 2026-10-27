@@ -635,6 +635,10 @@ export const en = {
   'flow.leftShort': "Left",
   'home.dragHint': "Drag the square to look ahead",
   'billy.dragHint': "Psst. Drag the square around the dial.",
+  'flow.byMonth': "Month",
+  'flow.byYear': "Year",
+  'flow.prevPeriod': "Previous",
+  'flow.nextPeriod': "Next",
 } as const;
 
 type Full = keyof typeof en;

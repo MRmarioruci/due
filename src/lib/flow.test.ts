@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { monthFlow, yearFlow } from './flow';
+import { flowRange, monthFlow, periodMonths, shiftMonth, yearFlow } from './flow';
 import { emptyPayment, type Bill, type Category } from './types';
 
 let n = 0;
@@ -58,6 +58,25 @@ describe('where income goes', () => {
     expect(f.incomeMinor).toBe(620000 * 10);
     // October's rent is due on the 30th, after today, so it isn't counted yet.
     expect(f.billsMinor).toBe(185000 + 2 * 38720 + 33500 + 2 * 6490 + 24000);
+  });
+
+  it('shows another month as what was actually due in it', () => {
+    const f = monthFlow(bills, 620000, 'CHF', '2026-10-26', '2026-09');
+    expect(f.incomeMinor).toBe(620000);
+    expect(f.billsMinor).toBe(185000 + 38720 + 6490);
+  });
+
+  it('shows a past year in full, against twelve months', () => {
+    const f = yearFlow(bills, 620000, 'CHF', '2026-10-26', '2025');
+    expect(f.incomeMinor).toBe(620000 * 12);
+    expect(f.billsMinor).toBe(33500);
+    expect(periodMonths({ kind: 'year', year: '2026' }, '2026-10-26')).toBe(10);
+  });
+
+  it('steps through the months there are bills for', () => {
+    expect(shiftMonth('2026-01', -1)).toBe('2025-12');
+    expect(shiftMonth('2026-11', 2)).toBe('2027-01');
+    expect(flowRange(bills, 'CHF', '2026-10-26')).toEqual({ first: '2025-10', last: '2026-10' });
   });
 
   it('can go over income', () => {

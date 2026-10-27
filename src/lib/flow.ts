@@ -6,6 +6,8 @@ import type { Bill, Category } from './types';
  * Where income goes: bills grouped by category, and what's left. The month view counts each
  * regular bill at its monthly share (a yearly fee is a twelfth of it) plus this month's one-off
  * bills; the year view counts what was due from January to today against that many months' income.
+ * Other months and years count what was actually due in them: a past year in full, against twelve
+ * months' income.
  */
 export type FlowRow = { key: string; payee: string; minor: number; cadence: Cadence | null };
 export type FlowGroup = { key: Category | 'other'; minor: number; rows: FlowRow[] };
@@ -19,13 +21,45 @@ const MIN_SHARE = 0.05;
 const amount = (b: Bill) => b.paidAmountMinor ?? b.amountMinor ?? 0;
 const dateOf = (b: Bill) => b.dueDate ?? b.paidAt?.slice(0, 10) ?? b.createdAt.slice(0, 10);
 
-export function monthFlow(bills: Bill[], incomeMonthlyMinor: number, currency: string, today: string): Flow {
+/** A month ("2026-10") or a year ("2026") to look at. */
+export type FlowPeriod = { kind: 'month'; month: string } | { kind: 'year'; year: string };
+
+export const currentPeriod = (kind: FlowPeriod['kind'], today: string): FlowPeriod => (kind === 'month' ? { kind, month: today.slice(0, 7) } : { kind, year: today.slice(0, 4) });
+
+export function periodFlow(period: FlowPeriod, bills: Bill[], incomeMonthlyMinor: number, currency: string, today: string): Flow {
+  return period.kind === 'month' ? monthFlow(bills, incomeMonthlyMinor, currency, today, period.month) : yearFlow(bills, incomeMonthlyMinor, currency, today, period.year);
+}
+
+/** How many months of income a period stands for: one, or the year's months up to today. */
+export function periodMonths(period: FlowPeriod, today: string): number {
+  if (period.kind === 'month') return 1;
+  return period.year === today.slice(0, 4) ? fromIso(today).getMonth() + 1 : 12;
+}
+
+/** The months there's something to show for: from the first bill to today, or a few months on if bills are already due then. */
+export function flowRange(bills: Bill[], currency: string, today: string): { first: string; last: string } {
+  const now = today.slice(0, 7);
+  const months = bills.filter((b) => b.currency === currency && b.amountMinor != null).map((b) => dateOf(b).slice(0, 7));
+  const first = months.reduce((a, m) => (m < a ? m : a), now);
+  const latest = months.reduce((a, m) => (m > a ? m : a), now);
+  const cap = shiftMonth(now, 3);
+  return { first, last: latest > cap ? cap : latest };
+}
+
+/** "2026-10" moved by `n` months. */
+export function shiftMonth(month: string, n: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const i = y * 12 + (m - 1) + n;
+  return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`;
+}
+
+export function monthFlow(bills: Bill[], incomeMonthlyMinor: number, currency: string, today: string, month = today.slice(0, 7)): Flow {
+  if (month !== today.slice(0, 7)) return build(due(bills, currency, (d) => d.startsWith(month)), incomeMonthlyMinor);
   const mine = bills.filter((b) => b.currency === currency && b.amountMinor != null);
   const series = findSeries(mine, today).filter((s) => s.currency === currency);
   const regular = new Set(series.map((s) => s.key));
   const latest = (key: string) => mine.filter((b) => payeeKey(b.payee) === key).sort((a, b) => dateOf(b).localeCompare(dateOf(a)))[0];
   const rows: (FlowRow & { category: Category })[] = series.map((s) => ({ key: s.key, payee: s.payee, minor: s.monthlyMinor, cadence: s.cadence, category: latest(s.key)?.category ?? 'other' }));
-  const month = today.slice(0, 7);
   for (const b of mine) {
     if (regular.has(payeeKey(b.payee)) || dateOf(b).slice(0, 7) !== month) continue;
     rows.push({ key: b.id, payee: b.payee, minor: amount(b), cadence: null, category: b.category });
@@ -33,19 +67,24 @@ export function monthFlow(bills: Bill[], incomeMonthlyMinor: number, currency: s
   return build(rows, incomeMonthlyMinor);
 }
 
-export function yearFlow(bills: Bill[], incomeMonthlyMinor: number, currency: string, today: string): Flow {
-  const year = today.slice(0, 4);
+export function yearFlow(bills: Bill[], incomeMonthlyMinor: number, currency: string, today: string, year = today.slice(0, 4)): Flow {
+  // This year: what's been due so far. Any other year: all of it.
+  const thisYear = year === today.slice(0, 4);
+  const rows = due(bills, currency, (d) => d.startsWith(year) && (!thisYear || d <= today));
+  return build(rows, incomeMonthlyMinor * periodMonths({ kind: 'year', year }, today));
+}
+
+/** Bills due on the days `when` picks, one row per biller. */
+function due(bills: Bill[], currency: string, when: (date: string) => boolean): (FlowRow & { category: Category })[] {
   const byPayee = new Map<string, FlowRow & { category: Category }>();
   for (const b of bills) {
-    const d = dateOf(b);
-    if (b.currency !== currency || b.amountMinor == null || !d.startsWith(year) || d > today) continue;
+    if (b.currency !== currency || b.amountMinor == null || !when(dateOf(b))) continue;
     const key = payeeKey(b.payee) || b.id;
     const row = byPayee.get(key) ?? { key, payee: b.payee, minor: 0, cadence: null, category: b.category };
     row.minor += amount(b);
     byPayee.set(key, row);
   }
-  const months = fromIso(today).getMonth() + 1;
-  return build([...byPayee.values()], incomeMonthlyMinor * months);
+  return [...byPayee.values()];
 }
 
 function build(rows: (FlowRow & { category: Category })[], incomeMinor: number): Flow {
