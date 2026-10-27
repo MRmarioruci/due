@@ -1,16 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 
-// Stand-ins for the library's widgets: marked the way the real ones are, no native code.
-vi.mock('react-native-android-widget', () => {
-  const widget = (name: string) => Object.assign(() => null, { __name__: name });
-  return { FlexWidget: widget('FlexWidget'), OverlapWidget: widget('OverlapWidget'), SvgWidget: widget('SvgWidget'), TextWidget: widget('TextWidget') };
-});
-
 import { emptyPayment, type Bill } from '../lib/types';
 
 import { widgetData } from './data';
 import { DueWidget } from './DueWidget';
 import { checkWidgetTree } from './tree';
+
+// vi.mock is hoisted above the imports.
+// Stand-ins for the library's widgets: marked the way the real ones are, no native code.
+vi.mock('react-native-android-widget', () => {
+  const widget = (name: string) => Object.assign(() => null, { __name__: name });
+  return { FlexWidget: widget('FlexWidget'), OverlapWidget: widget('OverlapWidget'), SvgWidget: widget('SvgWidget'), TextWidget: widget('TextWidget') };
+});
 
 const bill = (id: string, dueDate: string): Bill => ({
   id, payee: id, description: null, amountMinor: 6490, currency: 'CHF', dueDate, issueDate: null, category: 'other', country: 'CH',
