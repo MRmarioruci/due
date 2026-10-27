@@ -581,6 +581,18 @@ export const en = {
   'flow.stripInvite': "Add your income to see where it goes",
   'nav.home': "Home",
   'nav.bills': "Bills",
+  'calendar.title': "Pay {payee}",
+  'calendar.openDue': "Open due to pay it.",
+  'calendar.name': "due bills",
+  'calendar.sync': "Show bills in my calendar",
+  'calendar.syncOn': "Your bills are in the “due bills” calendar",
+  'calendar.noAccess': "due needs calendar access for this",
+  'calendar.offTitle': "Stop showing bills in your calendar?",
+  'calendar.offText': "The “due bills” calendar and its events are removed. Your bills stay in due.",
+  'calendar.offConfirm': "Remove",
+  'calendar.add': "Add to calendar",
+  'calendar.alreadyIn': "It’s already in your “due bills” calendar",
+  'calendar.couldNotOpen': "No calendar app could open",
 } as const;
 
 type Full = keyof typeof en;

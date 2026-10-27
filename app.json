@@ -92,6 +92,12 @@
           ]
         }
       ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Allow due to add your bills to a calendar."
+        }
+      ],
       "expo-localization",
       [
         "expo-location",

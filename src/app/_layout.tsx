@@ -11,6 +11,7 @@ import '@/i18n';
 import { LockGate } from '@/lib/lock';
 import { usePayCheck } from '@/lib/pay-check';
 import { listenForResponses, scheduleDigest, setupNotifications, syncReminders } from '@/lib/reminders';
+import { syncCalendar } from '@/lib/calendar';
 import { getSettings, useSettings, type Settings } from '@/lib/settings';
 import { recategorizeOthers, useBills } from '@/lib/store';
 import { pickCategory } from '@/lib/categorize';
@@ -58,6 +59,7 @@ export default function RootLayout() {
   useEffect(() => {
     const t = setTimeout(() => {
       syncReminders();
+      syncCalendar();
       scheduleDigest(bills);
       updateWidget(bills);
     }, 1500);
@@ -67,7 +69,10 @@ export default function RootLayout() {
   // Back in the app: the scheduling window moves on, so bills further out get their reminders.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') syncReminders();
+      if (state === 'active') {
+        syncReminders();
+        syncCalendar();
+      }
     });
     return () => sub.remove();
   }, []);

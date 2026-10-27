@@ -10,6 +10,7 @@ import { widgetProblem } from '@/widget';
 import { deviceLang, LANGUAGES, t } from '@/i18n';
 import { countryName, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { remindersAvailable, rescheduleAll } from '@/lib/reminders';
+import { disableCalendarSync, enableCalendarSync } from '@/lib/calendar';
 import { removeAllBills } from '@/lib/remove';
 import { seedSampleBills } from '@/lib/seed';
 import { useBills } from '@/lib/store';
@@ -59,6 +60,7 @@ export default function SettingsScreen() {
           }}
         />
         <ToggleRow label={t('settings.digest')} value={s.weeklyDigest} onChange={(v) => updateSettings({ weeklyDigest: v })} />
+        <ToggleRow label={t('calendar.sync')} value={s.calendarSync} onChange={toggleCalendar} />
       </Section>
 
       <Section title={t('settings.security')} note={t('settings.lockNote')}>
@@ -109,6 +111,17 @@ export default function SettingsScreen() {
 
     </ScrollView>
   );
+}
+
+/** Calendar sync on asks for access and fills a "due" calendar; off removes that calendar. */
+async function toggleCalendar(on: boolean) {
+  if (on) {
+    if (await enableCalendarSync()) toast(t('calendar.syncOn'));
+    else toast(t('calendar.noAccess'));
+    return;
+  }
+  const sure = await sheet.confirm({ title: t('calendar.offTitle'), message: t('calendar.offText'), confirm: t('calendar.offConfirm'), destructive: true });
+  if (sure) await disableCalendarSync();
 }
 
 /* ---------- choosers: each opens one sheet ---------- */

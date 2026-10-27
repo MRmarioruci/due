@@ -24,6 +24,7 @@ import { markOpen, markPaid, snooze, unsnooze } from '@/lib/reminders';
 import { getSettings, useSettings } from '@/lib/settings';
 import { contractOf, nextReview } from '@/lib/contracts';
 import { shareLink } from '@/lib/bill-share';
+import { addBillToCalendar } from '@/lib/calendar';
 import { useBill, useBills } from '@/lib/store';
 import { priceChange } from '@/lib/price-change';
 import { PriceChangeLine } from '@/ui/price-change';
@@ -183,6 +184,19 @@ export default function BillScreen() {
       actions: [
         { label: t('bill.edit'), kind: 'secondary', onPress: () => router.push({ pathname: '/review', params: { id: b.id } }) },
         { label: t('share.withSomeone'), kind: 'secondary', onPress: () => setTimeout(() => shareWithSomeone(b), 80) },
+        ...(b.dueDate && b.status === 'open'
+          ? [
+              {
+                label: t('calendar.add'),
+                kind: 'secondary' as const,
+                onPress: async () => {
+                  // Already synced: it's in the "due" calendar; otherwise open the calendar app's form.
+                  if (getSettings().calendarSync) return toast(t('calendar.alreadyIn'));
+                  if (!(await addBillToCalendar(b))) toast(t('calendar.couldNotOpen'));
+                },
+              },
+            ]
+          : []),
         { label: t('pdf.download'), kind: 'secondary', onPress: downloadPdf },
         {
           label: t('bill.delete'),
