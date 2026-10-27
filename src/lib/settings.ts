@@ -52,11 +52,13 @@ export type Settings = {
   contracts: Contracts;
   /** Billy, the goat on the home dial. */
   billy: boolean;
+  /** The home dial's marker has been dragged at least once; until then it shows how. */
+  dialDragged: boolean;
   /** Ask for the phone's own unlock (fingerprint, face, PIN or pattern) when opening the app. */
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {}, kept: [], income: [], splits: [], calendarSync: false, calendarId: null, calendarEvents: {}, billy: true };
+const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {}, kept: [], income: [], splits: [], calendarSync: false, calendarId: null, calendarEvents: {}, billy: true, dialDragged: false };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');

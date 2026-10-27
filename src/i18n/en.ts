@@ -633,6 +633,8 @@ export const en = {
   'home.nothingThatDay': "Nothing due",
   'billy.peek': "Ooh, {payee}. Looks tasty.",
   'flow.leftShort': "Left",
+  'home.dragHint': "Drag the square to look ahead",
+  'billy.dragHint': "Psst. Drag the square around the dial.",
 } as const;
 
 type Full = keyof typeof en;

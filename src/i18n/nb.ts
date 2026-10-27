@@ -613,4 +613,6 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.nothingThatDay': "Ingenting forfaller",
   'billy.peek': "Åh, {payee}. Ser godt ut.",
   'flow.leftShort': "Igjen",
+  'home.dragHint': "Dra firkanten for å se fremover",
+  'billy.dragHint': "Psst. Dra firkanten rundt skiven.",
 };

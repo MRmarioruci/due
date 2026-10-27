@@ -613,4 +613,6 @@ export const es: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.nothingThatDay': "Nada que pagar",
   'billy.peek': "Oh, {payee}. Qué buena pinta.",
   'flow.leftShort': "Sobra",
+  'home.dragHint': "Arrastra el cuadrado para ver lo que viene",
+  'billy.dragHint': "Psst. Arrastra el cuadrado por el dial.",
 };

@@ -16,7 +16,7 @@ import { openScan } from '@/lib/nav';
 import { expectedBills, findSeries } from '@/lib/recurring';
 import { useUnlocked } from '@/lib/lock';
 import { latestBillOf } from '@/lib/reminders';
-import { useSettings } from '@/lib/settings';
+import { getSettings, updateSettings, useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 import { Billy, billyHold } from '@/ui/billy';
@@ -102,6 +102,7 @@ export default function Home() {
       target={state.kind === 'focus' ? { dialDeg: angle(Math.max(0, state.daysLeft), DIAL_DAYS), payee: state.focus.payee, daysLeft: state.daysLeft } : null}
       fed={fresh ? { id: fresh.id, payee: fresh.payee } : null}
       peek={picked?.payee ?? null}
+      hint={!settings.dialDragged}
       active={visible}
     />
   ) : null;
@@ -135,9 +136,11 @@ export default function Home() {
             todayColor={focus ? C.fg : C.accent}
             label={t('home.dialA11y', { n: points.length })}
             scrubLabel={t('home.scrubA11y')}
+            hint={!settings.dialDragged}
             onScrub={(day) => {
               billyHold();
               setScrub(day);
+              if (day != null && !getSettings().dialDragged) updateSettings({ dialDragged: true });
             }}
             onCentrePress={opened ? () => router.push({ pathname: '/bill/[id]', params: { id: opened.id } }) : undefined}>
             {scrub != null ? (
@@ -193,7 +196,7 @@ export default function Home() {
               </Animated.View>
             )}
           </Dial>
-          <T style={st.dialFoot}>{t('home.dialFoot', { n: DIAL_DAYS })}</T>
+          <T style={[st.dialFoot, !settings.dialDragged && { color: C.fg }]}>{settings.dialDragged ? t('home.dialFoot', { n: DIAL_DAYS }) : caps(t('home.dragHint'))}</T>
           {billy}
         </View>
 

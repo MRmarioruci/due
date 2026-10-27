@@ -657,4 +657,6 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.nothingThatDay': "Nic do zapłaty",
   'billy.peek': "Ooo, {payee}. Wygląda smakowicie.",
   'flow.leftShort': "Zostaje",
+  'home.dragHint': "Przeciągnij kwadrat, by zajrzeć naprzód",
+  'billy.dragHint': "Psst. Przeciągnij kwadrat po tarczy.",
 };

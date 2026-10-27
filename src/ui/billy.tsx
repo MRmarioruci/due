@@ -191,7 +191,7 @@ export const BILLY_STRIP = H + 14;
 
 type Side = 'left' | 'right';
 
-export function Billy({ mood, target, fed, peek, active }: { mood: BillyMood; target: BillyTarget | null; fed: { id: string; payee: string } | null; peek: string | null; active: boolean }) {
+export function Billy({ mood, target, fed, peek, hint = false, active }: { mood: BillyMood; target: BillyTarget | null; fed: { id: string; payee: string } | null; peek: string | null; hint?: boolean; active: boolean }) {
   const reduced = useReducedMotion();
   const [face, setFace] = useState<Face>(baseFace(mood));
   const [line, setLine] = useState<string | null>(null);
@@ -386,6 +386,12 @@ export function Billy({ mood, target, fed, peek, active }: { mood: BillyMood; ta
       return true;
     };
     const greet = async () => {
+      // Points out the dial's marker while it's still showing itself off.
+      if (hint && mood !== 'empty') {
+        lookUp.set(withTiming(1, { duration: 250 }));
+        if (!(await say(t('billy.dragHint'), 3200))) return false;
+        lookUp.set(withTiming(0, { duration: 250 }));
+      }
       if (mood === 'empty') return say(t('billy.hungry'));
       if (mood === 'calm') {
         setFace('idle');

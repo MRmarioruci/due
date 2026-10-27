@@ -613,4 +613,6 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'home.nothingThatDay': "Niets te betalen",
   'billy.peek': "Ooh, {payee}. Ziet er lekker uit.",
   'flow.leftShort': "Over",
+  'home.dragHint': "Sleep het vierkantje om vooruit te kijken",
+  'billy.dragHint': "Psst. Sleep het vierkantje rond de wijzerplaat.",
 };

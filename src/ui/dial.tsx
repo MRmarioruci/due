@@ -68,9 +68,11 @@ type DialProps = {
   onScrub?: (day: number | null) => void;
   onCentrePress?: () => void;
   scrubLabel?: string;
+  /** Until the marker has been dragged once: it shows itself off, sliding to a bill and back. */
+  hint?: boolean;
 };
 
-export function Dial({ size = DIAL, days, start, points, todayColor, label, children, onScrub, onCentrePress, scrubLabel }: DialProps) {
+export function Dial({ size = DIAL, days, start, points, todayColor, label, children, onScrub, onCentrePress, scrubLabel, hint }: DialProps) {
   const sweep = useSharedValue(0);
   useEffect(() => {
     sweep.value = withDelay(SWEEP_DELAY, withTiming(1, { duration: SWEEP_MS, easing: Easing.inOut(Easing.quad) }));
@@ -135,6 +137,18 @@ export function Dial({ size = DIAL, days, start, points, todayColor, label, chil
     };
   });
   useEffect(() => scrub.sync({ billDays, onScrub, days, k }));
+
+  // The show-off: after the entrance, out to the nearest bill (or a few days) and back, three times
+  // a few seconds apart. A real drag takes over the marker and cancels it.
+  const demoTo = Math.min(8, billDays.filter((d) => d > 0).sort((a, b) => a - b)[0] ?? 5);
+  useEffect(() => {
+    if (!hint || !onScrub) return;
+    const there = withTiming(demoTo, { duration: 900, easing: Easing.inOut(Easing.cubic) });
+    const back = withDelay(600, withTiming(0, { duration: 700, easing: Easing.inOut(Easing.cubic) }));
+    knob.set(withDelay(SWEEP_END + 900, withRepeat(withSequence(there, back, withDelay(2800, withTiming(0, { duration: 0 }))), 3)));
+    // Only on mount and when hinting starts or stops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hint]);
   useEffect(() => () => scrub.stop(), [scrub]);
 
   const centre = { left: (CX - CENTRE_W / 2) * k, top: (CX - CENTRE_H / 2) * k, width: CENTRE_W * k, height: CENTRE_H * k };
@@ -169,6 +183,7 @@ export function Dial({ size = DIAL, days, start, points, todayColor, label, chil
       )}
       {onScrub && (
         <Knob
+          hint={!!hint}
           k={k}
           days={days}
           knob={knob}
@@ -181,7 +196,7 @@ export function Dial({ size = DIAL, days, start, points, todayColor, label, chil
 }
 
 /** The square you drag: it sits on today's mark until moved. */
-function Knob({ k, days, knob, label, onStep }: { k: number; days: number; knob: SharedValue<number>; label: string; onStep: (dir: 1 | -1) => void }) {
+function Knob({ hint, k, days, knob, label, onStep }: { hint: boolean; k: number; days: number; knob: SharedValue<number>; label: string; onStep: (dir: 1 | -1) => void }) {
   const style = useAnimatedStyle(() => {
     const deg = -SPAN / 2 + (knob.get() / days) * SPAN;
     const p = at(deg, TICK_R);
@@ -196,8 +211,9 @@ function Knob({ k, days, knob, label, onStep }: { k: number; days: number; knob:
       accessibilityLabel={label}
       accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
       onAccessibilityAction={(e) => onStep(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
-      style={[st.knob, style]}
-    />
+      style={[st.knob, style]}>
+      {hint && <Pulse color={C.fg} size={KNOB} delay={SWEEP_END} />}
+    </Animated.View>
   );
 }
 
@@ -307,7 +323,7 @@ function Pulse({ color, size, delay }: { color: string; size: number; delay: num
 const st = themed(() => StyleSheet.create({
   wrap: { alignSelf: 'center' },
   center: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  knob: { position: 'absolute', left: 0, top: 0, width: KNOB, height: KNOB, backgroundColor: C.fg, borderWidth: 3, borderColor: C.bg },
+  knob: { position: 'absolute', left: 0, top: 0, width: KNOB, height: KNOB, backgroundColor: C.fg, borderWidth: 3, borderColor: C.bg, alignItems: 'center', justifyContent: 'center' },
   dot: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   label: { position: 'absolute', width: 60, alignItems: 'center' },
   labelText: { fontFamily: F.mono, fontSize: 9.5, letterSpacing: 0.6, color: C.dim },
