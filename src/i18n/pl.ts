@@ -669,4 +669,12 @@ export const pl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.pickTitle': "Który kalendarz?",
   'calendar.pickNote': "Wybierz kalendarz z konta Google, a rachunki zobaczysz w Kalendarzu Google, w przeglądarce i na innych urządzeniach.",
   'calendar.none': "Żaden kalendarz na tym telefonie nie przyjmuje nowych wydarzeń. Dodaj konto Google w ustawieniach telefonu.",
+  'billy.cameo.stamp': "{payee}: zapłacone. Sam przybiłem pieczątkę.",
+  'billy.cameo.lap': "Juhuu! {payee} zapłacone!",
+  'billy.cameo.burp': "Beeek.",
+  'billy.cameo.burp2': "{payee} weszło gładko.",
+  'billy.cameo.open': "Jednak niezapłacone? Wypluwam {payee}.",
+  'billy.cameo.snooze': "To później. Zzz.",
+  'billy.cameo.snoozeWhen': "To później: {when}. Zzz.",
+  'billy.paidStamp': "ZAPŁACONE",
 };

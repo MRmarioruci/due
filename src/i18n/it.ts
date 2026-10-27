@@ -625,4 +625,12 @@ export const it: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.pickTitle': "Quale calendario?",
   'calendar.pickNote': "Scegline uno del tuo account Google per vedere le bollette in Google Calendar, sul web e sugli altri dispositivi.",
   'calendar.none': "Nessun calendario su questo telefono accetta nuovi eventi. Aggiungi un account Google nelle impostazioni del telefono.",
+  'billy.cameo.stamp': "{payee}: pagata. Timbrata da me.",
+  'billy.cameo.lap': "Iuhuu! {payee} è pagata!",
+  'billy.cameo.burp': "Buuurp.",
+  'billy.cameo.burp2': "{payee} è andata giù bene.",
+  'billy.cameo.open': "Non pagata? Sputo fuori {payee}.",
+  'billy.cameo.snooze': "Più tardi, allora. Zzz.",
+  'billy.cameo.snoozeWhen': "Più tardi, allora: {when}. Zzz.",
+  'billy.paidStamp': "PAGATO",
 };

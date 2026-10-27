@@ -625,4 +625,12 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.pickTitle': "Hvilken kalender?",
   'calendar.pickNote': "Velg en på Google-kontoen din for å se regningene i Google Kalender, på nettet og på de andre enhetene dine.",
   'calendar.none': "Ingen kalender på denne telefonen tar imot nye hendelser. Legg til en Google-konto i telefonens innstillinger.",
+  'billy.cameo.stamp': "{payee}: betalt. Stemplet den selv.",
+  'billy.cameo.lap': "Jippi! {payee} er betalt!",
+  'billy.cameo.burp': "Rrræp.",
+  'billy.cameo.burp2': "{payee} gikk ned på høykant.",
+  'billy.cameo.open': "Ikke betalt likevel? Jeg spytter ut {payee}.",
+  'billy.cameo.snooze': "Senere, da. Zzz.",
+  'billy.cameo.snoozeWhen': "Senere, da: {when}. Zzz.",
+  'billy.paidStamp': "BETALT",
 };

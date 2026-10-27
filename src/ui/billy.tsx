@@ -1,14 +1,16 @@
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { AppState, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Ellipse, G, Path, Rect, Text as SvgText } from 'react-native-svg';
 
 import { t, type Key } from '@/i18n/core';
 import { HOME_X, ROAM, underBill, type BillyMood } from '@/lib/billy';
+import { getSettings } from '@/lib/settings';
 
 import { SWEEP_END } from './dial';
-import { C, F, themed } from './theme';
+import { C, F, GUTTER, themed } from './theme';
 
 /**
  * Billy, a small goat who eats bills. He lives on a strip under the home dial, fidgets every few
@@ -520,6 +522,9 @@ export function Billy({ mood, target, fed, peek, hint = false, active }: { mood:
       { translateY: -H / 2 },
     ],
   }));
+  // While he's off doing a cameo, his spot under the dial stays empty: there's only one Billy.
+  const away = useSyncExternalStore(onCameo, () => cameo != null);
+
   const right = side === 'right';
   const bubble = useAnimatedStyle(() => {
     const at = rowW / 2 + x.get();
@@ -527,7 +532,7 @@ export function Billy({ mood, target, fed, peek, hint = false, active }: { mood:
   });
 
   return (
-    <View style={st.strip} onLayout={(e) => setRowW(e.nativeEvent.layout.width)}>
+    <View style={[st.strip, away && { opacity: 0 }]} onLayout={(e) => setRowW(e.nativeEvent.layout.width)}>
       <Animated.View pointerEvents="none" style={[st.bubbleSlot, { alignItems: right ? 'flex-start' : 'flex-end' }, bubble]}>
         <Bubble line={line} />
       </Animated.View>
@@ -638,10 +643,234 @@ export function BillyMeet({ optedOut, onGone, size = 150 }: { optedOut: boolean;
   );
 }
 
+
+/* ---------- Cameos: Billy turning up when a bill changes ---------- */
+
+export type CameoKind = 'paid' | 'open' | 'snooze';
+type Cameo = { kind: CameoKind; payee: string; when?: string; id: number };
+
+let cameo: Cameo | null = null;
+const cameoListeners = new Set<() => void>();
+const cameoChanged = () => cameoListeners.forEach((l) => l());
+const onCameo = (l: () => void) => {
+  cameoListeners.add(l);
+  return () => cameoListeners.delete(l);
+};
+
+/**
+ * Billy pops in for a few seconds to react to a bill being paid, reopened or snoozed, on whatever
+ * screen is showing. Returns false when he's switched off, so the caller can show a toast instead.
+ */
+export function billyCameo(kind: CameoKind, payee: string, when?: string): boolean {
+  if (!getSettings().billy) return false;
+  cameo = { kind, payee, when, id: Date.now() };
+  cameoChanged();
+  return true;
+}
+
+/** Mounted once over the whole app; touches pass through it. */
+export function BillyCameoHost() {
+  const c = useSyncExternalStore(onCameo, () => cameo);
+  if (!c) return null;
+  const done = () => {
+    if (cameo?.id !== c.id) return;
+    cameo = null;
+    cameoChanged();
+  };
+  return <CameoPlay key={c.id} cameo={c} onDone={done} />;
+}
+
+const CW = 84;
+const CH = CW * 0.9;
+type Act = 'stamp' | 'lap' | 'burp' | 'open' | 'snooze';
+const ACTS: Record<CameoKind, Act[]> = { paid: ['stamp', 'lap', 'burp'], open: ['open'], snooze: ['snooze'] };
+
+function CameoPlay({ cameo: c, onDone }: { cameo: Cameo; onDone: () => void }) {
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const reduced = useReducedMotion();
+  const [act] = useState(() => pick(ACTS[c.kind]));
+  const [face, setFace] = useState<Face>(c.kind === 'open' ? 'worried' : 'idle');
+  const [line, setLine] = useState<string | null>(null);
+  const [stamped, setStamped] = useState(false);
+  const [bursts, setBursts] = useState<{ id: number; x: number }[]>([]);
+
+  const parts = useParts();
+  const { look, chew, zz, ear } = parts;
+  const startX = act === 'lap' ? -CW - 10 : act === 'stamp' ? width - GUTTER - CW : act === 'open' ? (width - CW) / 2 : GUTTER;
+  const x = useSharedValue(startX);
+  const y = useSharedValue(act === 'lap' || reduced ? 0 : CH + 60);
+  const hop = useSharedValue(0);
+  const step = useSharedValue(0);
+  const lean = useSharedValue(0);
+  const slam = useSharedValue(0);
+  const base = insets.bottom + 100;
+
+  useBlink(parts.lid, !reduced);
+
+  useEffect(() => {
+    let cancelled = false;
+    const wait = (ms: number) => new Promise<boolean>((ok) => setTimeout(() => ok(!cancelled), ms));
+    const jump = (h: number) => hop.set(withSequence(withTiming(h, { duration: 150, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 220, easing: Easing.in(Easing.quad) })));
+    const burst = () => setBursts((b) => [...b, { id: Date.now() + Math.random(), x: x.get() + CW / 2 }]);
+    const rise = async () => {
+      y.set(withSpring(0, { damping: 12, stiffness: 170 }));
+      flickEar(ear);
+      return wait(450);
+    };
+    const leave = async () => {
+      setLine(null);
+      y.set(withTiming(CH + 70, { duration: 340, easing: Easing.in(Easing.quad) }));
+      if (await wait(380)) onDone();
+    };
+    const p = { payee: c.payee };
+
+    (async () => {
+      if (act === 'stamp') {
+        if (!(await rise())) return;
+        setFace('happy');
+        jump(18);
+        if (!(await wait(250))) return;
+        setStamped(true);
+        slam.set(withTiming(1, { duration: 170, easing: Easing.in(Easing.quad) }));
+        if (!(await wait(170))) return;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        burst();
+        setLine(t('billy.cameo.stamp', p));
+        if (!(await wait(2300))) return;
+        return leave();
+      }
+      if (act === 'lap') {
+        setFace('happy');
+        step.set(withRepeat(withTiming(1, { duration: 110 }), -1, true));
+        lean.set(withTiming(8, { duration: 200 }));
+        x.set(withTiming(width + 10, { duration: 2200, easing: Easing.linear }));
+        setLine(t('billy.cameo.lap', p));
+        if (!(await wait(1000))) return;
+        jump(22);
+        burst();
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (!(await wait(1300))) return;
+        setLine(null);
+        if (await wait(300)) onDone();
+        return;
+      }
+      if (act === 'burp') {
+        if (!(await rise())) return;
+        setFace('chew');
+        chew.set(withRepeat(withTiming(1, { duration: 150 }), 8, true));
+        if (!(await wait(1200))) return;
+        setFace('yawn');
+        lean.set(withSequence(withTiming(-8, { duration: 90 }), withTiming(8, { duration: 120 }), withTiming(0, { duration: 120 })));
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setLine(t('billy.cameo.burp'));
+        if (!(await wait(1100))) return;
+        setFace('happy');
+        setLine(t('billy.cameo.burp2', p));
+        if (!(await wait(2000))) return;
+        return leave();
+      }
+      if (act === 'open') {
+        if (!(await rise())) return;
+        look.set(withSequence(withTiming(-1, { duration: 120 }), withTiming(1, { duration: 160 }), withTiming(-1, { duration: 160 }), withTiming(1, { duration: 160 }), withTiming(0, { duration: 120 })));
+        lean.set(withSequence(withTiming(-6, { duration: 120 }), withTiming(6, { duration: 160 }), withTiming(-6, { duration: 160 }), withTiming(0, { duration: 160 })));
+        setLine(t('billy.cameo.open', p));
+        if (!(await wait(2600))) return;
+        return leave();
+      }
+      // Snooze: a yawn, then straight to sleep.
+      if (!(await rise())) return;
+      setFace('yawn');
+      if (!(await wait(800))) return;
+      setFace('sleep');
+      zz.set(withRepeat(withTiming(1, { duration: 1600 }), -1, false));
+      setLine(c.when ? t('billy.cameo.snoozeWhen', { when: c.when }) : t('billy.cameo.snooze'));
+      if (!(await wait(2600))) return;
+      return leave();
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Plays once per cameo; shared values are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const body = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.get() }, { translateY: y.get() - hop.get() - step.get() * 3 }, { rotate: `${lean.get()}deg` }],
+  }));
+  // The stamp lands beside him: big and faint first, then down with a thud.
+  const stamp = useAnimatedStyle(() => ({
+    opacity: slam.get(),
+    transform: [{ translateX: x.get() - 118 }, { translateY: y.get() + 6 }, { rotate: '-12deg' }, { scale: 2.6 - 1.6 * slam.get() }],
+  }));
+  const bubble = useAnimatedStyle(() => {
+    // Over his head, kept on screen; during the lap it stays in the middle.
+    const left = act === 'lap' ? (width - 240) / 2 : Math.min(width - 240 - 12, Math.max(12, x.get() + CW / 2 - 120));
+    return { left };
+  });
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {stamped && (
+        <Animated.View style={[st.stamp, { bottom: base + 18 }, stamp]}>
+          <Text style={st.stampText} numberOfLines={1}>
+            {t('billy.paidStamp')}
+          </Text>
+        </Animated.View>
+      )}
+      {bursts.map((b) => (
+        <Burst key={b.id} x={b.x} bottom={base + CH * 0.6} />
+      ))}
+      <Animated.View style={[st.cameo, { bottom: base }, body]}>
+        <BillyArt face={face} parts={parts} width={CW} />
+      </Animated.View>
+      <Animated.View style={[st.cameoBubble, { bottom: base + CH + 14 }, bubble]}>
+        <Bubble line={line} />
+      </Animated.View>
+    </View>
+  );
+}
+
+const CONFETTI = ['#FF5A36', '#3FD4F0', '#C8F25A', '#F3F1EC'];
+
+/** A handful of squares thrown up from one point, falling as they fade. */
+function Burst({ x, bottom }: { x: number; bottom: number }) {
+  const [bits] = useState(() =>
+    Array.from({ length: 14 }, (_, i) => ({ i, dx: between(-110, 110), up: between(140, 260), spin: between(-540, 540), size: between(5, 9), color: CONFETTI[i % CONFETTI.length], delay: between(0, 90) })),
+  );
+  return (
+    <>
+      {bits.map((b) => (
+        <Bit key={b.i} x={x} bottom={bottom} {...b} />
+      ))}
+    </>
+  );
+}
+
+function Bit({ x, bottom, dx, up, spin, size, color, delay }: { x: number; bottom: number; dx: number; up: number; spin: number; size: number; color: string; delay: number }) {
+  const v = useSharedValue(0);
+  useEffect(() => {
+    v.set(withDelay(delay, withTiming(1, { duration: 1100, easing: Easing.out(Easing.quad) })));
+  }, [v, delay]);
+  // Up and out, then gravity: a parabola that peaks a third of the way in.
+  const style = useAnimatedStyle(() => {
+    const k = v.get();
+    return {
+      opacity: 1 - k * k,
+      transform: [{ translateX: x - size / 2 + dx * k }, { translateY: -up * (2 * k - 1.6 * k * k) }, { rotate: `${spin * k}deg` }],
+    };
+  });
+  return <Animated.View style={[{ position: 'absolute', left: 0, bottom, width: size, height: size, backgroundColor: color }, style]} />;
+}
+
 const st = themed(() => StyleSheet.create({
   body: { position: 'absolute', left: 0, top: 0, width: W, height: H },
   strip: { height: BILLY_STRIP, alignSelf: 'stretch' },
   bubbleSlot: { position: 'absolute', top: 0, bottom: 14, justifyContent: 'center' },
   bubble: { maxWidth: 240, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: C.bg, borderWidth: 1, borderColor: C.border },
   bubbleText: { fontFamily: F.regular, fontSize: 12.5, lineHeight: 16, color: C.fg, textAlign: 'center' },
+  cameo: { position: 'absolute', left: 0, width: CW, height: CH },
+  cameoBubble: { position: 'absolute', width: 240, alignItems: 'center' },
+  stamp: { position: 'absolute', left: 0, borderWidth: 3, borderColor: C.accent, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: C.bg },
+  stampText: { fontFamily: F.monoMedium, fontSize: 20, letterSpacing: 3, color: C.accent },
 }));

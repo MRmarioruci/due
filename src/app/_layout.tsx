@@ -17,6 +17,7 @@ import { getSettings, useSettings, type Settings } from '@/lib/settings';
 import { recategorizeOthers, useBills } from '@/lib/store';
 import { pickCategory } from '@/lib/categorize';
 import { updateWidget } from '@/widget';
+import { BillyCameoHost } from '@/ui/billy';
 import { OverlayHost } from '@/ui/overlay';
 import { applyTheme, C, currentTheme, type ThemeName } from '@/ui/theme';
 
@@ -120,6 +121,7 @@ export default function RootLayout() {
           </Stack>
         </View>
         <OverlayHost />
+        <BillyCameoHost />
       </LockGate>
     </ThemeProvider>
   );

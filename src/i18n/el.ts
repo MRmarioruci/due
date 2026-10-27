@@ -625,4 +625,12 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.pickTitle': "Ποιο ημερολόγιο;",
   'calendar.pickNote': "Διάλεξε ένα του λογαριασμού Google για να βλέπεις τους λογαριασμούς στο Google Calendar, στο web και στις άλλες συσκευές σου.",
   'calendar.none': "Κανένα ημερολόγιο σε αυτό το κινητό δεν δέχεται νέα συμβάντα. Πρόσθεσε έναν λογαριασμό Google στις ρυθμίσεις του κινητού.",
+  'billy.cameo.stamp': "{payee}: πληρώθηκε. Το σφράγισα εγώ.",
+  'billy.cameo.lap': "Γιούπι! Το {payee} πληρώθηκε!",
+  'billy.cameo.burp': "Μπουρπ.",
+  'billy.cameo.burp2': "Το {payee} κατέβηκε μια χαρά.",
+  'billy.cameo.open': "Τελικά απλήρωτο; Φτύνω πίσω το {payee}.",
+  'billy.cameo.snooze': "Αργότερα, λοιπόν. Ζζζ.",
+  'billy.cameo.snoozeWhen': "Αργότερα, λοιπόν: {when}. Ζζζ.",
+  'billy.paidStamp': "ΠΛΗΡΩΘΗΚΕ",
 };

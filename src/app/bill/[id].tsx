@@ -21,6 +21,7 @@ import { snoozeOptions } from '@/lib/reminder-plan';
 import { pickDate } from '@/ui/calendar';
 import { Options } from '@/ui/choosers';
 import { markOpen, markPaid, snooze, unsnooze } from '@/lib/reminders';
+import { billyCameo } from '@/ui/billy';
 import { getSettings, useSettings } from '@/lib/settings';
 import { contractOf, nextReview } from '@/lib/contracts';
 import { shareLink } from '@/lib/bill-share';
@@ -122,7 +123,7 @@ export default function BillScreen() {
       sheet.hide();
       await snooze(b, at);
       Haptics.selectionAsync();
-      toast(t('bill.snoozed', { when: formatWhen(at) }));
+      if (!billyCameo('snooze', b.payee, formatWhen(at))) toast(t('bill.snoozed', { when: formatWhen(at) }));
     };
     sheet.show({
       title: t('snooze.title'),
@@ -374,7 +375,15 @@ export default function BillScreen() {
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
         {paid ? (
-          <Button title={t('bill.markUnpaid')} kind="secondary" style={{ flex: 1 }} onPress={() => markOpen(bill)} />
+          <Button
+            title={t('bill.markUnpaid')}
+            kind="secondary"
+            style={{ flex: 1 }}
+            onPress={async () => {
+              await markOpen(bill);
+              billyCameo('open', bill.payee);
+            }}
+          />
         ) : (
           <>
             <Button title={t('bill.snooze')} kind="secondary" style={{ flex: 1 }} onPress={remindLater} />
@@ -384,7 +393,8 @@ export default function BillScreen() {
               onPress={async () => {
                 await markPaid(bill);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                toast(t('bill.markedPaid', { payee: bill.payee }));
+                // Billy turns up to celebrate; without him, a toast says it.
+                if (!billyCameo('paid', bill.payee)) toast(t('bill.markedPaid', { payee: bill.payee }));
                 goBack();
               }}
             />

@@ -645,6 +645,14 @@ export const en = {
   'calendar.pickTitle': "Which calendar?",
   'calendar.pickNote': "Pick one on your Google account to see your bills in Google Calendar, on the web and on your other devices.",
   'calendar.none': "No calendar on this phone takes new events. Add a Google account in the phone’s settings.",
+  'billy.cameo.stamp': "{payee}: paid. I stamped it myself.",
+  'billy.cameo.lap': "Wheee! {payee} is paid!",
+  'billy.cameo.burp': "Buuurp.",
+  'billy.cameo.burp2': "{payee} went down nicely.",
+  'billy.cameo.open': "Not paid after all? Spitting {payee} back out.",
+  'billy.cameo.snooze': "Later it is. Zzz.",
+  'billy.cameo.snoozeWhen': "Later it is: {when}. Zzz.",
+  'billy.paidStamp': "PAID",
 } as const;
 
 type Full = keyof typeof en;

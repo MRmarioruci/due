@@ -625,4 +625,12 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'calendar.pickTitle': "Welke agenda?",
   'calendar.pickNote': "Kies er een van je Google-account om je rekeningen in Google Agenda te zien, op het web en op je andere apparaten.",
   'calendar.none': "Geen agenda op deze telefoon neemt nieuwe afspraken aan. Voeg een Google-account toe in de instellingen van je telefoon.",
+  'billy.cameo.stamp': "{payee}: betaald. Zelf afgestempeld.",
+  'billy.cameo.lap': "Joepie! {payee} is betaald!",
+  'billy.cameo.burp': "Boeeerp.",
+  'billy.cameo.burp2': "{payee} ging er goed in.",
+  'billy.cameo.open': "Toch niet betaald? Ik spuug {payee} weer uit.",
+  'billy.cameo.snooze': "Straks dan. Zzz.",
+  'billy.cameo.snoozeWhen': "Straks dan: {when}. Zzz.",
+  'billy.paidStamp': "BETAALD",
 };
