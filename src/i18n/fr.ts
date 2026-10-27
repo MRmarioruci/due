@@ -633,4 +633,7 @@ export const fr: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'billy.cameo.snooze': "Plus tard, alors. Zzz.",
   'billy.cameo.snoozeWhen': "Plus tard, alors : {when}. Zzz.",
   'billy.paidStamp': "PAYÉ",
+  'calendar.main': "Agenda principal",
+  'calendar.phoneOnly': "Sur ce téléphone uniquement",
+  'calendar.phoneCalendar': "Agenda du téléphone",
 };

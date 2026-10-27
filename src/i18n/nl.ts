@@ -633,4 +633,7 @@ export const nl: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'billy.cameo.snooze': "Straks dan. Zzz.",
   'billy.cameo.snoozeWhen': "Straks dan: {when}. Zzz.",
   'billy.paidStamp': "BETAALD",
+  'calendar.main': "Hoofdagenda",
+  'calendar.phoneOnly': "Alleen op deze telefoon",
+  'calendar.phoneCalendar': "Telefoonagenda",
 };

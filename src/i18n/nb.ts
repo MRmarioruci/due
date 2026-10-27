@@ -633,4 +633,7 @@ export const nb: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'billy.cameo.snooze': "Senere, da. Zzz.",
   'billy.cameo.snoozeWhen': "Senere, da: {when}. Zzz.",
   'billy.paidStamp': "BETALT",
+  'calendar.main': "Hovedkalender",
+  'calendar.phoneOnly': "Bare på denne telefonen",
+  'calendar.phoneCalendar': "Telefonkalender",
 };

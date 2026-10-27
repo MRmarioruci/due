@@ -11,7 +11,7 @@ import { deviceLang, LANGUAGES, t } from '@/i18n';
 import { countryName, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { remindersAvailable, rescheduleAll } from '@/lib/reminders';
 import { disableCalendarSync, enableCalendarSync, pickableCalendars, moveToCalendar } from '@/lib/calendar';
-import { calendarLabel } from '@/lib/calendar-event';
+import { calendarLabel, groupCalendars, type CalendarInfo } from '@/lib/calendar-event';
 import { removeAllBills } from '@/lib/remove';
 import { seedSampleBills } from '@/lib/seed';
 import { useBills } from '@/lib/store';
@@ -136,22 +136,28 @@ async function toggleCalendar(on: boolean) {
 async function chooseCalendar() {
   const cals = await pickableCalendars();
   if (!cals.length) return toast(t('calendar.none'));
+  const current = getSettings().calendarId;
+  const pickCal = async (c: CalendarInfo) => {
+    sheet.hide();
+    await moveToCalendar(c);
+    toast(t('calendar.syncedTo', { name: calendarLabel(c) }));
+  };
+  // One block per account; phone-only calendars last, since Google Calendar doesn't show them.
   sheet.show({
     title: t('calendar.pickTitle'),
     message: t('calendar.pickNote'),
     content: (
-      <Options
-        selected={getSettings().calendarId}
-        options={cals.map((c) => ({
-          key: c.id,
-          label: calendarLabel(c),
-          onPress: async () => {
-            sheet.hide();
-            await moveToCalendar(c);
-            toast(t('calendar.syncedTo', { name: calendarLabel(c) }));
-          },
-        }))}
-      />
+      <View style={{ gap: 18, marginTop: 18 }}>
+        {groupCalendars(cals, current).map((g) => (
+          <View key={g.account ?? 'phone'}>
+            <Eyebrow>{g.account ?? t('calendar.phoneOnly')}</Eyebrow>
+            <Options
+              selected={current}
+              options={g.items.map((i) => ({ key: i.cal.id, label: i.main ? t('calendar.main') : i.name || t('calendar.phoneCalendar'), onPress: () => pickCal(i.cal) }))}
+            />
+          </View>
+        ))}
+      </View>
     ),
   });
 }

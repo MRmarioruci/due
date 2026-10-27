@@ -81,4 +81,34 @@ export function defaultCalendar(all: CalendarInfo[]): CalendarInfo | null {
 }
 
 /** "Personal · me@gmail.com" for a picker. */
-export const calendarLabel = (c: CalendarInfo) => (c.source.name && c.source.name !== c.title ? `${c.title} · ${c.source.name}` : c.title);
+export function calendarLabel(c: CalendarInfo): string {
+  if (RAW_NAME.test(c.title)) return t('calendar.phoneCalendar');
+  return c.source.name && c.source.name !== c.title && !RAW_NAME.test(c.source.name) ? `${c.title} · ${c.source.name}` : c.title;
+}
+
+/** Phones that leave their own calendar's name untranslated ("calendar_displayname_local"). */
+const RAW_NAME = /^(calendar_displayname|account_name)/i;
+const isLocal = (c: CalendarInfo) => !!c.source.isLocalAccount || c.source.type === 'LOCAL' || RAW_NAME.test(c.source.name);
+
+export type CalendarGroup = { account: string | null; local: boolean; items: { cal: CalendarInfo; main: boolean; name: string }[] };
+
+/**
+ * Calendars grouped by account for the picker: Google accounts first (the one in use at the top),
+ * then calendars that live only on the phone. In each account its main calendar (named after the
+ * account) comes first; raw names a phone didn't translate get `null` to show a friendly one.
+ */
+export function groupCalendars(cals: CalendarInfo[], currentId: string | null): CalendarGroup[] {
+  const groups = new Map<string, CalendarGroup>();
+  for (const cal of cals) {
+    const local = isLocal(cal);
+    const key = local ? '' : cal.source.name;
+    const g = groups.get(key) ?? { account: local ? null : cal.source.name, local, items: [] };
+    const main = !local && cal.title === cal.source.name;
+    g.items.push({ cal, main, name: RAW_NAME.test(cal.title) ? '' : cal.title });
+    groups.set(key, g);
+  }
+  const list = [...groups.values()];
+  for (const g of list) g.items.sort((a, b) => Number(b.main) - Number(a.main) || a.name.localeCompare(b.name));
+  const holds = (g: CalendarGroup) => g.items.some((i) => i.cal.id === currentId);
+  return list.sort((a, b) => Number(a.local) - Number(b.local) || Number(holds(b)) - Number(holds(a)) || (a.account ?? '').localeCompare(b.account ?? ''));
+}

@@ -633,4 +633,7 @@ export const el: Partial<Record<keyof typeof en | `${string}_few` | `${string}_m
   'billy.cameo.snooze': "Αργότερα, λοιπόν. Ζζζ.",
   'billy.cameo.snoozeWhen': "Αργότερα, λοιπόν: {when}. Ζζζ.",
   'billy.paidStamp': "ΠΛΗΡΩΘΗΚΕ",
+  'calendar.main': "Κύριο ημερολόγιο",
+  'calendar.phoneOnly': "Μόνο σε αυτό το κινητό",
+  'calendar.phoneCalendar': "Ημερολόγιο κινητού",
 };

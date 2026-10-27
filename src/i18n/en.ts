@@ -653,6 +653,9 @@ export const en = {
   'billy.cameo.snooze': "Later it is. Zzz.",
   'billy.cameo.snoozeWhen': "Later it is: {when}. Zzz.",
   'billy.paidStamp': "PAID",
+  'calendar.main': "Main calendar",
+  'calendar.phoneOnly': "On this phone only",
+  'calendar.phoneCalendar': "Phone calendar",
 } as const;
 
 type Full = keyof typeof en;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { allDayLocal, allDayUtc, billEvent, calendarLabel, defaultCalendar, eventSig, writableCalendars, type CalendarInfo } from './calendar-event';
+import { allDayLocal, allDayUtc, billEvent, calendarLabel, defaultCalendar, eventSig, groupCalendars, writableCalendars, type CalendarInfo } from './calendar-event';
 import { emptyPayment, type Bill } from './types';
 
 const bill: Bill = {
@@ -64,6 +64,19 @@ describe('choosing a calendar', () => {
   it('falls back to the phone’s primary calendar without a Google account', () => {
     expect(defaultCalendar([cal('a', {}), cal('b', { isPrimary: true })])?.id).toBe('b');
     expect(defaultCalendar([])).toBeNull();
+  });
+
+  it('groups by account, the one in use first and phone-only ones last', () => {
+    const all = [
+      cal('local', { title: 'calendar_displayname_local', source: { name: 'account_name_local', type: 'LOCAL' } }),
+      google('Family'),
+      google('me@gmail.com'),
+      cal('work', { title: 'work@co.com', source: { name: 'work@co.com', type: 'com.google' } }),
+    ];
+    const groups = groupCalendars(all, 'work');
+    expect(groups.map((g) => g.account)).toEqual(['work@co.com', 'me@gmail.com', null]);
+    expect(groups[1].items.map((i) => [i.name, i.main])).toEqual([['me@gmail.com', true], ['Family', false]]);
+    expect(groups[2].items[0].name).toBe('');
   });
 
   it('leaves out read-only calendars and the old local "due" one', () => {
