@@ -109,8 +109,9 @@ export function OverlayHost() {
           <Animated.View entering={SlideInDown.duration(260)} exiting={SlideOutDown.duration(200)} style={[st.panel, { paddingBottom: insets.bottom + 20, maxHeight: height - insets.top - 24 }]}>
             <View style={st.grabber} />
             {!!state.title?.trim() && <T style={st.title}>{state.title}</T>}
-            <ScrollView style={{ flexGrow: 0, flexShrink: 1 }} nestedScrollEnabled persistentScrollbar keyboardShouldPersistTaps="handled">
-              {state.message && <T style={st.message}>{state.message}</T>}
+            {state.message && <T style={st.message}>{state.message}</T>}
+            {/* Full width, so its scrollbar runs along the screen edge rather than over the rows. */}
+            <ScrollView style={st.scroll} contentContainerStyle={{ paddingHorizontal: GUTTER }} nestedScrollEnabled persistentScrollbar keyboardShouldPersistTaps="handled">
               {state.content}
             </ScrollView>
             {state.actions && state.actions.length > 0 && (
@@ -136,6 +137,7 @@ export function OverlayHost() {
 const st = themed(() => StyleSheet.create({
   backdrop: { backgroundColor: C.backdrop },
   panel: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: C.sheet, borderTopWidth: 1, borderColor: C.border, paddingHorizontal: GUTTER, paddingTop: 10 },
+  scroll: { flexGrow: 0, flexShrink: 1, marginHorizontal: -GUTTER },
   grabber: { alignSelf: 'center', width: 36, height: 4, backgroundColor: C.axis, marginBottom: 18 },
   title: { fontFamily: F.semibold, fontSize: 19, letterSpacing: -0.4 },
   message: { marginTop: 8, fontSize: 14, lineHeight: 21, color: C.muted },
