@@ -591,6 +591,18 @@ export const en = {
   'calendar.alreadyIn': "It’s already in your “due bills” calendar",
   'calendar.couldNotOpen': "No calendar app could open",
   'widget.next': "Next",
+  'billy.a11y': "Billy the goat. Tap him.",
+  'billy.hungry': "Got anything to eat?",
+  'billy.fresh': "{payee}. Still fresh.",
+  'billy.today': "{payee}. Today's the day.",
+  'billy.late': "I can taste the late fee.",
+  'billy.nap': "Wake me when something's due.",
+  'billy.up': "I'm up. I'm up.",
+  'billy.never': "I never forget a meal.",
+  'billy.nom': "Nom. {payee}.",
+  'billy.tickle': "Hey. That tickles.",
+  'billy.both': "Paper? PDF? I eat both.",
+  'settings.billy': "Billy on the home screen",
 } as const;
 
 type Full = keyof typeof en;

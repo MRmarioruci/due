@@ -74,6 +74,7 @@ export default function SettingsScreen() {
       )}
 
       <Section title={t('settings.general')}>
+        <ToggleRow label={t('settings.billy')} value={s.billy} onChange={(v) => updateSettings({ billy: v })} />
         <Row
           label={t('settings.sampleBills')}
           onPress={() => {

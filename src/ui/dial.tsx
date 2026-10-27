@@ -17,8 +17,8 @@ import { C, F, themed } from './theme';
  * drops onto its day as the hand reaches it, then the hand fades back to today.
  */
 export const DIAL = 340;
-const CX = DIAL / 2;
-const TICK_R = 136;
+export const CX = DIAL / 2;
+export const TICK_R = 136;
 const DOT_R = 118;
 const LABEL_R = 158;
 const SPAN = 300;
@@ -32,7 +32,7 @@ export type DialPoint = { key: string; day: number; size: number; color: string;
 const AnimatedLine = Animated.createAnimatedComponent(Line);
 const EASE = Easing.out(Easing.cubic);
 
-const angle = (day: number, days: number) => -SPAN / 2 + (day / days) * SPAN;
+export const angle = (day: number, days: number) => -SPAN / 2 + (day / days) * SPAN;
 const at = (deg: number, r: number) => {
   'worklet';
   const rad = (deg * Math.PI) / 180;
@@ -43,7 +43,7 @@ const reachedAt = (day: number, days: number) => SWEEP_DELAY + SWEEP_EASED(day /
 // Inverse of the hand's ease-in-out, so bills land as the hand passes them, not before.
 const SWEEP_EASED = (x: number) => (x < 0.5 ? Math.sqrt(x / 2) : 1 - Math.sqrt((1 - x) / 2));
 
-export function Dial({ days, start, points, todayColor, label, children }: { days: number; start: string; points: DialPoint[]; todayColor: string; label: string; children: ReactNode }) {
+export function Dial({ days, start, points, todayColor, label, children, overlay }: { days: number; start: string; points: DialPoint[]; todayColor: string; label: string; children: ReactNode; overlay?: ReactNode }) {
   const sweep = useSharedValue(0);
   useEffect(() => {
     sweep.value = withDelay(SWEEP_DELAY, withTiming(1, { duration: SWEEP_MS, easing: Easing.inOut(Easing.quad) }));
@@ -52,21 +52,25 @@ export function Dial({ days, start, points, todayColor, label, children }: { day
   const weeks = Array.from({ length: Math.floor(days / 7) }, (_, k) => (k + 1) * 7);
 
   return (
-    <View style={st.wrap} accessible accessibilityRole="image" accessibilityLabel={label}>
-      <Svg width={DIAL} height={DIAL} style={StyleSheet.absoluteFill}>
-        {Array.from({ length: days + 1 }, (_, i) => (
-          <Tick key={i} i={i} days={days} sweep={sweep} />
+    <View style={st.wrap}>
+      <View style={StyleSheet.absoluteFill} accessible accessibilityRole="image" accessibilityLabel={label}>
+        <Svg width={DIAL} height={DIAL} style={StyleSheet.absoluteFill}>
+          {Array.from({ length: days + 1 }, (_, i) => (
+            <Tick key={i} i={i} days={days} sweep={sweep} />
+          ))}
+          <Hand days={days} sweep={sweep} />
+          <Today color={todayColor} days={days} />
+        </Svg>
+        {weeks.map((d) => (
+          <WeekLabel key={d} day={d} days={days} start={start} />
         ))}
-        <Hand days={days} sweep={sweep} />
-        <Today color={todayColor} days={days} />
-      </Svg>
-      {weeks.map((d) => (
-        <WeekLabel key={d} day={d} days={days} start={start} />
-      ))}
-      {points.map((p) => (
-        <Dot key={p.key} point={p} deg={angle(p.day, days)} delay={reachedAt(p.day, days)} />
-      ))}
-      <View style={st.center}>{children}</View>
+        {points.map((p) => (
+          <Dot key={p.key} point={p} deg={angle(p.day, days)} delay={reachedAt(p.day, days)} />
+        ))}
+        <View style={st.center}>{children}</View>
+      </View>
+      {/* Outside the dial's own accessible group, so it can be tapped and read on its own. */}
+      {overlay}
     </View>
   );
 }

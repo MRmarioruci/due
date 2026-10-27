@@ -8,6 +8,7 @@ import { currentLang, locale, t } from '@/i18n/core';
 import { categoryLabel } from '@/i18n/labels';
 import { dueForReview } from '@/lib/contracts';
 import { fromIso, shortDay, todayIso } from '@/lib/dates';
+import { billyMood, freshBill } from '@/lib/billy';
 import { activeDiscount } from '@/lib/discount';
 import { DIAL_DAYS, dialPoints, homeState } from '@/lib/home';
 import { formatAmount } from '@/lib/money';
@@ -18,7 +19,8 @@ import { latestBillOf } from '@/lib/reminders';
 import { useSettings } from '@/lib/settings';
 import { useBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
-import { Dial, SWEEP_END, type DialPoint } from '@/ui/dial';
+import { Billy, billyHold } from '@/ui/billy';
+import { angle, Dial, SWEEP_END, type DialPoint } from '@/ui/dial';
 import { MoneyStrip } from '@/ui/money-strip';
 import { Icon, T } from '@/ui/kit';
 import { Animated, enterFade, enterRow, useCountUp } from '@/ui/motion';
@@ -82,11 +84,21 @@ export default function Home() {
 
   if (!settings.onboarded) return <Redirect href="/onboarding" />;
 
+  const fresh = freshBill(bills);
+  const billy = settings.billy ? (
+    <Billy
+      mood={billyMood(state.kind, state.kind === 'focus' ? state.daysLeft : 0)}
+      target={state.kind === 'focus' ? { dialDeg: angle(Math.max(0, state.daysLeft), DIAL_DAYS), payee: state.focus.payee, daysLeft: state.daysLeft } : null}
+      fed={fresh ? { id: fresh.id, payee: fresh.payee } : null}
+      active={visible}
+    />
+  ) : null;
+
   const lead = state.kind === 'empty' ? t('home.welcome') : state.kind === 'calm' ? greeting() : state.daysLeft < 0 ? t('home.overdueLead') : t('home.thingsThisWeek', { n: state.more + 1 });
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + NAV_SPACE }}>
+      <ScrollView onScrollBeginDrag={billyHold} onTouchStart={billyHold} contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + NAV_SPACE }}>
         <View style={st.header}>
           <View style={st.logo} accessibilityRole="header">
             <T style={st.logoText}>due</T>
@@ -108,7 +120,8 @@ export default function Home() {
             start={today}
             points={dots}
             todayColor={focus ? C.fg : C.accent}
-            label={t('home.dialA11y', { n: points.length })}>
+            label={t('home.dialA11y', { n: points.length })}
+            overlay={billy}>
             {state.kind === 'focus' ? (
               <Animated.View key={`c-${play}`} entering={enterFade(250)} style={st.centerCol}>
                 <T style={[st.eyebrow, { color: C.accent }]} adjustsFontSizeToFit numberOfLines={1}>{caps(dueLabel(state.focus, state.daysLeft))}</T>
