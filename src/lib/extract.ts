@@ -6,7 +6,8 @@ import { looksLikeDunning } from './dunning';
 import { countryByCode } from './regions';
 import { currentLang, t } from '@/i18n/core';
 import { deviceId, getSettings, homeCountry, homeCurrency } from './settings';
-import { emptyPayment, type BillDraft, type Category, type PayMethod, type SourcedField, type Source } from './types';
+import { detectKind } from './kind';
+import { CATEGORIES, emptyPayment, type BillDraft, type Category, type Kind, type PayMethod, type SourcedField, type Source } from './types';
 
 // Bills are read by due-api (../due-api), which holds the Gemini key and rate-limits per device.
 const API_URL = process.env.EXPO_PUBLIC_DUE_API_URL?.replace(/\/$/, '');
@@ -14,7 +15,6 @@ const APP_KEY = process.env.EXPO_PUBLIC_DUE_APP_KEY;
 
 export const hasModel = () => !!API_URL && !!APP_KEY;
 
-const CATEGORIES: Category[] = ['insurance', 'telecom', 'utilities', 'housing', 'taxes', 'fees', 'health', 'transport', 'shopping', 'other'];
 const METHODS: PayMethod[] = ['qr_transfer', 'bank_transfer', 'direct_debit', 'portal', 'other'];
 
 /** What due-api returns: every field nullable, dates already ISO, IBAN without spaces. */
@@ -41,6 +41,10 @@ type ModelBill = {
   discount_until: string | null;
   reminder_level?: number | null;
   late_fee?: string | null;
+  /** Bill to pay or till receipt (already paid). Older due-api versions don't send it; then the clues decide. */
+  kind?: Kind | null;
+  /** Time of purchase on a receipt, HH:MM. */
+  time?: string | null;
 };
 
 /** A scanned page or an imported document, as sent to the API. */
@@ -110,23 +114,40 @@ export async function buildDraft(opts: { decoded: DecodedCode | null; file: Bill
   }
 
   const payment = decoded?.payment ?? emptyPayment();
-  const dunningLevel = ai?.reminder_level ?? (looksLikeDunning(ai?.description, payment.message) ? 1 : null);
+  const payee = decoded?.payee ?? ai?.payee ?? '';
+  const kind = detectKind({
+    paymentCode: !!decoded,
+    payee,
+    description: ai?.description,
+    model: ai?.kind,
+    dueDate: decoded?.dueDate ?? ai?.due_date,
+    iban: payment.iban ?? ai?.iban,
+    reference: payment.reference ?? ai?.reference,
+    learned: getSettings().learnedKinds,
+  });
+  const receipt = kind === 'receipt';
+  const dunningLevel = receipt ? null : ai?.reminder_level ?? (looksLikeDunning(ai?.description, payment.message) ? 1 : null);
   const dunning = dunningLevel ? { level: Math.min(3, Math.max(1, dunningLevel)) as 1 | 2 | 3, feeMinor: ai?.late_fee ? toMinor(ai.late_fee) : null } : null;
   const draft: BillDraft = {
+    kind,
+    time: receipt ? (ai?.time ?? null) : null,
     payee: pick('payee', decoded?.payee, ai?.payee) ?? t('read.unknownBiller'),
     description: ai?.description ?? null,
     amountMinor: pick('amount', decoded?.amountMinor, ai?.amount ? toMinor(ai.amount) : null),
     currency: pick('currency', decoded?.currency, ai?.currency?.toUpperCase()) ?? homeCurrency(),
-    dueDate: pick('dueDate', decoded?.dueDate, ai?.due_date),
-    issueDate: decoded?.issueDate ?? ai?.issue_date ?? null,
-    discount:
-      decoded?.discount ??
+    // A receipt is paid already: no due date, and its date is the purchase.
+    dueDate: receipt ? null : pick('dueDate', decoded?.dueDate, ai?.due_date),
+    issueDate: decoded?.issueDate ?? ai?.issue_date ?? (receipt ? (ai?.due_date ?? null) : null),
+    discount: receipt
+      ? null
+      : decoded?.discount ??
       (ai?.discount_percent && ai.discount_until ? { percent: ai.discount_percent, until: ai.discount_until } : null),
     dunning,
     // A reminder means it's already late: suggest paying it right away.
     payStyle: dunning ? 'early' : undefined,
     category: pickCategory({
-      payee: decoded?.payee ?? ai?.payee ?? '',
+      kind,
+      payee,
       description: ai?.description,
       model: ai?.category && CATEGORIES.includes(ai.category) ? ai.category : null,
       learned: getSettings().learnedCategories,

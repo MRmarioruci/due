@@ -4,13 +4,15 @@ import { useSyncExternalStore } from 'react';
 
 import type { PaySchedule } from './plan';
 import type { PayStyle } from './reminder-plan';
-import type { Category } from './types';
+import type { Category, Kind } from './types';
 
 export type Settings = {
   /** Anonymous random id sent to due-api for rate limiting; not tied to the person or phone. */
   deviceId: string | null;
   /** Category the user kept for each biller (payeeKey → category); new bills from them get it. */
   learnedCategories: Record<string, Category>;
+  /** Bill or receipt, where the user corrected the guess for a biller or shop (payeeKey → kind). */
+  learnedKinds: Record<string, Kind>;
   /** Bill list order. */
   sortBy: 'due' | 'name' | 'amount';
   /** Colours: follow the phone, or always light / dark. */
@@ -40,7 +42,7 @@ export type Settings = {
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { learnedCategories: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
+const DEFAULTS: Settings = { learnedCategories: {}, learnedKinds: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');

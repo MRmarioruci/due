@@ -27,7 +27,8 @@ import { priceChange } from '@/lib/price-change';
 import { PriceChangeLine } from '@/ui/price-change';
 import { openOriginal, originalOf } from '@/lib/originals';
 import { removeBill } from '@/lib/remove';
-import type { Bill } from '@/lib/types';
+import { isReceipt, type Bill } from '@/lib/types';
+import { categoryLabel } from '@/i18n/labels';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
 import { Animated, enterFade } from '@/ui/motion';
 import { sheet, toast } from '@/ui/overlay';
@@ -73,6 +74,7 @@ export default function BillScreen() {
   const discount = activeDiscount(bill, today);
   const advice = settings.pay && settings.pay.every !== 'day' ? paydayAdvice(bill, settings.pay, today) : null;
   const paid = bill.status === 'paid';
+  const receipt = isReceipt(bill);
   const change = priceChange(bill, bills);
   const snoozed = !!bill.snoozedUntil && new Date(bill.snoozedUntil) > new Date();
   const nextReminder = snoozed ? new Date(bill.snoozedUntil!) : bill.remindAt && new Date(bill.remindAt) > new Date() ? new Date(bill.remindAt) : null;
@@ -176,7 +178,7 @@ export default function BillScreen() {
       title: b.payee,
       actions: [
         { label: t('bill.edit'), kind: 'secondary', onPress: () => router.push({ pathname: '/review', params: { id: b.id } }) },
-        { label: t('pdf.download'), kind: 'secondary', onPress: downloadPdf },
+        ...(isReceipt(b) ? [] : [{ label: t('pdf.download'), kind: 'secondary' as const, onPress: downloadPdf }]),
         {
           label: t('bill.delete'),
           kind: 'secondary',
@@ -217,7 +219,9 @@ export default function BillScreen() {
         <View style={{ marginTop: 22 }}>
           <Amount currency={bill.currency} value={formatAmount(discount?.payMinor ?? bill.paidAmountMinor ?? bill.amountMinor, bill.currency)} size={48} />
           <T style={st.sub}>
-            {paid
+            {receipt
+              ? [categoryLabel(bill.category), t('bill.boughtOn', { date: new Date(bill.paidAt!).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' }) }), bill.time].filter(Boolean).join(' · ')
+              : paid
               ? t('bill.paidOn', { date: new Date(bill.paidAt!).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }) })
               : bill.dueDate
                 ? `${t('bill.dueOn', { date: shortDay(bill.dueDate) })} · ${days! < 0 ? t('bill.daysLate', { n: -days! }) : days === 0 ? t('bill.today') : t('bill.daysLeft', { n: days! })}`
@@ -301,15 +305,18 @@ export default function BillScreen() {
               onPress={() => openOriginal(original).catch(() => toast(t('bill.originalFailed')))}
             />
           )}
-          <ActionTile icon="download" label={pdfBusy ? t('pdf.making') : t('pdf.short')} onPress={downloadPdf} busy={pdfBusy} />
+          {!receipt && <ActionTile icon="download" label={pdfBusy ? t('pdf.making') : t('pdf.short')} onPress={downloadPdf} busy={pdfBusy} />}
         </Animated.View>
 
         {bill.payMethod === 'direct_debit' && (
           <T style={{ marginTop: 18, color: C.muted, fontSize: 13.5, lineHeight: 20 }}>{t('bill.directDebit')}</T>
         )}
 
-        <Eyebrow style={{ marginTop: 28, marginBottom: 6 }}>{t('bill.details')}</Eyebrow>
-        <View style={{ borderTopWidth: 1, borderTopColor: C.line }}>
+        {receipt && <T style={{ marginTop: 18, color: C.muted, fontSize: 13.5, lineHeight: 20 }}>{t('bill.receiptNote')}</T>}
+        {bill.description && receipt && <T style={{ marginTop: 10, fontSize: 14, lineHeight: 20 }}>{bill.description}</T>}
+
+        {(rows.length > 0 || bill.dueDate) && <Eyebrow style={{ marginTop: 28, marginBottom: 6 }}>{t('bill.details')}</Eyebrow>}
+        <View style={(rows.length > 0 || bill.dueDate) && { borderTopWidth: 1, borderTopColor: C.line }}>
           {rows.map((r) => (
             <View key={r.label} style={st.row}>
               <T style={st.rowLabel}>{r.label}</T>
@@ -329,7 +336,9 @@ export default function BillScreen() {
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
-        {paid ? (
+        {receipt ? (
+          <Button title={t('bill.edit')} kind="secondary" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/review', params: { id: bill.id } })} />
+        ) : paid ? (
           <Button title={t('bill.markUnpaid')} kind="secondary" style={{ flex: 1 }} onPress={() => markOpen(bill)} />
         ) : (
           <>

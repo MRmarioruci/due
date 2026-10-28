@@ -8,7 +8,17 @@ export type Category =
   | 'health'
   | 'transport'
   | 'shopping'
+  // Everyday spending, mostly from receipts.
+  | 'groceries'
+  | 'dining'
+  | 'fuel'
+  | 'household'
+  | 'kids'
+  | 'leisure'
   | 'other';
+
+/** A bill is something to pay; a receipt is something already paid (shopping, a meal, fuel). */
+export type Kind = 'bill' | 'receipt';
 
 /** How the bill gets paid. Drives what the bill screen offers. */
 export type PayMethod =
@@ -50,6 +60,8 @@ export type Address = { street: string | null; buildingNumber: string | null; po
 
 export type Bill = {
   id: string;
+  /** Missing on everything saved before receipts existed: those are bills. */
+  kind?: Kind;
   payee: string;
   /** Short line under the payee, e.g. "Health insurance · November premium". */
   description: string | null;
@@ -57,7 +69,9 @@ export type Bill = {
   amountMinor: number | null;
   currency: string;
   dueDate: string | null; // YYYY-MM-DD
-  issueDate: string | null; // YYYY-MM-DD
+  issueDate: string | null; // YYYY-MM-DD; for a receipt, the day of the purchase
+  /** Time printed on a receipt (HH:MM). */
+  time?: string | null;
   /** Optional in stored data: bills saved before discounts existed don't have it. */
   discount?: Discount | null;
   /** Set when the bill is a payment reminder for an earlier one. */
@@ -108,4 +122,11 @@ export const emptyPayment = (): Payment => ({
   payUrl: null,
 });
 
-export const CATEGORIES: Category[] = ['insurance', 'telecom', 'utilities', 'housing', 'taxes', 'fees', 'health', 'transport', 'shopping', 'other'];
+/** Categories offered for a bill, and for a receipt (everyday spending first). */
+export const BILL_CATEGORIES: Category[] = ['insurance', 'telecom', 'utilities', 'housing', 'taxes', 'fees', 'health', 'transport', 'shopping', 'other'];
+export const RECEIPT_CATEGORIES: Category[] = ['groceries', 'dining', 'fuel', 'household', 'shopping', 'health', 'kids', 'leisure', 'transport', 'other'];
+/** Every category, for filters. */
+export const CATEGORIES: Category[] = [...BILL_CATEGORIES.slice(0, -1), ...RECEIPT_CATEGORIES.filter((c) => !BILL_CATEGORIES.includes(c)), 'other'];
+
+export const isReceipt = (b: Pick<Bill, 'kind'>) => b.kind === 'receipt';
+export const categoriesFor = (kind: Kind | undefined) => (kind === 'receipt' ? RECEIPT_CATEGORIES : BILL_CATEGORIES);
