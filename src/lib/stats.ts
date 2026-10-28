@@ -17,8 +17,6 @@ export type Stats = {
   /** Average days paid before the due date, over bills with a due date in the current bucket. */
   avgDaysEarly: number | null;
   categories: { category: Category; minor: number }[];
-  /** Saved with early-payment discounts in the current period. */
-  savedMinor: number;
 };
 
 /** What actually left the account: the discounted total when a discount was taken. */
@@ -86,7 +84,6 @@ export function computeStats(bills: Bill[], period: Period, now = new Date(), fa
     receiptsMinor: sum(receiptsIn),
     receiptCount: receiptsIn.length,
     avgDaysEarly: early.length ? early.reduce((a, b) => a + b, 0) / early.length : null,
-    savedMinor: billsIn.filter((b) => b.currency === currency).reduce((sum, b) => sum + Math.max(0, (b.amountMinor ?? 0) - paidOf(b)), 0),
     categories: [...cats.entries()].map(([category, minor]) => ({ category, minor })).sort((a, b) => b.minor - a.minor),
   };
 }

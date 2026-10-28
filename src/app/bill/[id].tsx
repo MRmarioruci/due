@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,15 +21,21 @@ import { snoozeOptions } from '@/lib/reminder-plan';
 import { pickDate } from '@/ui/calendar';
 import { Options } from '@/ui/choosers';
 import { markOpen, markPaid, snooze, unsnooze } from '@/lib/reminders';
+import { billyCameo } from '@/ui/billy';
 import { getSettings, useSettings } from '@/lib/settings';
+import { contractOf, nextReview } from '@/lib/contracts';
+import { shareLink } from '@/lib/bill-share';
+import { addBillToCalendar } from '@/lib/calendar';
 import { useBill, useBills } from '@/lib/store';
 import { priceChange } from '@/lib/price-change';
 import { PriceChangeLine } from '@/ui/price-change';
-import { openOriginal, originalOf } from '@/lib/originals';
+import { openOriginal, originalOf, proofOf } from '@/lib/originals';
 import { removeBill } from '@/lib/remove';
 import { isReceipt, type Bill } from '@/lib/types';
 import { categoryLabel } from '@/i18n/labels';
 import { Amount, Button, Eyebrow, Icon, IconButton, Loading, T } from '@/ui/kit';
+import { editContract } from '@/ui/contract';
+import { editProof } from '@/ui/proof';
 import { Animated, enterFade } from '@/ui/motion';
 import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER, themed } from '@/ui/theme';
@@ -76,6 +82,8 @@ export default function BillScreen() {
   const paid = bill.status === 'paid';
   const receipt = isReceipt(bill);
   const change = priceChange(bill, bills);
+  const contract = contractOf(bill.payee, settings.contracts);
+  const reviewBy = contract && nextReview(contract, today);
   const snoozed = !!bill.snoozedUntil && new Date(bill.snoozedUntil) > new Date();
   const nextReminder = snoozed ? new Date(bill.snoozedUntil!) : bill.remindAt && new Date(bill.remindAt) > new Date() ? new Date(bill.remindAt) : null;
 
@@ -117,7 +125,7 @@ export default function BillScreen() {
       sheet.hide();
       await snooze(b, at);
       Haptics.selectionAsync();
-      toast(t('bill.snoozed', { when: formatWhen(at) }));
+      if (!billyCameo('snooze', b.payee, formatWhen(at))) toast(t('bill.snoozed', { when: formatWhen(at) }));
     };
     sheet.show({
       title: t('snooze.title'),
@@ -178,6 +186,20 @@ export default function BillScreen() {
       title: b.payee,
       actions: [
         { label: t('bill.edit'), kind: 'secondary', onPress: () => router.push({ pathname: '/review', params: { id: b.id } }) },
+        ...(isReceipt(b) ? [] : [{ label: t('share.withSomeone'), kind: 'secondary' as const, onPress: () => setTimeout(() => shareWithSomeone(b), 80) }]),
+        ...(b.dueDate && b.status === 'open'
+          ? [
+              {
+                label: t('calendar.add'),
+                kind: 'secondary' as const,
+                onPress: async () => {
+                  // Already synced: it's in the "due" calendar; otherwise open the calendar app's form.
+                  if (getSettings().calendarSync) return toast(t('calendar.alreadyIn'));
+                  if (!(await addBillToCalendar(b))) toast(t('calendar.couldNotOpen'));
+                },
+              },
+            ]
+          : []),
         ...(isReceipt(b) ? [] : [{ label: t('pdf.download'), kind: 'secondary' as const, onPress: downloadPdf }]),
         {
           label: t('bill.delete'),
@@ -195,13 +217,15 @@ export default function BillScreen() {
   }
 
   const original = originalOf(bill);
+  const proof = paid ? proofOf(bill) : null;
 
-  const rows: { label: string; value: string; mono?: boolean }[] = [
-    bill.payment.iban && { label: 'IBAN', value: groupIban(bill.payment.iban), mono: true },
+  const rows: { label: string; value: string; mono?: boolean; fit?: boolean }[] = [
+    // An IBAN reads best on one line: it shrinks a little rather than leave a digit on its own.
+    bill.payment.iban && { label: 'IBAN', value: groupIban(bill.payment.iban), mono: true, fit: true },
     bill.payment.reference && { label: t('review.reference'), value: bill.payment.reference, mono: true },
     bill.payment.accountNumber && { label: t('bill.accountNo'), value: bill.payment.accountNumber, mono: true },
     bill.payment.message && { label: t('bill.message'), value: bill.payment.message },
-  ].filter(Boolean) as { label: string; value: string; mono?: boolean }[];
+  ].filter(Boolean) as { label: string; value: string; mono?: boolean; fit?: boolean }[];
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -238,7 +262,7 @@ export default function BillScreen() {
             </T>
           </Animated.View>
         )}
-        {change && <PriceChangeLine change={change} currency={bill.currency} />}
+        {change && <PriceChangeLine change={change} currency={bill.currency} reviewBy={reviewBy} />}
 
         {discount && (
           <Animated.View entering={enterFade(80)} style={st.discount}>
@@ -252,6 +276,14 @@ export default function BillScreen() {
         )}
         {paid && bill.paidAmountMinor != null && bill.amountMinor != null && bill.paidAmountMinor < bill.amountMinor && (
           <T style={{ marginTop: 10, fontSize: 13.5, color: C.muted }}>{t('bill.savedWithDiscount', { saving: formatMoney(bill.amountMinor - bill.paidAmountMinor, bill.currency) })}</T>
+        )}
+
+        {/* A receipt is its own proof, and a shop has no contract to review. */}
+        {paid && !receipt && (
+          <Pressable accessibilityRole="button" onPress={() => editProof(bill)} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, alignSelf: 'flex-start' }}>
+            <Icon name={proof ? 'check' : 'photo'} size={14} color={proof ? C.accent : C.muted} />
+            <T style={{ fontSize: 13.5, color: proof ? C.fg : C.muted, textDecorationLine: proof ? 'none' : 'underline' }}>{t(proof ? 'proof.has' : 'proof.add')}</T>
+          </Pressable>
         )}
 
         {!paid && bill.dueDate && <Timeline bill={bill} today={today} />}
@@ -320,7 +352,9 @@ export default function BillScreen() {
           {rows.map((r) => (
             <View key={r.label} style={st.row}>
               <T style={st.rowLabel}>{r.label}</T>
-              <T style={[st.rowValue, r.mono && { fontFamily: F.mono, fontSize: 12 }]} selectable>{r.value}</T>
+              <T style={[st.rowValue, r.mono && { fontFamily: F.mono, fontSize: 12 }]} selectable numberOfLines={r.fit ? 1 : undefined} adjustsFontSizeToFit={r.fit} minimumFontScale={0.75}>
+                {r.value}
+              </T>
               <Pressable accessibilityRole="button" accessibilityLabel={t('bill.copy', { label: r.label })} onPress={() => copy(r.label, r.value)} style={st.copy}>
                 <Icon name={copied === r.label ? 'check' : 'copy'} color={copied === r.label ? C.accent : C.muted} size={16} />
               </Pressable>
@@ -333,13 +367,37 @@ export default function BillScreen() {
             </View>
           )}
         </View>
+
+        {/* Per biller: the date to review (switch or cancel) the contract by, with reminders before it. */}
+        {!receipt && (
+          <>
+            <Eyebrow style={{ marginTop: 28, marginBottom: 6 }}>{t('contract.section')}</Eyebrow>
+            <Pressable accessibilityRole="button" onPress={() => editContract(bill.payee)} style={({ pressed }) => [st.row, { borderTopWidth: 1, borderTopColor: C.line }, pressed && { backgroundColor: C.surface }]}>
+              <T style={st.rowLabel}>{t('contract.reviewBy')}</T>
+              <T style={[st.rowValue, !reviewBy && { color: C.accent }]}>
+                {reviewBy ? `${longDate(reviewBy)}${contract!.yearly ? ` · ${t('contract.everyYear')}` : ''}` : t('contract.add')}
+              </T>
+              <View style={{ transform: [{ rotate: '180deg' }] }}>
+                <Icon name="back" size={14} color={C.dim} />
+              </View>
+            </Pressable>
+          </>
+        )}
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
         {receipt ? (
           <Button title={t('bill.edit')} kind="secondary" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/review', params: { id: bill.id } })} />
         ) : paid ? (
-          <Button title={t('bill.markUnpaid')} kind="secondary" style={{ flex: 1 }} onPress={() => markOpen(bill)} />
+          <Button
+            title={t('bill.markUnpaid')}
+            kind="secondary"
+            style={{ flex: 1 }}
+            onPress={async () => {
+              await markOpen(bill);
+              billyCameo('open', bill.payee);
+            }}
+          />
         ) : (
           <>
             <Button title={t('bill.snooze')} kind="secondary" style={{ flex: 1 }} onPress={remindLater} />
@@ -349,7 +407,8 @@ export default function BillScreen() {
               onPress={async () => {
                 await markPaid(bill);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                toast(t('bill.markedPaid', { payee: bill.payee }));
+                // Billy turns up to celebrate; without him, a toast says it.
+                if (!billyCameo('paid', bill.payee)) toast(t('bill.markedPaid', { payee: bill.payee }));
                 goBack();
               }}
             />
@@ -358,6 +417,28 @@ export default function BillScreen() {
       </View>
     </View>
   );
+}
+
+/**
+ * Hands the bill to someone else's due: a QR code to scan with their due, or a link to send. Only what's
+ * needed to pay it goes along (no photo, no reminders).
+ */
+function shareWithSomeone(b: Bill) {
+  const link = shareLink(b);
+  const summary = [b.payee, b.amountMinor != null && `${b.currency} ${formatAmount(b.amountMinor, b.currency)}`, b.dueDate && t('bill.dueOn', { date: shortDay(b.dueDate) })].filter(Boolean).join(' · ');
+  sheet.show({
+    title: t('share.withSomeone'),
+    message: t('share.howTo'),
+    content: (
+      <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+        <QRCode value={link} size={250} ecl="L" quietZone={12} backgroundColor="#fff" color="#000" />
+      </View>
+    ),
+    actions: [
+      { label: t('share.send'), kind: 'primary', onPress: () => Share.share({ message: t('share.message', { summary, link }) }).catch(() => {}) },
+      { label: t('common.done'), kind: 'secondary' },
+    ],
+  });
 }
 
 /** One action for the bill: icon over a short label, all the same size. */

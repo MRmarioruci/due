@@ -11,13 +11,14 @@ import { PAY_STYLES } from '@/lib/reminder-plan';
 import { remindersAvailable, setupNotifications } from '@/lib/reminders';
 import { deviceRegion, getSettings, updateSettings, useSettings } from '@/lib/settings';
 import { chooseCountry, chooseCurrency, chooseLanguageSheet, choosePay, countryFromLocation, setCountry } from '@/ui/choosers';
+import { BillyMeet } from '@/ui/billy';
 import { Button, Eyebrow, Icon, T } from '@/ui/kit';
 import { Animated, enterFade, enterRow } from '@/ui/motion';
 import { toast } from '@/ui/overlay';
 import { C, F, GUTTER, themed } from '@/ui/theme';
 
-type Step = 'welcome' | 'region' | 'style' | 'pay' | 'reminders';
-const STEPS: Step[] = ['welcome', 'region', 'style', 'pay', 'reminders'];
+type Step = 'welcome' | 'region' | 'style' | 'pay' | 'billy' | 'reminders';
+const STEPS: Step[] = ['welcome', 'region', 'style', 'pay', 'billy', 'reminders'];
 
 /** First launch: what due does, where you live (currency), when you're paid, and reminders. */
 export default function Onboarding() {
@@ -25,6 +26,7 @@ export default function Onboarding() {
   const s = useSettings();
   const [step, setStep] = useState<Step>('welcome');
   const [locating, setLocating] = useState(false);
+  const [noBilly, setNoBilly] = useState(false);
   const next = () => setStep(STEPS[STEPS.indexOf(step) + 1]);
 
   // Until the user picks, suggest the phone's own region.
@@ -85,7 +87,7 @@ export default function Onboarding() {
 
         {step === 'region' && (
           <View style={st.body}>
-            <Eyebrow>{t('onb.step', { n: 1, total: 4 })}</Eyebrow>
+            <Eyebrow>{t('onb.step', { n: 1, total: 5 })}</Eyebrow>
             <T style={st.title}>{t('choose.whereLive')}</T>
             <T style={st.text}>{t('onb.regionText')}</T>
             <View style={st.card}>
@@ -104,7 +106,7 @@ export default function Onboarding() {
 
         {step === 'style' && (
           <View style={st.body}>
-            <Eyebrow>{t('onb.step', { n: 2, total: 4 })}</Eyebrow>
+            <Eyebrow>{t('onb.step', { n: 2, total: 5 })}</Eyebrow>
             <T style={st.title}>{t('settings.whenPay')}</T>
             <T style={st.text}>{t('onb.styleText')}</T>
             <View style={{ gap: 8, marginTop: 8 }}>
@@ -128,7 +130,7 @@ export default function Onboarding() {
 
         {step === 'pay' && (
           <View style={st.body}>
-            <Eyebrow>{t('onb.step', { n: 3, total: 4 })}</Eyebrow>
+            <Eyebrow>{t('onb.step', { n: 3, total: 5 })}</Eyebrow>
             <T style={st.title}>{t('onb.payTitle')}</T>
             <T style={st.text}>{t('onb.payText')}</T>
             <View style={st.card}>
@@ -140,9 +142,20 @@ export default function Onboarding() {
           </View>
         )}
 
+        {step === 'billy' && (
+          <View style={st.body}>
+            <Eyebrow>{t('onb.step', { n: 4, total: 5 })}</Eyebrow>
+            <T style={st.title}>{t('billy.meetTitle')}</T>
+            <T style={st.text}>{t('billy.meetText')}</T>
+            <View style={{ alignItems: 'center', marginTop: 8 }}>
+              <BillyMeet optedOut={noBilly} onGone={next} />
+            </View>
+          </View>
+        )}
+
         {step === 'reminders' && (
           <View style={st.body}>
-            <Eyebrow>{t('onb.step', { n: 4, total: 4 })}</Eyebrow>
+            <Eyebrow>{t('onb.step', { n: 5, total: 5 })}</Eyebrow>
             <T style={st.title}>{t('onb.remindTitle')}</T>
             <T style={st.text}>
               {remindersAvailable ? t('onb.remindText') : t('onb.remindExpoGo')}
@@ -159,6 +172,28 @@ export default function Onboarding() {
           <>
             <Button title={t('common.continue')} onPress={next} />
             {!s.pay && <Button title={t('onb.skip')} kind="secondary" onPress={next} />}
+          </>
+        )}
+        {step === 'billy' && (
+          <>
+            <Button
+              title={t('billy.keep')}
+              disabled={noBilly}
+              onPress={() => {
+                updateSettings({ billy: true });
+                next();
+              }}
+            />
+            {/* He says something about it and walks off; the next step comes once he's gone. */}
+            <Button
+              title={t('billy.optOut')}
+              kind="secondary"
+              disabled={noBilly}
+              onPress={() => {
+                updateSettings({ billy: false });
+                setNoBilly(true);
+              }}
+            />
           </>
         )}
         {step === 'reminders' && (

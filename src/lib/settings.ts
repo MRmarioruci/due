@@ -2,6 +2,8 @@ import { getLocales } from 'expo-localization';
 import * as SQLite from 'expo-sqlite';
 import { useSyncExternalStore } from 'react';
 
+import type { Contracts } from './contracts';
+import type { KeptEvent } from './kept';
 import type { PaySchedule } from './plan';
 import type { PayStyle } from './reminder-plan';
 import type { Category, Kind } from './types';
@@ -38,11 +40,29 @@ export type Settings = {
   weeklyDigest: boolean;
   /** Id of the scheduled weekly summary, so it can be replaced. */
   digestId: string | null;
+  /** Net income per month (salary first, then any other), for "Where it goes". Empty until set. */
+  income: { label: string | null; monthlyMinor: number }[];
+  /** The user's own splits of income besides bills (savings, investing…), per month, for "Where it goes". */
+  splits: import('./sankey-model').Split[];
+  /** Keep open bills in a "due" calendar on the phone, and its id and events (billId → event). */
+  calendarSync: boolean;
+  calendarId: string | null;
+  /** The picked calendar as shown in Settings ("Personal · me@gmail.com"). */
+  calendarName: string | null;
+  calendarEvents: Record<string, { eventId: string; sig: string }>;
+  /** Duplicates and double payments due stopped, for "money kept" in Stats. */
+  kept: KeptEvent[];
+  /** When to review each biller's contract (payeeKey → contract). */
+  contracts: Contracts;
+  /** Billy, the goat on the home dial. */
+  billy: boolean;
+  /** The home dial's marker has been dragged at least once; until then it shows how. */
+  dialDragged: boolean;
   /** Ask for the phone's own unlock (fingerprint, face, PIN or pattern) when opening the app. */
   appLock: boolean;
 };
 
-const DEFAULTS: Settings = { learnedCategories: {}, learnedKinds: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false };
+const DEFAULTS: Settings = { learnedCategories: {}, learnedKinds: {}, sortBy: 'due', theme: 'dark', language: null, deviceId: null, onboarded: false, country: null, currency: null, payStyle: 'last', pay: null, remindHour: 9, remindDaysBefore: 3, extraNudges: true, weeklyDigest: true, digestId: null, appLock: false, contracts: {}, kept: [], income: [], splits: [], calendarSync: false, calendarId: null, calendarName: null, calendarEvents: {}, billy: true, dialDragged: false };
 
 const db = SQLite.openDatabaseSync('due.db');
 db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
@@ -80,6 +100,14 @@ const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
 };
+
+/** Net income per month, all sources together; 0 when not set. */
+export const monthlyIncome = (s: Settings = snapshot) => s.income.reduce((sum, i) => sum + i.monthlyMinor, 0);
+
+/** Notes money due stopped from being paid (see Stats → kept). */
+export function recordKept(e: Omit<KeptEvent, 'at'>) {
+  if (e.minor > 0) updateSettings({ kept: [...snapshot.kept, { ...e, at: new Date().toISOString() }] });
+}
 
 export function useSettings(): Settings {
   return useSyncExternalStore(subscribe, () => snapshot);

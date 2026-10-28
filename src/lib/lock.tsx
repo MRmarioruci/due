@@ -1,5 +1,5 @@
 import * as LocalAuthentication from 'expo-local-authentication';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 
 import { getSettings, useSettings } from './settings';
@@ -24,6 +24,11 @@ export async function authenticate(prompt?: string): Promise<boolean> {
   const r = await LocalAuthentication.authenticateAsync({ promptMessage: prompt ?? t('lock.prompt') });
   return r.success;
 }
+
+const Unlocked = createContext(true);
+
+/** False while the lock screen covers the app, so screens can hold their entrance animations until it's gone. */
+export const useUnlocked = () => useContext(Unlocked);
 
 /** Covers the app until it's unlocked, when the lock is on. */
 export function LockGate({ children }: { children: ReactNode }) {
@@ -60,7 +65,7 @@ export function LockGate({ children }: { children: ReactNode }) {
 
   return (
     <View style={{ flex: 1 }}>
-      {children}
+      <Unlocked.Provider value={!showLock}>{children}</Unlocked.Provider>
       {showLock && (
         <View style={[StyleSheet.absoluteFill, st.cover]}>
           <View style={st.logo}>

@@ -45,6 +45,12 @@ export function shortDay(d: Date | string): string {
   return date.toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+/** "29 Oct": short enough for a heading in any language. */
+export function dayMonth(d: Date | string): string {
+  const date = typeof d === 'string' ? fromIso(d) : d;
+  return date.toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
+}
+
 export function longDate(iso: string): string {
   return fromIso(iso).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }

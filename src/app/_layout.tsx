@@ -11,10 +11,16 @@ import '@/i18n';
 import { LockGate } from '@/lib/lock';
 import { usePayCheck } from '@/lib/pay-check';
 import { listenForResponses, scheduleDigest, setupNotifications, syncReminders } from '@/lib/reminders';
+import { syncCalendar } from '@/lib/calendar';
+import { takeScanLaunch } from '@/lib/nav';
 import { getSettings, useSettings, type Settings } from '@/lib/settings';
 import { recategorizeOthers, useBills } from '@/lib/store';
 import { pickCategory } from '@/lib/categorize';
 import { updateWidget } from '@/widget';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+import { BillyCameoHost } from '@/ui/billy';
+import { BillyFeedHost } from '@/ui/billy-feed';
 import { OverlayHost } from '@/ui/overlay';
 import { applyTheme, C, currentTheme, type ThemeName } from '@/ui/theme';
 
@@ -49,7 +55,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (!ready || started.current) return;
     started.current = true;
-    if (TRANSIENT.includes(pathname)) router.replace('/');
+    // …unless the widget's Scan square opened the app, which means "scan now".
+    if (TRANSIENT.includes(pathname) && !takeScanLaunch()) router.replace('/');
   }, [ready, pathname]);
 
   // Keep the Monday summary in step with the bills (debounced: saving one bill can touch several rows).
@@ -58,6 +65,7 @@ export default function RootLayout() {
   useEffect(() => {
     const t = setTimeout(() => {
       syncReminders();
+      syncCalendar();
       scheduleDigest(bills);
       updateWidget(bills);
     }, 1500);
@@ -67,7 +75,10 @@ export default function RootLayout() {
   // Back in the app: the scheduling window moves on, so bills further out get their reminders.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') syncReminders();
+      if (state === 'active') {
+        syncReminders();
+        syncCalendar();
+      }
     });
     return () => sub.remove();
   }, []);
@@ -98,6 +109,7 @@ export default function RootLayout() {
   const theme = { ...navTheme, colors: { ...navTheme.colors, background: C.bg, card: C.bg, text: C.fg, border: C.line, primary: C.fg } };
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <ThemeProvider value={theme}>
       <StatusBar style={themeName === 'dark' ? 'light' : 'dark'} />
       <LockGate>
@@ -106,10 +118,17 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg }, animation: 'fade_from_bottom' }}>
             <Stack.Screen name="scan" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="shared" options={{ animation: 'fade' }} />
+            <Stack.Screen name="import" options={{ animation: 'fade' }} />
+            <Stack.Screen name="income" options={{ presentation: 'transparentModal', animation: 'none', contentStyle: { backgroundColor: 'transparent' } }} />
+            <Stack.Screen name="split" options={{ presentation: 'transparentModal', animation: 'none', contentStyle: { backgroundColor: 'transparent' } }} />
+            <Stack.Screen name="flow-share" options={{ animation: 'slide_from_bottom' }} />
           </Stack>
         </View>
         <OverlayHost />
+        <BillyCameoHost />
+        <BillyFeedHost />
       </LockGate>
     </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -3,22 +3,25 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { daysBetween, fromIso, relativeDays, shortDay, todayIso } from '@/lib/dates';
+import { daysBetween, fromIso, relativeDays, shortDay, todayIso, dayMonth } from '@/lib/dates';
 import { activeDiscount } from '@/lib/discount';
 import { formatAmount } from '@/lib/money';
-import { openScan } from '@/lib/nav';
 import { planAroundPayday } from '@/lib/plan';
+import { dueForReview } from '@/lib/contracts';
 import { expectedBills, findSeries, type Series } from '@/lib/recurring';
+import { latestBillOf, markPaid } from '@/lib/reminders';
 import { cadenceLabel, categoryLabel } from '@/i18n/labels';
 import { locale, t } from '@/i18n/core';
-import { seedSampleBills } from '@/lib/seed';
 import { getSettings, homeCurrency, updateSettings, useSettings } from '@/lib/settings';
 import { Options } from '@/ui/choosers';
-import { sheet } from '@/ui/overlay';
+import { sheet, toast } from '@/ui/overlay';
 import { useBills } from '@/lib/store';
 import { CATEGORIES, isReceipt, type Bill, type Category, type Kind } from '@/lib/types';
-import { Amount, Button, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
+import { Amount, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
+import { NAV_SPACE } from '@/ui/nav-bar';
 import { Animated, enterFade, enterRow, GrowBar, moveRow, useCountUp } from '@/ui/motion';
+import { billyCameo } from '@/ui/billy';
+import { FEED_HOLD_MS, FeedableRow } from '@/ui/billy-feed';
 import { C, F, GUTTER, themed } from '@/ui/theme';
 
 const HORIZON = 30;
@@ -44,6 +47,7 @@ function mainCurrency(bills: Bill[]): string {
   return [...n.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? homeCurrency();
 }
 
+/** Every bill: the totals, payday plan and runway, then the list with search, filters and sort. Home links here. */
 export default function Bills() {
   const insets = useSafeAreaInsets();
   const bills = useBills();
@@ -74,6 +78,7 @@ export default function Bills() {
   // Paid daily, there's no before/after payday to plan around.
   const plan = settings.pay && settings.pay.every !== 'day' && open.length ? planAroundPayday(open, settings.pay, ccy, today) : null;
   const expected = expectedBills(findSeries(bills, today), today);
+  const reviews = dueForReview(settings.contracts, today);
 
   // Sorted by due date: grouped by when they're due. By name or amount: one list.
   const pay = (b: Bill) => activeDiscount(b, today)?.payMinor ?? (b.status === 'paid' ? b.paidAmountMinor : null) ?? b.amountMinor ?? 0;
@@ -134,24 +139,12 @@ export default function Bills() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: 140 }}>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + NAV_SPACE }}>
         <View style={st.header}>
-          {/* Long-press the logo in development to load sample bills. */}
-          <Pressable onLongPress={__DEV__ ? seedSampleBills : undefined} style={st.logo} accessibilityRole="header">
-            <T style={st.logoText}>due</T>
-            <View style={st.logoDot} />
-          </Pressable>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <IconButton label={t('search.title')} onPress={() => setSearching(true)}>
-              <Icon name="search" color={C.muted} />
-            </IconButton>
-            <IconButton label={t('common.stats')} onPress={() => router.push('/stats')}>
-              <Icon name="stats" color={C.muted} />
-            </IconButton>
-            <IconButton label={t('common.settings')} onPress={() => router.push('/settings')}>
-              <Icon name="settings" color={C.muted} />
-            </IconButton>
-          </View>
+          <T style={st.title} accessibilityRole="header">{t('nav.bills')}</T>
+          <IconButton label={t('search.title')} onPress={() => setSearching(true)} style={{ borderWidth: 0, marginRight: -12 }}>
+            <Icon name="search" color={C.muted} />
+          </IconButton>
         </View>
 
         {searching && (
@@ -203,7 +196,7 @@ export default function Bills() {
                 <T style={st.planSub}>{plan.before.length ? t('home.beforeCount', { n: plan.before.length }) : t('home.nothingUntilPayday')}</T>
               </View>
               <View style={[st.planCol, st.planRight]}>
-                <Eyebrow>{t('home.afterPayday', { date: shortDay(plan.payday).toUpperCase() })}</Eyebrow>
+                <Eyebrow>{t('home.afterPayday', { date: dayMonth(plan.payday).toUpperCase() })}</Eyebrow>
                 <T style={st.planAmount}>{formatAmount(plan.afterMinor, ccy)}</T>
                 <T style={st.planSub}>{t('home.afterCount', { n: plan.after.length })}</T>
               </View>
@@ -215,6 +208,27 @@ export default function Bills() {
                 <T style={{ fontSize: 13.5, color: C.muted }}>{t('home.setPayday')}</T>
               </Pressable>
             )
+          )}
+
+          {reviews.length > 0 && (
+            <Animated.View entering={enterFade(180)} style={st.reviews}>
+              <Eyebrow>{t('contract.homeTitle')}</Eyebrow>
+              {reviews.map((r) => (
+                <Pressable
+                  key={r.key}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    const latest = latestBillOf(r.contract.payee);
+                    if (latest) router.push({ pathname: '/bill/[id]', params: { id: latest.id } });
+                  }}
+                  style={st.reviewRow}>
+                  <T style={{ flex: 1, fontSize: 14 }} numberOfLines={1}>{r.contract.payee}</T>
+                  <T style={{ fontFamily: F.mono, fontSize: 11, color: r.daysLeft <= 7 ? C.accent : C.muted }}>
+                    {r.daysLeft === 0 ? t('bill.today') : t('bill.daysLeft', { n: r.daysLeft })}
+                  </T>
+                </Pressable>
+              ))}
+            </Animated.View>
           )}
 
           <Runway bills={window} today={today} ccy={ccy} payday={plan?.payday ?? null} expected={expected} />
@@ -236,9 +250,9 @@ export default function Bills() {
           <Pressable accessibilityRole="button" accessibilityLabel={t('filter.title')} onPress={() => chooseFilter()} hitSlop={8} style={[st.sort, { marginLeft: 'auto' }]}>
             <Icon name="filter" size={14} color={filter.category || filter.year ? C.accent : C.dim} />
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={t('sort.title')} onPress={chooseSort} hitSlop={8} style={[st.sort, { marginLeft: 0 }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('sort.title')} onPress={chooseSort} hitSlop={8} style={[st.sort, { marginLeft: 0, flexShrink: 1 }]}>
             <Icon name="sort" size={14} color={C.dim} />
-            <T style={st.sortText}>{t(`sort.${settings.sortBy}`)}</T>
+            <T style={st.sortText} numberOfLines={1}>{t(`sort.${settings.sortBy}`)}</T>
           </Pressable>
         </View>
 
@@ -292,16 +306,15 @@ export default function Bills() {
               <Eyebrow style={{ marginTop: 28, marginBottom: 4 }}>{g.title}</Eyebrow>
               {g.items.map((b, idx) => (
                 <Animated.View key={b.id} entering={enterRow(idx)} layout={moveRow}>
-                  <BillRow bill={b} today={today} />
+                  <FeedableRow bill={b}>
+                    <BillRow bill={b} today={today} />
+                  </FeedableRow>
                 </Animated.View>
               ))}
             </View>
           ))}
       </ScrollView>
 
-      <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button onPress={() => openScan()} title={t('home.scan')} icon={<Icon name="scan" color={C.bg} size={20} />} />
-      </View>
     </View>
   );
 }
@@ -346,7 +359,17 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
   return (
     <Pressable
       accessibilityRole="button"
+      // What a long press does by touch (feed it to Billy), as an action for screen readers.
+      accessibilityActions={bill.status === 'open' ? [{ name: 'pay', label: t('bill.markPaid') }] : undefined}
+      onAccessibilityAction={async (e) => {
+        if (e.nativeEvent.actionName !== 'pay') return;
+        await markPaid(bill);
+        if (!billyCameo('paid', bill.payee)) toast(t('bill.markedPaid', { payee: bill.payee }));
+      }}
       onPress={() => router.push({ pathname: '/bill/[id]', params: { id: bill.id } })}
+      // A long press is the start of feeding it to Billy: letting go mustn't also open the bill.
+      onLongPress={() => {}}
+      delayLongPress={FEED_HOLD_MS - 40}
       style={({ pressed }) => [st.row, pressed && { opacity: 0.6 }]}>
       <View style={st.mono}>
         <T style={st.monoText}>{bill.payee.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase()}</T>
@@ -407,7 +430,10 @@ function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today:
         <View style={[st.bar, { left: 0, width: 6, height: 6, marginLeft: 0, backgroundColor: C.accent }]} />
         {paydayAt != null && paydayAt <= HORIZON && (
           <View style={[st.payday, { left: `${(paydayAt / HORIZON) * 100}%` }]} accessibilityLabel={t('runway.payday')}>
-            <T style={st.paydayLabel}>{t('runway.pay')}</T>
+            {/* Near the right edge the label goes on the left of the line, so it isn't cut off. */}
+            <T style={[st.paydayLabel, paydayAt / HORIZON > 0.75 ? { right: 4 } : { left: 4 }]} numberOfLines={1}>
+              {t('runway.pay')}
+            </T>
           </View>
         )}
         {expected
@@ -436,24 +462,24 @@ function Runway({ bills, today, ccy, payday, expected }: { bills: Bill[]; today:
 }
 
 const st = themed(() => StyleSheet.create({
+  title: { fontFamily: F.semibold, fontSize: 24, letterSpacing: -0.7 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 48 },
-  logo: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
-  logoText: { fontFamily: F.semibold, fontSize: 26, letterSpacing: -0.8, lineHeight: 28 },
-  logoDot: { width: 7, height: 7, backgroundColor: C.accent, marginBottom: 6 },
   sub: { marginTop: 10, fontSize: 14, color: C.muted },
   runway: { marginTop: 26, borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line, paddingTop: 16, paddingBottom: 10 },
   ticks: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  reviews: { marginTop: 22, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 },
+  reviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
   plan: { marginTop: 22, flexDirection: 'row', borderTopWidth: 1, borderColor: C.line, paddingTop: 16 },
   planCol: { flex: 1, gap: 6 },
   planRight: { borderLeftWidth: 1, borderLeftColor: C.line, paddingLeft: 16 },
   planAmount: { fontFamily: F.semibold, fontSize: 20, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
   planSub: { fontSize: 12.5, lineHeight: 17, color: C.dim, paddingRight: 8 },
   payday: { position: 'absolute', top: -6, bottom: 0, width: 1, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: C.muted },
-  paydayLabel: { position: 'absolute', top: -6, left: 4, fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, color: C.muted },
+  paydayLabel: { position: 'absolute', top: -6, fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, color: C.muted },
   bar: { position: 'absolute', bottom: 14, width: 7, marginLeft: -3 },
   runwayLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   runwayLabel: { fontFamily: F.mono, fontSize: 10.5, color: C.dim, letterSpacing: 0.4 },
-  tabs: { flexDirection: 'row', alignItems: 'flex-end', gap: 22, marginTop: 20 },
+  tabs: { flexDirection: 'row', alignItems: 'flex-end', gap: 18, marginTop: 20 },
   search: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10, height: 46, paddingHorizontal: 14, borderWidth: 1, borderColor: C.border },
   searchInput: { flex: 1, color: C.fg, fontFamily: F.regular, fontSize: 15, paddingVertical: 0 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -461,7 +487,8 @@ const st = themed(() => StyleSheet.create({
   chipOn: { backgroundColor: C.fg, borderColor: C.fg },
   chipRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sort: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 8, minHeight: 32 },
-  sortText: { fontSize: 13, color: C.dim },
+  // Gives way first when the tab names are long, ending in … rather than off the screen.
+  sortText: { fontSize: 13, color: C.dim, flexShrink: 1 },
   tab: { paddingBottom: 8, minHeight: 32, justifyContent: 'flex-end' },
   tabOn: { borderBottomWidth: 1.5, borderBottomColor: C.fg },
   tabInner: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
@@ -474,5 +501,4 @@ const st = themed(() => StyleSheet.create({
   rowSub: { fontSize: 13, lineHeight: 17, color: C.dim },
   rowAmount: { fontFamily: F.medium, fontSize: 15.5, fontVariant: ['tabular-nums'] },
   rowDays: { fontFamily: F.mono, fontSize: 11 },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: C.footer },
 }));

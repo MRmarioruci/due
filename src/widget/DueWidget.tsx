@@ -1,8 +1,13 @@
-import { FlexWidget, TextWidget } from 'react-native-android-widget';
+'use no memo';
+// The widget library calls these components as plain functions to flatten them into a tree for
+// Android, so: no hooks, no memoising compiler, and no fragments (it can't call a fragment).
 
-import { t } from '@/i18n/core';
+import { FlexWidget, OverlapWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
+
+import { t } from '../i18n/core';
 
 import type { WidgetData } from './data';
+import { dialSvg, SCAN_ICON } from './dial-svg';
 
 // Widget fonts are the files in assets/fonts, referenced by file name (see the plugin config in app.json).
 const BG = '#0a0a0a';
@@ -10,41 +15,55 @@ const FG = '#ededed';
 const DIM = '#8f8f8f';
 const ACCENT = '#FF5A36';
 
-/** Home-screen widget: 30-day total and the next bill. Tapping it opens the app. */
-export function DueWidget({ data }: { data: WidgetData }) {
+/**
+ * Home-screen widget: the app's 30-day dial, with the bill to deal with (or "All handled") in the
+ * middle and a Scan square under it that opens straight into the camera. Anywhere else opens the app.
+ * `size` is the widget's shorter side in dp; text scales with it.
+ */
+export function DueWidget({ data, size }: { data: WidgetData; size: number }) {
+  const k = Math.max(0.8, Math.min(1.5, size / 170));
+  const c = data.centre;
   return (
-    <FlexWidget
-      clickAction="OPEN_APP"
-      style={{ height: 'match_parent', width: 'match_parent', backgroundColor: BG, borderRadius: 20, padding: 16, flexDirection: 'column', justifyContent: 'space-between' }}>
-      <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <FlexWidget style={{ flexDirection: 'row', alignItems: 'flex-end', flexGap: 2 }}>
-          <TextWidget text="due" style={{ fontSize: 17, fontFamily: 'Archivo-SemiBold', color: FG }} />
-          <FlexWidget style={{ width: 5, height: 5, backgroundColor: ACCENT, marginBottom: 4 }} />
-        </FlexWidget>
-        <TextWidget text={t('widget.open', { n: data.count })} style={{ fontSize: 10, fontFamily: 'JetBrainsMono-Regular', color: DIM, letterSpacing: 0.05 }} />
+    <OverlapWidget clickAction="OPEN_APP" style={{ height: 'match_parent', width: 'match_parent', backgroundColor: BG, borderRadius: 24 }}>
+      <FlexWidget style={{ height: 'match_parent', width: 'match_parent', justifyContent: 'center', alignItems: 'center' }}>
+        <SvgWidget svg={dialSvg(data.dots, data.todayColor, 30, 200)} style={{ height: Math.round(size - 8), width: Math.round(size - 8) }} />
       </FlexWidget>
-
-      <FlexWidget style={{ flexDirection: 'row', alignItems: 'flex-end', flexGap: 6 }}>
-        <TextWidget text={data.currency} style={{ fontSize: 13, fontFamily: 'Archivo-Regular', color: DIM }} />
-        <TextWidget text={data.total} style={{ fontSize: 30, fontFamily: 'Archivo-SemiBold', color: FG }} />
-      </FlexWidget>
-
-      {data.next ? (
-        <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <TextWidget text={`${data.next.payee} · ${data.next.amount}`} maxLines={1} truncate="END" style={{ fontSize: 13, fontFamily: 'Archivo-Regular', color: FG }} />
-          <TextWidget text={data.next.when} style={{ fontSize: 11, fontFamily: 'JetBrainsMono-Regular', color: data.next.urgent ? ACCENT : DIM }} />
+      <FlexWidget style={{ height: 'match_parent', width: 'match_parent', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', flexGap: Math.round(3 * k) }}>
+        <TextWidget
+          text={c.label}
+          maxLines={1}
+          style={{ fontSize: Math.round(8 * k), fontFamily: 'JetBrainsMono-Regular', letterSpacing: 0.1, color: c.kind === 'focus' && c.urgent ? ACCENT : DIM }}
+        />
+        {c.kind === 'focus' ? (
+          <FlexWidget style={{ flexDirection: 'column', alignItems: 'center', flexGap: Math.round(3 * k) }}>
+            <FlexWidget style={{ flexDirection: 'row', alignItems: 'flex-end', flexGap: 3 }}>
+              <TextWidget text={c.currency} style={{ fontSize: Math.round(9 * k), fontFamily: 'Archivo-Regular', color: DIM, marginBottom: Math.round(3 * k) }} />
+              <TextWidget text={c.amount} maxLines={1} style={{ fontSize: Math.round(22 * k), fontFamily: 'Archivo-Regular', color: FG }} />
+            </FlexWidget>
+            <TextWidget text={c.payee} maxLines={1} truncate="END" style={{ fontSize: Math.round(10 * k), fontFamily: 'Archivo-Regular', color: FG }} />
+          </FlexWidget>
+        ) : (
+          <FlexWidget style={{ flexDirection: 'column', alignItems: 'center', flexGap: Math.round(3 * k) }}>
+            <TextWidget text={c.headline} maxLines={1} style={{ fontSize: Math.round(17 * k), fontFamily: 'Archivo-Regular', color: FG }} />
+            {c.sub ? <TextWidget text={c.sub} maxLines={1} style={{ fontSize: Math.round(9 * k), fontFamily: 'Archivo-Regular', color: DIM }} /> : null}
+          </FlexWidget>
+        )}
+        <FlexWidget
+          clickAction="OPEN_URI"
+          clickActionData={{ uri: 'due://scan' }}
+          accessibilityLabel={t('home.scan')}
+          style={{ marginTop: Math.round(5 * k), height: Math.round(30 * k), width: Math.round(30 * k), backgroundColor: FG, justifyContent: 'center', alignItems: 'center' }}>
+          <SvgWidget svg={SCAN_ICON} style={{ height: Math.round(16 * k), width: Math.round(16 * k) }} />
         </FlexWidget>
-      ) : (
-        <TextWidget text={t('widget.nothing')} style={{ fontSize: 13, fontFamily: 'Archivo-Regular', color: DIM }} />
-      )}
-    </FlexWidget>
+      </FlexWidget>
+    </OverlapWidget>
   );
 }
 
 /** Shown when the widget can't be drawn, so a problem is visible instead of an empty box. */
 export function WidgetError({ message }: { message: string }) {
   return (
-    <FlexWidget clickAction="OPEN_APP" style={{ height: 'match_parent', width: 'match_parent', backgroundColor: BG, borderRadius: 20, padding: 16, flexDirection: 'column', flexGap: 6 }}>
+    <FlexWidget clickAction="OPEN_APP" style={{ height: 'match_parent', width: 'match_parent', backgroundColor: BG, borderRadius: 24, padding: 16, flexDirection: 'column', flexGap: 6 }}>
       <TextWidget text="due · widget error" style={{ fontSize: 12, color: ACCENT }} />
       <TextWidget text={message.slice(0, 300)} maxLines={5} style={{ fontSize: 11, color: FG }} />
     </FlexWidget>

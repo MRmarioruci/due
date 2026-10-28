@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { formatHour, longDate, todayIso, daysBetween } from '@/lib/dates';
+import { formatHour, longDate, shortDay, todayIso, daysBetween } from '@/lib/dates';
 import { activeDiscount } from '@/lib/discount';
 import { takePendingDraft } from '@/lib/draft';
 import { formatMoney } from '@/lib/money';
@@ -15,18 +15,21 @@ import { describeReminder, markPaid, replan, syncReminders } from '@/lib/reminde
 import { billPaidBy, receiptPaidAt } from '@/lib/kind';
 import { pickCategory } from '@/lib/categorize';
 import { payeeKey } from '@/lib/recurring';
-import { getSettings, homeCurrency, updateSettings } from '@/lib/settings';
+import { getSettings, homeCurrency, recordKept, updateSettings } from '@/lib/settings';
 import { getBill, newId, saveBill, useBills } from '@/lib/store';
+import { contractOf, nextReview } from '@/lib/contracts';
 import { findDuplicate } from '@/lib/duplicates';
-import { chasedBill } from '@/lib/dunning';
+import { alreadyPaid, chasedBill } from '@/lib/dunning';
 import { priceChange } from '@/lib/price-change';
 import { removeBill } from '@/lib/remove';
 import { PriceChangeLine } from '@/ui/price-change';
-import { keepOriginals } from '@/lib/originals';
+import { keepOriginals, proofOf } from '@/lib/originals';
 import { categoriesFor, emptyPayment, isReceipt, type Bill, type BillDraft, type Kind, type SourcedField } from '@/lib/types';
 import { t } from '@/i18n/core';
 import { categoryLabel, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { pickDate } from '@/ui/calendar';
+import { showProof } from '@/ui/proof';
+import { billyCameo } from '@/ui/billy';
 import { Button, Eyebrow, Icon, IconButton, SourceTag, T } from '@/ui/kit';
 import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER, themed } from '@/ui/theme';
@@ -77,6 +80,10 @@ export default function Review() {
   // A payment reminder replaces the open bill it chases, so it isn't paid twice.
   const [keepChased, setKeepChased] = useState(false);
   const chased = existing || receipt ? null : chasedBill({ ...d, amountMinor: toMinor(amountText) }, bills);
+  // A reminder for something already marked paid: the biller may not have the payment yet.
+  const paidEarlier = existing || chased || receipt ? null : alreadyPaid({ ...d, amountMinor: toMinor(amountText) }, bills);
+  const contract = receipt ? null : contractOf(d.payee, getSettings().contracts);
+  const reviewBy = contract && nextReview(contract, todayIso());
   const change = receipt ? null : priceChange({ ...d, id: existing?.id ?? '', createdAt: existing?.createdAt ?? new Date().toISOString(), amountMinor: toMinor(amountText) }, bills);
 
   /** Editing a field makes it the user's, so its QR/AI tag goes away. */
@@ -185,7 +192,10 @@ export default function Review() {
     };
     saveBill(keepOriginals(bill));
     syncReminders();
-    if (chased && !keepChased) await removeBill(chased);
+    if (chased && !keepChased) {
+      if (chased.amountMinor != null) recordKept({ kind: 'double', minor: chased.amountMinor, currency: chased.currency });
+      await removeBill(chased);
+    }
     router.dismissTo('/');
   }
 
@@ -226,13 +236,13 @@ export default function Review() {
   async function payBillInstead(bill: Bill) {
     setSaving(true);
     await markPaid(bill, receiptPaidAt(d.issueDate, d.time));
-    toast(t('bill.markedPaid', { payee: bill.payee }));
+    if (!billyCameo('paid', bill.payee)) toast(t('bill.markedPaid', { payee: bill.payee }));
     router.dismissTo('/');
   }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: 130 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: duplicate ? 190 : 130 }} keyboardShouldPersistTaps="handled">
         <View style={st.header}>
           <IconButton label={existing ? t('review.closeWithoutSaving') : t('review.retake')} onPress={() => (existing ? goBack() : openScan(true))}>
             <Icon name={existing ? 'close' : 'back'} />
@@ -259,20 +269,8 @@ export default function Review() {
           </View>
         )}
 
-        {duplicate && (
-          <View style={st.duplicate}>
-            <T style={{ fontFamily: F.semibold, fontSize: 14.5 }}>{t('dup.title')}</T>
-            <T style={{ fontSize: 13.5, color: C.muted, lineHeight: 19 }}>
-              {duplicate.status === 'paid' && duplicate.paidAt
-                ? t('dup.paid', { date: longDate(duplicate.paidAt.slice(0, 10)) })
-                : t('dup.open', { date: longDate(duplicate.createdAt.slice(0, 10)) })}
-            </T>
-            <Button title={t('dup.show')} kind="secondary" style={{ marginTop: 6 }} onPress={() => router.replace({ pathname: '/bill/[id]', params: { id: duplicate.id } })} />
-          </View>
-        )}
-
         {paysBill && (
-          <View style={st.duplicate}>
+          <View style={st.paysBill}>
             <T style={{ fontSize: 13.5, color: C.muted, lineHeight: 19 }}>
               {t('review.paysBill', { payee: paysBill.payee, amount: formatMoney(paysBill.amountMinor, paysBill.currency) })}
             </T>
@@ -301,6 +299,16 @@ export default function Review() {
               style={st.description}
               accessibilityLabel={t('review.description')}
             />
+            {duplicate && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                <View style={st.dupDot} />
+                <T style={{ fontSize: 12.5, color: C.muted }}>
+                  {duplicate.status === 'paid' && duplicate.paidAt
+                    ? t('dup.badgePaid', { date: shortDay(duplicate.paidAt.slice(0, 10)) })
+                    : t('dup.badgeOpen', { date: shortDay(duplicate.createdAt.slice(0, 10)) })}
+                </T>
+              </View>
+            )}
           </View>
         </View>
 
@@ -338,7 +346,8 @@ export default function Review() {
           </View>
         )}
 
-        {change && <PriceChangeLine change={change} currency={d.currency} />}
+        {/* Beside a duplicate, the comparison is with a bill that's already saved. */}
+        {change && !duplicate && <PriceChangeLine change={change} currency={d.currency} reviewBy={reviewBy} />}
 
         {d.dunning && !receipt && (
           <View style={st.discount}>
@@ -348,6 +357,16 @@ export default function Review() {
                 <T style={{ fontSize: 13.5, color: C.fg }}>{t(`dun.level${d.dunning.level}`)}.</T>
                 {d.dunning.feeMinor ? ` ${t('dun.fee', { fee: formatMoney(d.dunning.feeMinor, d.currency) })}` : ''}
               </T>
+              {paidEarlier && (
+                <T style={{ fontSize: 13, lineHeight: 18, color: C.fg }}>
+                  {t('proof.alreadyPaid', { amount: formatMoney(paidEarlier.paidAmountMinor ?? paidEarlier.amountMinor, paidEarlier.currency), date: longDate(paidEarlier.paidAt!.slice(0, 10)) })}
+                  {proofOf(paidEarlier) && (
+                    <T style={{ fontSize: 13, color: C.accent, textDecorationLine: 'underline' }} onPress={() => showProof(paidEarlier)}>
+                      {' '}{t('proof.show')}
+                    </T>
+                  )}
+                </T>
+              )}
               {chased && (
                 <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !keepChased }} onPress={() => setKeepChased((k) => !k)} hitSlop={6}>
                   <T style={{ fontSize: 13, lineHeight: 18, color: keepChased ? C.dim : C.fg }}>
@@ -446,7 +465,23 @@ export default function Review() {
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button title={existing ? t('review.saveChanges') : duplicate ? t('dup.saveAnyway') : t(receipt ? 'review.saveReceipt' : 'review.saveBill')} onPress={save} loading={saving} disabled={!valid} />
+        {duplicate ? (
+          <>
+            <T style={{ fontSize: 13.5, color: C.muted, textAlign: 'center', marginBottom: 12 }}>{t('dup.title')}</T>
+            <Button
+              title={t('dup.show')}
+              onPress={() => {
+                if (duplicate.amountMinor != null) recordKept({ kind: 'duplicate', minor: duplicate.amountMinor, currency: duplicate.currency });
+                router.replace({ pathname: '/bill/[id]', params: { id: duplicate.id } });
+              }}
+            />
+            <Pressable accessibilityRole="button" onPress={save} disabled={saving || !valid} hitSlop={6} style={{ alignSelf: 'center', paddingTop: 14, paddingBottom: 2 }}>
+              <T style={{ fontSize: 13.5, color: C.muted, textDecorationLine: 'underline' }}>{t('dup.saveCopy')}</T>
+            </Pressable>
+          </>
+        ) : (
+          <Button title={existing ? t('review.saveChanges') : t(receipt ? 'review.saveReceipt' : 'review.saveBill')} onPress={save} loading={saving} disabled={!valid} />
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -455,7 +490,7 @@ export default function Review() {
 const st = themed(() => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
   headerTitle: { fontFamily: F.mono, fontSize: 11, letterSpacing: 1.3, color: C.muted },
-  duplicate: { marginTop: 16, gap: 4, borderWidth: 1, borderColor: C.accent, padding: 14 },
+  dupDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.dim },
   warning: { marginTop: 16, borderWidth: 1, borderColor: C.border, padding: 12 },
   hero: { marginTop: 22, flexDirection: 'row', gap: 14, alignItems: 'center' },
   thumb: { width: 46, height: 62, transform: [{ rotate: '-3deg' }] },
@@ -474,5 +509,6 @@ const st = themed(() => StyleSheet.create({
   description: { color: C.dim, fontSize: 13, padding: 0 },
   segment: { flexDirection: 'row', borderWidth: 1, borderColor: C.line, padding: 3 },
   segItem: { flex: 1, height: 42, alignItems: 'center', justifyContent: 'center' },
+  paysBill: { marginTop: 16, gap: 4, borderWidth: 1, borderColor: C.accent, padding: 14 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: C.footer },
 }));

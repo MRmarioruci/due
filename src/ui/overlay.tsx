@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore, type ReactNode } from 'react';
-import { BackHandler, Pressable, StyleSheet, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, FadeOutDown, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -79,6 +79,7 @@ export function OverlayHost() {
   const state = useSyncExternalStore(subscribe, () => current);
   const shownToast = useSyncExternalStore(subscribe, () => toastText);
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
 
   useEffect(() => {
     if (!state) return;
@@ -104,11 +105,15 @@ export function OverlayHost() {
           <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(160)} style={StyleSheet.absoluteFill}>
             <Pressable accessibilityLabel={t('common.close')} style={[StyleSheet.absoluteFill, st.backdrop]} onPress={() => sheet.hide()} />
           </Animated.View>
-          <Animated.View entering={SlideInDown.duration(260)} exiting={SlideOutDown.duration(200)} style={[st.panel, { paddingBottom: insets.bottom + 20 }]}>
+          {/* Never taller than the screen: a long list scrolls between the title and the buttons. */}
+          <Animated.View entering={SlideInDown.duration(260)} exiting={SlideOutDown.duration(200)} style={[st.panel, { paddingBottom: insets.bottom + 20, maxHeight: height - insets.top - 24 }]}>
             <View style={st.grabber} />
             {!!state.title?.trim() && <T style={st.title}>{state.title}</T>}
             {state.message && <T style={st.message}>{state.message}</T>}
-            {state.content}
+            {/* Full width, so its scrollbar runs along the screen edge rather than over the rows. */}
+            <ScrollView style={st.scroll} contentContainerStyle={{ paddingHorizontal: GUTTER }} nestedScrollEnabled persistentScrollbar keyboardShouldPersistTaps="handled">
+              {state.content}
+            </ScrollView>
             {state.actions && state.actions.length > 0 && (
               <View style={{ gap: 8, marginTop: 20 }}>
                 {state.actions.map((a) => (
@@ -132,6 +137,7 @@ export function OverlayHost() {
 const st = themed(() => StyleSheet.create({
   backdrop: { backgroundColor: C.backdrop },
   panel: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: C.sheet, borderTopWidth: 1, borderColor: C.border, paddingHorizontal: GUTTER, paddingTop: 10 },
+  scroll: { flexGrow: 0, flexShrink: 1, marginHorizontal: -GUTTER },
   grabber: { alignSelf: 'center', width: 36, height: 4, backgroundColor: C.axis, marginBottom: 18 },
   title: { fontFamily: F.semibold, fontSize: 19, letterSpacing: -0.4 },
   message: { marginTop: 8, fontSize: 14, lineHeight: 21, color: C.muted },

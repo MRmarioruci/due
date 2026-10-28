@@ -4,21 +4,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { todayIso } from '@/lib/dates';
 import { formatAmount } from '@/lib/money';
-import { goBack } from '@/lib/nav';
 import { findSeries, monthlyFixedCosts, payeeKey } from '@/lib/recurring';
 import { priceChange } from '@/lib/price-change';
 import { exportYear } from '@/lib/tax-export-file';
 import { paidYears } from '@/lib/tax-export';
 import { Options } from '@/ui/choosers';
+import { MoneyStrip } from '@/ui/money-strip';
 import { sheet, toast } from '@/ui/overlay';
 import type { Bill } from '@/lib/types';
 import { t } from '@/i18n/core';
 import { cadenceLabel, categoryLabel } from '@/i18n/labels';
-import { homeCurrency } from '@/lib/settings';
+import { homeCurrency, useSettings } from '@/lib/settings';
+import { moneyKept } from '@/lib/kept';
 import { computeStats, type Period } from '@/lib/stats';
 import { useBills } from '@/lib/store';
-import { Amount, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
+import { Amount, Eyebrow, Icon, T } from '@/ui/kit';
 import { Animated, enterRow, GrowBar, useCountUp } from '@/ui/motion';
+import { NAV_SPACE } from '@/ui/nav-bar';
 import { C, F, GUTTER, themed } from '@/ui/theme';
 
 const CHART_H = 150;
@@ -37,6 +39,9 @@ export default function StatsScreen() {
   const s = useMemo(() => computeStats(bills, period, new Date(), homeCurrency()), [bills, period]);
   const series = useMemo(() => findSeries(bills, todayIso()).filter((x) => x.currency === s.currency), [bills, s.currency]);
   const p = PERIODS.find((x) => x.key === period)!;
+  const settings = useSettings();
+  const year = new Date().getFullYear();
+  const kept = useMemo(() => moneyKept(bills, settings.kept, year, s.currency), [bills, settings.kept, year, s.currency]);
 
   const n = s.buckets.length;
   const i = sel ?? n - 1;
@@ -53,13 +58,13 @@ export default function StatsScreen() {
         : t('stats.nothingPaid', { period: p.prev() });
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + 40 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: insets.bottom + NAV_SPACE }}>
       <View style={st.header}>
-        <IconButton label={t('common.backToBills')} onPress={() => goBack()}>
-          <Icon name="back" />
-        </IconButton>
-        <T style={{ fontFamily: F.semibold, fontSize: 15 }}>{t('common.stats')}</T>
-        <View style={{ width: 44 }} />
+        <T style={{ fontFamily: F.semibold, fontSize: 24, letterSpacing: -0.7 }} accessibilityRole="header">{t('common.stats')}</T>
+      </View>
+
+      <View style={{ marginTop: 14 }}>
+        <MoneyStrip />
       </View>
 
       <View style={st.segment} accessibilityRole="tablist">
@@ -140,10 +145,22 @@ export default function StatsScreen() {
         </View>
       </View>
 
-      {s.savedMinor > 0 && (
-        <T style={{ marginTop: 14, fontSize: 13.5, color: C.muted }}>
-          <T style={{ fontSize: 13.5, color: C.accent }}>{s.currency} {formatAmount(s.savedMinor, s.currency)}</T> {t('stats.savedDiscounts')}
-        </T>
+      {kept.totalMinor > 0 && (
+        <View style={st.kept}>
+          <Eyebrow>{t('kept.title', { year })}</Eyebrow>
+          <T style={{ marginTop: 6, fontFamily: F.semibold, fontSize: 22, letterSpacing: -0.6, color: C.accent, fontVariant: ['tabular-nums'] }}>
+            {s.currency} {formatAmount(kept.totalMinor, s.currency)}
+          </T>
+          {[
+            kept.discountsMinor > 0 && t('kept.discounts', { amount: formatAmount(kept.discountsMinor, s.currency) }),
+            kept.duplicates.n > 0 && t('kept.duplicates', { n: kept.duplicates.n, amount: formatAmount(kept.duplicates.minor, s.currency) }),
+            kept.doubles.n > 0 && t('kept.doubles', { n: kept.doubles.n, amount: formatAmount(kept.doubles.minor, s.currency) }),
+          ]
+            .filter(Boolean)
+            .map((line) => (
+              <T key={line as string} style={{ marginTop: 4, fontSize: 13, color: C.muted }}>{line}</T>
+            ))}
+        </View>
       )}
 
       {series.length > 0 && (
@@ -231,6 +248,7 @@ function chooseExport(bills: Bill[]) {
 }
 
 const st = themed(() => StyleSheet.create({
+  kept: { marginTop: 22, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 16 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
   segment: { marginTop: 16, flexDirection: 'row', borderWidth: 1, borderColor: C.line, padding: 3 },
   segItem: { flex: 1, height: 38, alignItems: 'center', justifyContent: 'center' },

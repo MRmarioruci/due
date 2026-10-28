@@ -83,7 +83,7 @@ export function findSeries(bills: Bill[], today: string): Series[] {
       lastDue: last.dueDate!,
       nextDue,
       expectedArrival,
-      late: daysBetween(expectedArrival, today) > 7,
+      late: daysBetween(expectedArrival, today) > LATE_AFTER,
     });
   }
   return out.sort((a, b) => a.nextDue.localeCompare(b.nextDue));
@@ -92,6 +92,21 @@ export function findSeries(bills: Bill[], today: string): Series[] {
 /** The next bill of each series that hasn't arrived yet, within `horizon` days (late ones always). */
 export function expectedBills(series: Series[], today: string, horizon = 45): Series[] {
   return series.filter((s) => s.late || daysBetween(today, s.nextDue) <= horizon);
+}
+
+/** Days after a bill usually arrives that it counts as late. */
+export const LATE_AFTER = 7;
+
+/**
+ * When to say a regular bill hasn't come: the morning it turns late (see `late`), if that's still ahead.
+ * Once its bill is scanned, the series moves on and the alert with it.
+ */
+export function planMissingAlerts(series: Series[], hour: number, now = new Date()): { series: Series; at: Date }[] {
+  return series.flatMap((s) => {
+    const at = fromIso(addDaysIso(s.expectedArrival, LATE_AFTER + 1));
+    at.setHours(hour, 0, 0, 0);
+    return at > now ? [{ series: s, at }] : [];
+  });
 }
 
 /** Fixed costs per month in one currency. */

@@ -18,17 +18,22 @@ export function looksLikeDunning(...texts: (string | null | undefined)[]): boole
  * The open bill a payment reminder is chasing: same biller, and the same reference or the
  * reminder's amount without its fee (or the same amount when there's no fee).
  */
-export function chasedBill(draft: Pick<BillDraft, 'payee' | 'amountMinor' | 'payment' | 'dunning'>, bills: Bill[]): Bill | null {
+export function chasedBill(draft: Pick<BillDraft, 'payee' | 'amountMinor' | 'payment' | 'dunning'>, bills: Bill[], status: Bill['status'] = 'open'): Bill | null {
   if (!draft.dunning) return null;
   const key = payeeKey(draft.payee);
   const ref = draft.payment.reference?.replace(/\s/g, '') || null;
   const base = draft.amountMinor != null ? draft.amountMinor - (draft.dunning.feeMinor ?? 0) : null;
   return (
     bills.find((b) => {
-      if (b.status !== 'open' || payeeKey(b.payee) !== key) return false;
+      if (b.status !== status || payeeKey(b.payee) !== key) return false;
       const bRef = b.payment.reference?.replace(/\s/g, '') || null;
       if (ref && bRef) return ref === bRef;
       return base != null && (b.amountMinor === base || b.amountMinor === draft.amountMinor);
     }) ?? null
   );
+}
+
+/** A payment reminder for a bill already marked paid: the biller may not have the payment yet. */
+export function alreadyPaid(draft: Pick<BillDraft, 'payee' | 'amountMinor' | 'payment' | 'dunning'>, bills: Bill[]): Bill | null {
+  return chasedBill(draft, bills, 'paid');
 }

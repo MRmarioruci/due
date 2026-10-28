@@ -55,9 +55,9 @@ export function Button({ title, onPress, kind = 'primary', loading, disabled, st
   );
 }
 
-export function IconButton({ label, onPress, children, style }: { label: string; onPress?: () => void; children: ReactNode; style?: StyleProp<ViewStyle> }) {
+export function IconButton({ label, onPress, children, style, disabled }: { label: string; onPress?: () => void; children: ReactNode; style?: StyleProp<ViewStyle>; disabled?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={4} style={({ pressed }) => [s.iconButton, pressed && { backgroundColor: C.surface }, style]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: !!disabled }} disabled={disabled} onPress={onPress} hitSlop={4} style={({ pressed }) => [s.iconButton, pressed && { backgroundColor: C.surface }, style]}>
       {children}
     </Pressable>
   );
@@ -80,7 +80,7 @@ export function Loading() {
   );
 }
 
-type IconName = 'back' | 'close' | 'scan' | 'stats' | 'settings' | 'copy' | 'bell' | 'flash' | 'photo' | 'more' | 'check' | 'share' | 'pin' | 'download' | 'sort' | 'link' | 'search' | 'filter';
+type IconName = 'back' | 'close' | 'scan' | 'stats' | 'settings' | 'copy' | 'bell' | 'flash' | 'photo' | 'more' | 'check' | 'share' | 'pin' | 'download' | 'sort' | 'link' | 'search' | 'filter' | 'plus' | 'home' | 'list';
 
 export function Icon({ name, color = C.fg, size = 18 }: { name: IconName; color?: string; size?: number }) {
   const p = { stroke: color, strokeWidth: 1.7, fill: 'none' as const, strokeLinecap: 'square' as const };
@@ -113,6 +113,9 @@ export function Icon({ name, color = C.fg, size = 18 }: { name: IconName; color?
       )}
       {name === 'more' && <Path d="M5 12h.01M12 12h.01M19 12h.01" {...p} strokeWidth={3} />}
       {name === 'check' && <Path d="M5 12.5l4.5 4.5L19 7.5" {...p} />}
+      {name === 'plus' && <Path d="M12 5v14M5 12h14" {...p} />}
+      {name === 'home' && <Path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" {...p} />}
+      {name === 'list' && <Path d="M5 6h14M5 12h14M5 18h9" {...p} />}
       {name === 'pin' && <Path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" {...p} strokeLinecap="butt" />}
       {name === 'link' && <Path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" {...p} strokeLinecap="round" />}
       {name === 'search' && <Path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5L20 20" {...p} />}

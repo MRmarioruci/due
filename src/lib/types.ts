@@ -101,12 +101,14 @@ export type Bill = {
   imageUri: string | null;
   /** The PDF the bill was imported from, when it came as a PDF. */
   pdfUri?: string | null;
+  /** Proof of payment the user added once paid (the bank's confirmation): a screenshot or PDF kept in the app's files. */
+  proof?: { uri: string; mimeType: string } | null;
 };
 
 export type SourcedField = 'payee' | 'amount' | 'currency' | 'dueDate' | 'iban' | 'reference';
 
 /** What a scan produces before the user confirms it. */
-export type BillDraft = Omit<Bill, 'id' | 'status' | 'paidAt' | 'paidAmountMinor' | 'createdAt' | 'remindAt' | 'snoozedUntil' | 'reminderId' | 'extraReminderIds'>;
+export type BillDraft = Omit<Bill, 'id' | 'status' | 'paidAt' | 'paidAmountMinor' | 'createdAt' | 'remindAt' | 'snoozedUntil' | 'reminderId' | 'extraReminderIds' | 'proof'>;
 
 export const emptyPayment = (): Payment => ({
   standard: null,

@@ -3,11 +3,11 @@ import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 
 import { todayIso } from '@/lib/dates';
 import { syncLanguage } from '@/i18n';
-import { homeCurrency } from '@/lib/settings';
 import { getBills } from '@/lib/store';
 import type { Bill } from '@/lib/types';
 
 import { widgetData } from './data';
+import { checkWidgetTree } from './tree';
 
 export const WIDGET_NAME = 'Due';
 
@@ -35,17 +35,23 @@ function isExpoGo(): boolean {
   }
 }
 
+/** The widget's size, for drawing the dial to fit: its shorter side, in dp. */
+type Size = { width: number; height: number };
+const sideOf = (s: Size) => Math.max(110, Math.min(s.width, s.height) || 170);
+
 // Loaded lazily too: the widget components import the native module.
-function render(bills: Bill[]) {
+function render(bills: Bill[], size: Size) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- only reachable where the native module exists
   const { DueWidget } = require('./DueWidget') as typeof import('./DueWidget');
-  return <DueWidget data={widgetData(bills, todayIso(), homeCurrency())} />;
+  return <DueWidget data={widgetData(bills, todayIso())} size={sideOf(size)} />;
 }
 
 /** If drawing fails, show the error on the widget itself instead of leaving an empty box. */
-function renderSafely(load: () => Bill[]) {
+function renderSafely(load: () => Bill[], size: Size) {
   try {
-    return render(load());
+    const widget = render(load(), size);
+    checkWidgetTree(widget);
+    return widget;
   } catch (err) {
     console.error('[widget]', err);
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- only reachable where the native module exists
@@ -61,7 +67,7 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       renderSafely(() => {
         syncLanguage();
         return getBills();
-      }),
+      }, props.widgetInfo),
     );
   }
 }
@@ -76,5 +82,5 @@ export function registerWidget() {
 
 /** Redraws widgets on the home screen; call whenever bills change. No-op in Expo Go. */
 export function updateWidget(bills: Bill[]) {
-  mod?.requestWidgetUpdate({ widgetName: WIDGET_NAME, renderWidget: () => renderSafely(() => bills) }).catch((e) => console.warn('[widget] update failed', e));
+  mod?.requestWidgetUpdate({ widgetName: WIDGET_NAME, renderWidget: (info) => renderSafely(() => bills, info) }).catch((e) => console.warn('[widget] update failed', e));
 }
