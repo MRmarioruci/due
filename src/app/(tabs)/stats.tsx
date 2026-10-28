@@ -86,6 +86,28 @@ export default function StatsScreen() {
         <T style={{ marginTop: 8, fontSize: 13.5, color: C.muted }}>{sub}</T>
       </View>
 
+      {/* With receipts scanned, the total is the household's spending: show what's bills and what's everyday. */}
+      {s.receiptCount > 0 && (sel == null || sel === n - 1) && (
+        <View style={st.split}>
+          {[
+            { label: t('stats.bills'), minor: s.billsMinor, color: C.accent },
+            { label: t('stats.everyday'), minor: s.receiptsMinor, color: C.muted },
+          ].map((x) => (
+            <View key={x.label} style={{ flex: 1, gap: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 8, height: 8, backgroundColor: x.color }} />
+                <T style={{ fontSize: 12.5, color: C.dim }}>{x.label}</T>
+              </View>
+              <T style={{ fontFamily: F.semibold, fontSize: 17, fontVariant: ['tabular-nums'] }}>{formatAmount(x.minor, s.currency)}</T>
+            </View>
+          ))}
+          <View style={st.splitBar}>
+            <View style={{ flex: Math.max(s.billsMinor, 0), backgroundColor: C.accent }} />
+            <View style={{ flex: Math.max(s.receiptsMinor, 0), backgroundColor: C.muted }} />
+          </View>
+        </View>
+      )}
+
       <View style={{ marginTop: 28 }}>
         <View style={st.chart}>
           {s.buckets.map((b, k) => (
@@ -233,6 +255,8 @@ const st = themed(() => StyleSheet.create({
   chart: { height: CHART_H, flexDirection: 'row', alignItems: 'flex-end', gap: 6, borderBottomWidth: 1, borderBottomColor: C.axis },
   barHit: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center' },
   barLabel: { flex: 1, textAlign: 'center', fontFamily: F.mono, fontSize: 10 },
+  split: { marginTop: 18, flexDirection: 'row', flexWrap: 'wrap', rowGap: 12, columnGap: 16 },
+  splitBar: { width: '100%', height: 4, flexDirection: 'row', backgroundColor: C.track },
   tiles: { marginTop: 28, flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: C.line },
   tile: { flex: 1, paddingVertical: 18, paddingRight: 8, gap: 8 },
   tileBorder: { borderLeftWidth: 1, borderLeftColor: C.line, paddingLeft: 16 },

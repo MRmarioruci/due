@@ -16,7 +16,7 @@ import { getSettings, homeCurrency, updateSettings, useSettings } from '@/lib/se
 import { Options } from '@/ui/choosers';
 import { sheet, toast } from '@/ui/overlay';
 import { useBills } from '@/lib/store';
-import { CATEGORIES, type Bill, type Category } from '@/lib/types';
+import { CATEGORIES, isReceipt, type Bill, type Category, type Kind } from '@/lib/types';
 import { Amount, Eyebrow, Icon, IconButton, T } from '@/ui/kit';
 import { NAV_SPACE } from '@/ui/nav-bar';
 import { Animated, enterFade, enterRow, GrowBar, moveRow, useCountUp } from '@/ui/motion';
@@ -52,6 +52,8 @@ export default function Bills() {
   const insets = useSafeAreaInsets();
   const bills = useBills();
   const [tab, setTab] = useState<'open' | 'paid'>('open');
+  /** On the Paid tab: everything, only bills, or only receipts. */
+  const [paidKind, setPaidKind] = useState<'all' | Kind>('all');
   const today = todayIso();
   const settings = useSettings();
 
@@ -65,7 +67,8 @@ export default function Bills() {
   // Search and filters narrow the lists; the totals above stay for everything.
   const keep = (b: Bill) => (!filter.category || b.category === filter.category) && (!filter.year || yearOf(b) === filter.year) && (!searching || matches(b, query));
   const openShown = open.filter(keep);
-  const paidShown = paid.filter(keep);
+  const hasReceipts = paid.some(isReceipt);
+  const paidShown = paid.filter((b) => keep(b) && (paidKind === 'all' || !hasReceipts || (paidKind === 'receipt') === isReceipt(b)));
   const ccy = mainCurrency(open);
   const window = open.filter((b) => b.dueDate && daysBetween(today, b.dueDate) <= HORIZON);
   const total = window.filter((b) => b.currency === ccy).reduce((sum, b) => sum + (activeDiscount(b, today)?.payMinor ?? b.amountMinor ?? 0), 0);
@@ -85,7 +88,7 @@ export default function Bills() {
     settings.sortBy !== 'due'
       ? [{ title: t(`sort.${settings.sortBy}`), items: sortList(tab === 'paid' ? paidShown : openShown) }]
       : tab === 'paid'
-      ? [{ title: t('home.paid'), items: paidShown }]
+      ? [{ title: paidKind === 'receipt' ? t('home.filterReceipts') : t('home.paid'), items: paidShown }]
       : [
           { title: t('home.overdue'), items: openShown.filter((b) => b.dueDate && daysBetween(today, b.dueDate) < 0) },
           { title: t('home.thisWeek'), items: openShown.filter((b) => b.dueDate && daysBetween(today, b.dueDate) >= 0 && daysBetween(today, b.dueDate) < 7) },
@@ -270,6 +273,19 @@ export default function Bills() {
           </View>
         )}
 
+        {tab === 'paid' && hasReceipts && (
+          <View style={[st.chips, { marginTop: 14 }]}>
+            {(['all', 'bill', 'receipt'] as const).map((k) => {
+              const on = paidKind === k;
+              return (
+                <Pressable key={k} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setPaidKind(k)} style={[st.chip, on && st.chipOn]}>
+                  <T style={{ fontSize: 13, color: on ? C.bg : C.fg }}>{t(k === 'all' ? 'home.filterAll' : k === 'bill' ? 'home.filterBills' : 'home.filterReceipts')}</T>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
         {narrowed && groups.every((g) => !g.items.length) && <T style={{ marginTop: 28, fontSize: 14, color: C.muted }}>{t('search.none')}</T>}
 
         {tab === 'open' && !narrowed && expected.length > 0 && (
@@ -326,7 +342,10 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
   const days = bill.dueDate ? daysBetween(today, bill.dueDate) : null;
   const urgent = bill.status === 'open' && days != null && days <= 3;
   const discount = activeDiscount(bill, today);
-  const sub = bill.dunning && bill.status === 'open'
+  const receipt = isReceipt(bill);
+  const sub = receipt
+    ? [bill.description ?? categoryLabel(bill.category), bill.paidAt && shortDay(new Date(bill.paidAt))].filter(Boolean).join(' · ')
+    : bill.dunning && bill.status === 'open'
     ? [t(`dun.level${bill.dunning.level}`), bill.dueDate && t('row.due', { date: shortDay(bill.dueDate) })].filter(Boolean).join(' · ')
     : discount
     ? t('row.discount', { pct: discount.percent, date: shortDay(discount.until) })
@@ -365,7 +384,7 @@ function BillRow({ bill, today }: { bill: Bill; today: string }) {
           {formatAmount(discount?.payMinor ?? (bill.status === 'paid' ? bill.paidAmountMinor : null) ?? bill.amountMinor, bill.currency)}
         </T>
         <T style={[st.rowDays, { color: urgent ? C.accent : C.dim }]}>
-          {bill.status === 'paid' ? t('row.paid') : bill.dueDate ? relativeDays(bill.dueDate, today) : '—'}
+          {receipt ? t('row.receipt') : bill.status === 'paid' ? t('row.paid') : bill.dueDate ? relativeDays(bill.dueDate, today) : '—'}
         </T>
       </View>
     </Pressable>

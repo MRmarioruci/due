@@ -34,12 +34,30 @@ const SINGLE: Single[] = [
   { payee: 'Galaxus', description: 'Vacuum cleaner', category: 'shopping', minor: 34900, dueIn: -33 },
 ];
 
+/** Everyday receipts, by days ago: the weekly shop, eating out, a few odd purchases. Groceries come
+ * from these, so the sample has no "Groceries" split counting them twice. */
+type Receipt = { payee: string; description: string; category: Category; minor: number; daysAgo: number };
+const SHOPS: [string, string][] = [['Migros', 'Weekly shop'], ['Coop', 'Groceries'], ['Migros', 'Weekly shop'], ['Denner', 'Groceries']];
+const RECEIPTS: Receipt[] = [
+  // A shop every 3–4 days for three months, between about 30 and 120.
+  ...Array.from({ length: 26 }, (_, i) => {
+    const [payee, description] = SHOPS[i % SHOPS.length];
+    return { payee, description, category: 'groceries' as const, minor: 3000 + ((i * 3779) % 9000), daysAgo: 1 + Math.round(i * 3.5) };
+  }),
+  { payee: 'Zeughauskeller', description: 'Dinner', category: 'dining', minor: 9650, daysAgo: 4 },
+  { payee: 'Tibits', description: 'Lunch', category: 'dining', minor: 2840, daysAgo: 13 },
+  { payee: 'Hiltl', description: 'Dinner for two', category: 'dining', minor: 11200, daysAgo: 38 },
+  { payee: 'IKEA', description: 'Shelves and lamps', category: 'household', minor: 14900, daysAgo: 15 },
+  { payee: 'Kino Arena', description: '2 tickets', category: 'leisure', minor: 3800, daysAgo: 11 },
+  { payee: 'Amavita', description: 'Pharmacy', category: 'health', minor: 2460, daysAgo: 24 },
+  { payee: 'Orell Füssli', description: 'Books', category: 'leisure', minor: 5490, daysAgo: 57 },
+];
+
 const INCOME = 800000;
 const SPLITS = [
   { id: 'seed-savings', name: 'Savings', monthlyMinor: 100000, kind: 'save' as const },
   { id: 'seed-3a', name: 'Pillar 3a', monthlyMinor: 60000, kind: 'save' as const },
   { id: 'seed-investing', name: 'Investing', monthlyMinor: 50000, kind: 'save' as const },
-  { id: 'seed-groceries', name: 'Groceries', monthlyMinor: 90000, kind: 'spend' as const },
 ];
 
 /** Months of history before this one, and how far ahead upcoming bills go. */
@@ -106,6 +124,24 @@ export function sampleBills(today: string, currency: string, country: string | n
     }
   }
   for (const s of SINGLE) bills.push(mk(s.payee, s.description, s.category, s.minor, addDaysIso(today, s.dueIn), s.discountPct));
+  // Receipts: already paid on the day, with no due date, payment details or reminders.
+  for (const r of RECEIPTS) {
+    const day = addDaysIso(today, -r.daysAgo);
+    const at = new Date(now - r.daysAgo * 86_400_000);
+    bills.push({
+      ...mk(r.payee, r.description, r.category, r.minor, day),
+      id: `seed-receipt-${r.daysAgo}-${r.payee.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      kind: 'receipt',
+      dueDate: null,
+      issueDate: day,
+      payMethod: 'other',
+      payment: { ...emptyPayment(), creditorName: r.payee },
+      sources: {},
+      status: 'paid',
+      paidAt: at.toISOString(),
+      createdAt: at.toISOString(),
+    });
+  }
   return bills;
 }
 

@@ -8,14 +8,29 @@ const norm = (s: string | null | undefined) => (s ? s.replace(/\s/g, '').toUpper
  * Same biller and amount, and the same due date or payment reference. Monthly bills from one biller
  * share the amount (and sometimes a fixed reference) but not the due date, so they don't match.
  */
-export function findDuplicate(draft: Pick<BillDraft, 'payee' | 'amountMinor' | 'dueDate' | 'payment'>, bills: Bill[], ignoreId?: string): Bill | null {
+export function findDuplicate(draft: Pick<BillDraft, 'kind' | 'payee' | 'amountMinor' | 'dueDate' | 'issueDate' | 'time' | 'payment'>, bills: Bill[], ignoreId?: string): Bill | null {
   const key = payeeKey(draft.payee);
+  // The same receipt scanned twice: same shop, total and day (and time, when both have one).
+  if (draft.kind === 'receipt') {
+    if (!key || draft.amountMinor == null || !draft.issueDate) return null;
+    return (
+      bills.find(
+        (b) =>
+          b.id !== ignoreId &&
+          b.kind === 'receipt' &&
+          payeeKey(b.payee) === key &&
+          b.amountMinor === draft.amountMinor &&
+          b.issueDate === draft.issueDate &&
+          (!draft.time || !b.time || draft.time === b.time),
+      ) ?? null
+    );
+  }
   const iban = norm(draft.payment.iban);
   const ref = norm(draft.payment.reference);
   if (!key && !iban) return null;
   return (
     bills.find((b) => {
-      if (b.id === ignoreId) return false;
+      if (b.id === ignoreId || b.kind === 'receipt') return false;
       const samePayee = (!!key && payeeKey(b.payee) === key) || (!!iban && norm(b.payment.iban) === iban);
       if (!samePayee) return false;
       const bRef = norm(b.payment.reference);

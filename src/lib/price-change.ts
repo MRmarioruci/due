@@ -1,6 +1,6 @@
 import { daysBetween } from './dates';
 import { payeeKey } from './recurring';
-import type { Bill } from './types';
+import { isReceipt, type Bill } from './types';
 
 export type PriceChange = {
   /** Change against the previous bill from the same biller, in percent (+6.4 = up). */
@@ -17,13 +17,14 @@ const dateOf = (b: Pick<Bill, 'dueDate' | 'createdAt'>) => b.dueDate ?? b.create
  * How this bill's amount compares with the biller's previous one, or null when there is nothing to
  * compare, the change is under 1%, or either is a payment reminder (its fee would look like a price rise).
  */
-export function priceChange(bill: Pick<Bill, 'id' | 'payee' | 'amountMinor' | 'currency' | 'dueDate' | 'createdAt' | 'dunning'>, bills: Bill[]): PriceChange | null {
-  if (bill.amountMinor == null || bill.dunning) return null;
+export function priceChange(bill: Pick<Bill, 'id' | 'kind' | 'payee' | 'amountMinor' | 'currency' | 'dueDate' | 'createdAt' | 'dunning'>, bills: Bill[]): PriceChange | null {
+  // A shop's receipts differ every time: there's no price to compare.
+  if (bill.amountMinor == null || bill.dunning || isReceipt(bill)) return null;
   const key = payeeKey(bill.payee);
   if (!key) return null;
   const at = dateOf(bill);
   const previous = bills
-    .filter((b) => b.id !== bill.id && !b.dunning && b.amountMinor != null && b.currency === bill.currency && payeeKey(b.payee) === key && dateOf(b) < at)
+    .filter((b) => b.id !== bill.id && !b.dunning && !isReceipt(b) && b.amountMinor != null && b.currency === bill.currency && payeeKey(b.payee) === key && dateOf(b) < at)
     .sort((a, b) => dateOf(b).localeCompare(dateOf(a)))[0];
   if (!previous || daysBetween(dateOf(previous), at) > 400) return null;
   const prev = previous.amountMinor!;

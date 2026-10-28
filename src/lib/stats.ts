@@ -1,5 +1,5 @@
 import { daysBetween, toIso } from './dates';
-import type { Bill, Category } from './types';
+import { isReceipt, type Bill, type Category } from './types';
 import { locale } from '../i18n/core';
 
 export type Period = 'week' | 'month' | 'year';
@@ -7,8 +7,13 @@ export type Period = 'week' | 'month' | 'year';
 export type Stats = {
   currency: string;
   buckets: { label: string; minor: number }[];
+  /** Bills paid on time, out of `paidCount` bills paid in the current period. Receipts don't count. */
   onTime: number;
   paidCount: number;
+  /** The current period's total split into bills and receipts (everyday spending). */
+  billsMinor: number;
+  receiptsMinor: number;
+  receiptCount: number;
   /** Average days paid before the due date, over bills with a due date in the current bucket. */
   avgDaysEarly: number | null;
   categories: { category: Category; minor: number }[];
@@ -62,7 +67,10 @@ export function computeStats(bills: Bill[], period: Period, now = new Date(), fa
     if (idx === n - 1) inCurrent.push(b);
   }
 
-  const withDue = inCurrent.filter((b) => b.dueDate);
+  const billsIn = inCurrent.filter((b) => !isReceipt(b));
+  const receiptsIn = inCurrent.filter(isReceipt);
+  const sum = (xs: Bill[]) => xs.filter((b) => b.currency === currency).reduce((total, b) => total + paidOf(b), 0);
+  const withDue = billsIn.filter((b) => b.dueDate);
   const early = withDue.map((b) => daysBetween(toIso(new Date(b.paidAt!)), b.dueDate!));
   const cats = new Map<Category, number>();
   inCurrent.filter((b) => b.currency === currency).forEach((b) => cats.set(b.category, (cats.get(b.category) ?? 0) + paidOf(b)));
@@ -70,8 +78,11 @@ export function computeStats(bills: Bill[], period: Period, now = new Date(), fa
   return {
     currency,
     buckets,
-    paidCount: inCurrent.length,
-    onTime: early.filter((d) => d >= 0).length + (inCurrent.length - withDue.length),
+    paidCount: billsIn.length,
+    onTime: early.filter((d) => d >= 0).length + (billsIn.length - withDue.length),
+    billsMinor: sum(billsIn),
+    receiptsMinor: sum(receiptsIn),
+    receiptCount: receiptsIn.length,
     avgDaysEarly: early.length ? early.reduce((a, b) => a + b, 0) / early.length : null,
     categories: [...cats.entries()].map(([category, minor]) => ({ category, minor })).sort((a, b) => b.minor - a.minor),
   };

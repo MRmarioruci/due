@@ -1,9 +1,10 @@
 // A year of paid bills for the tax return or the accountant: a spreadsheet and a printable summary. Pure, so it can be tested.
+// Receipts (everyday spending) are left out: this is the bills.
 
 import { t } from '../i18n/core';
 import { longDate } from './dates';
 import { formatMoney } from './money';
-import type { Bill, Category } from './types';
+import { isReceipt, type Bill, type Category } from './types';
 
 /** What actually left the account: the discounted amount when a discount was taken. */
 const paidOf = (b: Bill) => b.paidAmountMinor ?? b.amountMinor ?? 0;
@@ -11,12 +12,12 @@ const paidDay = (b: Bill) => b.paidAt!.slice(0, 10);
 
 /** Years with at least one paid bill, newest first. */
 export function paidYears(bills: Bill[]): number[] {
-  return [...new Set(bills.filter((b) => b.status === 'paid' && b.paidAt).map((b) => Number(b.paidAt!.slice(0, 4))))].sort((a, b) => b - a);
+  return [...new Set(bills.filter((b) => b.status === 'paid' && b.paidAt && !isReceipt(b)).map((b) => Number(b.paidAt!.slice(0, 4))))].sort((a, b) => b - a);
 }
 
 /** Bills paid in the year (counted by the day they were paid, as for taxes), oldest first. */
 export function paidIn(bills: Bill[], year: number): Bill[] {
-  return bills.filter((b) => b.status === 'paid' && b.paidAt?.startsWith(String(year))).sort((a, b) => paidDay(a).localeCompare(paidDay(b)));
+  return bills.filter((b) => b.status === 'paid' && !isReceipt(b) && b.paidAt?.startsWith(String(year))).sort((a, b) => paidDay(a).localeCompare(paidDay(b)));
 }
 
 export type CategoryTotal = { category: Category; currency: string; minor: number; count: number };

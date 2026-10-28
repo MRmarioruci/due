@@ -11,7 +11,9 @@ import { formatMoney } from '@/lib/money';
 import { goBack, openScan } from '@/lib/nav';
 import { toMinor } from '@/lib/payment-codes';
 import { PAY_STYLES } from '@/lib/reminder-plan';
-import { describeReminder, replan, syncReminders } from '@/lib/reminders';
+import { describeReminder, markPaid, replan, syncReminders } from '@/lib/reminders';
+import { billPaidBy, receiptPaidAt } from '@/lib/kind';
+import { pickCategory } from '@/lib/categorize';
 import { payeeKey } from '@/lib/recurring';
 import { getSettings, homeCurrency, recordKept, updateSettings } from '@/lib/settings';
 import { getBill, newId, saveBill, useBills } from '@/lib/store';
@@ -22,11 +24,12 @@ import { priceChange } from '@/lib/price-change';
 import { removeBill } from '@/lib/remove';
 import { PriceChangeLine } from '@/ui/price-change';
 import { keepOriginals, proofOf } from '@/lib/originals';
-import { CATEGORIES, emptyPayment, type Bill, type BillDraft, type SourcedField } from '@/lib/types';
+import { categoriesFor, emptyPayment, isReceipt, type Bill, type BillDraft, type Kind, type SourcedField } from '@/lib/types';
 import { t } from '@/i18n/core';
 import { categoryLabel, leadLabel, payStyleLabel } from '@/i18n/labels';
 import { pickDate } from '@/ui/calendar';
 import { showProof } from '@/ui/proof';
+import { billyCameo } from '@/ui/billy';
 import { Button, Eyebrow, Icon, IconButton, SourceTag, T } from '@/ui/kit';
 import { sheet, toast } from '@/ui/overlay';
 import { C, F, GUTTER, themed } from '@/ui/theme';
@@ -34,6 +37,7 @@ import { C, F, GUTTER, themed } from '@/ui/theme';
 const REMIND_OPTIONS = [0, 1, 3, 7].map((days) => ({ days }));
 
 const blankDraft = (): BillDraft => ({
+  kind: 'bill',
   payee: '',
   description: null,
   amountMinor: null,
@@ -66,16 +70,21 @@ export default function Review() {
   const [amountText, setAmountText] = useState(d.amountMinor != null ? (d.amountMinor / 100).toFixed(2) : '');
   const [saving, setSaving] = useState(false);
   const bills = useBills();
+  const receipt = d.kind === 'receipt';
+  /** What the scan was detected as (or the saved kind), to notice when the user corrects it. */
+  const [detectedKind] = useState<Kind>(initial.draft.kind ?? 'bill');
   // The same bill already saved (scanned twice)? Checked live, as the details get corrected.
   const duplicate = existing ? null : findDuplicate({ ...d, amountMinor: toMinor(amountText) }, bills);
+  // A receipt that confirms paying an open bill: offer to mark that bill paid rather than count it twice.
+  const paysBill = !existing && receipt ? billPaidBy({ payee: d.payee, amountMinor: toMinor(amountText), currency: d.currency }, bills) : null;
   // A payment reminder replaces the open bill it chases, so it isn't paid twice.
   const [keepChased, setKeepChased] = useState(false);
-  const chased = existing ? null : chasedBill({ ...d, amountMinor: toMinor(amountText) }, bills);
+  const chased = existing || receipt ? null : chasedBill({ ...d, amountMinor: toMinor(amountText) }, bills);
   // A reminder for something already marked paid: the biller may not have the payment yet.
-  const paidEarlier = existing || chased ? null : alreadyPaid({ ...d, amountMinor: toMinor(amountText) }, bills);
-  const contract = contractOf(d.payee, getSettings().contracts);
+  const paidEarlier = existing || chased || receipt ? null : alreadyPaid({ ...d, amountMinor: toMinor(amountText) }, bills);
+  const contract = receipt ? null : contractOf(d.payee, getSettings().contracts);
   const reviewBy = contract && nextReview(contract, todayIso());
-  const change = priceChange({ ...d, id: existing?.id ?? '', createdAt: existing?.createdAt ?? new Date().toISOString(), amountMinor: toMinor(amountText) }, bills);
+  const change = receipt ? null : priceChange({ ...d, id: existing?.id ?? '', createdAt: existing?.createdAt ?? new Date().toISOString(), amountMinor: toMinor(amountText) }, bills);
 
   /** Editing a field makes it the user's, so its QR/AI tag goes away. */
   function edit<K extends keyof BillDraft>(key: K, value: BillDraft[K], field?: SourcedField) {
@@ -83,6 +92,24 @@ export default function Review() {
   }
   function editPayment(key: 'iban' | 'reference', value: string) {
     setD((prev) => ({ ...prev, payment: { ...prev.payment, [key]: value || null }, sources: { ...prev.sources, [key]: 'user' } }));
+  }
+
+  /** Bill or receipt: flipping keeps everything read so far, only the layout changes. */
+  function setKind(kind: Kind) {
+    if (kind === d.kind) return;
+    setD((prev) => ({
+      ...prev,
+      kind,
+      // Re-guess the category for the new kind ("Lidl" turned receipt is groceries), unless the current one fits.
+      category: categoriesFor(kind).includes(prev.category) && prev.category !== 'other'
+        ? prev.category
+        : pickCategory({ kind, payee: prev.payee, description: prev.description, model: prev.category, learned: getSettings().learnedCategories }),
+    }));
+  }
+
+  async function chooseDate() {
+    const picked = await pickDate(t('review.date'), d.issueDate ?? todayIso());
+    if (picked) edit('issueDate', picked);
   }
 
   async function chooseDueDate() {
@@ -95,7 +122,7 @@ export default function Review() {
       title: t('review.category'),
       content: (
         <View style={st.chips}>
-          {CATEGORIES.map((c) => (
+          {[...categoriesFor(d.kind), ...(categoriesFor(d.kind).includes(d.category) ? [] : [d.category])].map((c) => (
             <Pressable
               key={c}
               accessibilityRole="button"
@@ -129,14 +156,22 @@ export default function Review() {
 
   async function save() {
     setSaving(true);
-    // Remember the category kept for this biller, so its next bills get it too.
+    // Corrected bill ↔ receipt: this shop or biller is that kind from now on.
+    if (d.kind !== detectedKind && d.payee.trim()) {
+      const learned = getSettings().learnedKinds;
+      updateSettings({ learnedKinds: { ...learned, [payeeKey(d.payee)]: d.kind ?? 'bill' } });
+    }
+    // Remember the category kept for this biller or shop, so its next bills and receipts get it too.
     if (d.category !== 'other' && d.payee.trim()) {
       const learned = getSettings().learnedCategories;
       const key = payeeKey(d.payee);
       if (learned[key] !== d.category) updateSettings({ learnedCategories: { ...learned, [key]: d.category } });
     }
+    if (receipt) return saveReceipt();
     if (existing) {
-      const updated: Bill = { ...existing, ...d, payee: d.payee.trim(), amountMinor: toMinor(amountText), currency: d.currency.trim().toUpperCase() || homeCurrency() };
+      // A receipt turned into a bill: it's open again, to be paid.
+      const reopened = isReceipt(existing) ? { status: 'open' as const, paidAt: null, paidAmountMinor: null } : {};
+      const updated: Bill = { ...existing, ...d, ...reopened, kind: 'bill', payee: d.payee.trim(), amountMinor: toMinor(amountText), currency: d.currency.trim().toUpperCase() || homeCurrency() };
       saveBill(replan(updated));
       syncReminders();
       toast(t('review.saved'));
@@ -144,6 +179,7 @@ export default function Review() {
     }
     const bill: Bill = {
       ...d,
+      kind: 'bill',
       payee: d.payee.trim(),
       amountMinor: toMinor(amountText),
       currency: d.currency.trim().toUpperCase() || homeCurrency(),
@@ -163,6 +199,47 @@ export default function Review() {
     router.dismissTo('/');
   }
 
+  /** A receipt is saved as already paid, on the day it shows, with no due date and no reminders. */
+  async function saveReceipt() {
+    const issueDate = d.issueDate ?? todayIso();
+    const fields = {
+      ...d,
+      kind: 'receipt' as const,
+      payee: d.payee.trim(),
+      amountMinor: toMinor(amountText),
+      currency: d.currency.trim().toUpperCase() || homeCurrency(),
+      issueDate,
+      dueDate: null,
+      discount: null,
+      dunning: null,
+      payStyle: null,
+      status: 'paid' as const,
+      paidAt: receiptPaidAt(issueDate, d.time),
+      paidAmountMinor: null,
+      remindAt: null,
+      snoozedUntil: null,
+      reminderId: null,
+      extraReminderIds: [],
+    };
+    if (existing) {
+      saveBill({ ...existing, ...fields });
+      syncReminders();
+      toast(t('review.saved'));
+      return goBack();
+    }
+    saveBill(keepOriginals({ ...fields, id: newId(), createdAt: new Date().toISOString() }));
+    toast(t('review.receiptSaved'));
+    router.dismissTo('/');
+  }
+
+  /** The receipt is the payment confirmation of an open bill: mark the bill paid on that day, keep no extra entry. */
+  async function payBillInstead(bill: Bill) {
+    setSaving(true);
+    await markPaid(bill, receiptPaidAt(d.issueDate, d.time));
+    if (!billyCameo('paid', bill.payee)) toast(t('bill.markedPaid', { payee: bill.payee }));
+    router.dismissTo('/');
+  }
+
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: GUTTER, paddingBottom: duplicate ? 190 : 130 }} keyboardShouldPersistTaps="handled">
@@ -170,13 +247,34 @@ export default function Review() {
           <IconButton label={existing ? t('review.closeWithoutSaving') : t('review.retake')} onPress={() => (existing ? goBack() : openScan(true))}>
             <Icon name={existing ? 'close' : 'back'} />
           </IconButton>
-          <T style={st.headerTitle}>{existing ? t('review.titleEdit') : t('review.titleCheck')}</T>
+          <T style={st.headerTitle}>{existing ? t(receipt ? 'review.titleEditReceipt' : 'review.titleEdit') : t('review.titleCheck')}</T>
           <View style={{ width: 44 }} />
+        </View>
+
+        {/* What it is: detected from the scan, one tap to correct. */}
+        <View style={[st.segment, { marginTop: 14 }]} accessibilityRole="tablist" accessibilityLabel={t('kind.a11y')}>
+          {(['bill', 'receipt'] as const).map((k) => {
+            const on = (d.kind ?? 'bill') === k;
+            return (
+              <Pressable key={k} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => setKind(k)} style={[st.segItem, { height: 36 }, on && st.chipOn]}>
+                <T style={{ fontFamily: F.medium, fontSize: 13.5, color: on ? C.bg : C.muted }}>{t(`kind.${k}`)}</T>
+              </Pressable>
+            );
+          })}
         </View>
 
         {initial.warning && (
           <View style={st.warning}>
             <T style={{ fontSize: 13, color: C.muted, lineHeight: 19 }}>{initial.warning}</T>
+          </View>
+        )}
+
+        {paysBill && (
+          <View style={st.paysBill}>
+            <T style={{ fontSize: 13.5, color: C.muted, lineHeight: 19 }}>
+              {t('review.paysBill', { payee: paysBill.payee, amount: formatMoney(paysBill.amountMinor, paysBill.currency) })}
+            </T>
+            <Button title={t('review.markBillPaid')} kind="secondary" style={{ marginTop: 6 }} onPress={() => payBillInstead(paysBill)} />
           </View>
         )}
 
@@ -190,13 +288,13 @@ export default function Review() {
           )}
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <TextInput value={d.payee} onChangeText={(v) => edit('payee', v, 'payee')} placeholder={t('review.payeePlaceholder')} placeholderTextColor={C.dim} style={st.payee} accessibilityLabel={t('review.payee')} />
+              <TextInput value={d.payee} onChangeText={(v) => edit('payee', v, 'payee')} placeholder={t(receipt ? 'review.shopPlaceholder' : 'review.payeePlaceholder')} placeholderTextColor={C.dim} style={st.payee} accessibilityLabel={t('review.payee')} />
               <SourceTag source={d.sources.payee} />
             </View>
             <TextInput
               value={d.description ?? ''}
               onChangeText={(v) => edit('description', v || null)}
-              placeholder={t('review.descriptionPlaceholder')}
+              placeholder={t(receipt ? 'review.boughtPlaceholder' : 'review.descriptionPlaceholder')}
               placeholderTextColor={C.barMuted}
               style={st.description}
               accessibilityLabel={t('review.description')}
@@ -236,7 +334,7 @@ export default function Review() {
           </View>
         </View>
 
-        {discount && (
+        {discount && !receipt && (
           <View style={st.discount}>
             <T style={{ fontFamily: F.monoMedium, fontSize: 13, color: C.accent }}>−{discount.percent}%</T>
             <T style={{ flex: 1, fontSize: 13.5, lineHeight: 19, color: C.muted }}>
@@ -251,7 +349,7 @@ export default function Review() {
         {/* Beside a duplicate, the comparison is with a bill that's already saved. */}
         {change && !duplicate && <PriceChangeLine change={change} currency={d.currency} reviewBy={reviewBy} />}
 
-        {d.dunning && (
+        {d.dunning && !receipt && (
           <View style={st.discount}>
             <T style={{ fontFamily: F.monoMedium, fontSize: 13, color: C.accent }}>!</T>
             <View style={{ flex: 1, gap: 6 }}>
@@ -286,6 +384,23 @@ export default function Review() {
           </View>
         )}
 
+        {receipt ? (
+          <>
+            <Pressable onPress={chooseDate} style={st.field} accessibilityRole="button" accessibilityLabel={t('review.changeDate')}>
+              <T style={st.label}>{t('review.date')}</T>
+              <T style={{ fontSize: 14 }}>{longDate(d.issueDate ?? todayIso())}{d.time ? ` · ${d.time}` : ''}</T>
+            </Pressable>
+            <Pressable onPress={chooseCategory} style={st.field} accessibilityRole="button" accessibilityLabel={t('review.changeCategory')}>
+              <T style={st.label}>{t('review.category')}</T>
+              <T style={{ fontSize: 14 }}>{categoryLabel(d.category)}</T>
+            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+              <Icon name="check" color={C.accent} />
+              <T style={{ flex: 1, fontSize: 13.5, lineHeight: 20, color: C.muted }}>{t('review.receiptNote')}</T>
+            </View>
+          </>
+        ) : (
+        <>
         <Pressable onPress={chooseDueDate} style={st.field} accessibilityRole="button" accessibilityLabel={t('review.changeDueDate')}>
           <T style={st.label}>{t('review.due')}</T>
           <View style={st.fieldRight}>
@@ -345,6 +460,8 @@ export default function Review() {
             {reminder.why}
           </T>
         </View>
+        </>
+        )}
       </ScrollView>
 
       <View style={[st.footer, { paddingBottom: insets.bottom + 16 }]}>
@@ -363,7 +480,7 @@ export default function Review() {
             </Pressable>
           </>
         ) : (
-          <Button title={existing ? t('review.saveChanges') : t('review.saveBill')} onPress={save} loading={saving} disabled={!valid} />
+          <Button title={existing ? t('review.saveChanges') : t(receipt ? 'review.saveReceipt' : 'review.saveBill')} onPress={save} loading={saving} disabled={!valid} />
         )}
       </View>
     </KeyboardAvoidingView>
@@ -392,5 +509,6 @@ const st = themed(() => StyleSheet.create({
   description: { color: C.dim, fontSize: 13, padding: 0 },
   segment: { flexDirection: 'row', borderWidth: 1, borderColor: C.line, padding: 3 },
   segItem: { flex: 1, height: 42, alignItems: 'center', justifyContent: 'center' },
+  paysBill: { marginTop: 16, gap: 4, borderWidth: 1, borderColor: C.accent, padding: 14 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: 16, backgroundColor: C.footer },
 }));

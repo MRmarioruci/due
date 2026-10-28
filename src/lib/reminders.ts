@@ -232,10 +232,11 @@ export async function scheduleDigest(bills: Bill[]) {
   updateSettings({ digestId: id });
 }
 
-export async function markPaid(bill: Bill) {
+/** `at`: when it was paid, if not now (a receipt shows the bill was paid earlier). */
+export async function markPaid(bill: Bill, at?: string) {
   await cancelFor(bill);
   const discount = activeDiscount(bill);
-  saveBill({ ...bill, status: 'paid', paidAt: new Date().toISOString(), paidAmountMinor: discount?.payMinor ?? null, reminderId: null, remindAt: null, snoozedUntil: null, extraReminderIds: [] });
+  saveBill({ ...bill, status: 'paid', paidAt: at ?? new Date().toISOString(), paidAmountMinor: discount?.payMinor ?? null, reminderId: null, remindAt: null, snoozedUntil: null, extraReminderIds: [] });
   await syncReminders();
 }
 
